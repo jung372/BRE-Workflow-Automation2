@@ -1,5 +1,5 @@
 {
-  "checked_at": "-",
+  "checked_at": "2026-04-03 11:26:22",
   "sites": [
     {
       "id": "notice",
@@ -10,7 +10,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 15
     },
     {
       "id": "result",
@@ -21,7 +21,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     },
     {
       "id": "nie_notice",
@@ -32,7 +32,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     },
     {
       "id": "kepco_notice",
@@ -43,7 +43,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     }
   ],
   "is_updating": false
