@@ -42,7 +42,7 @@ SITES = [
         "title_idx": 1, "date_idx": 4, "num_idx": 0,
     },
     {
-        "id": "kepco_notice", "name": "한전 설계포털 공지", "icon": "⚡", "color": "#f97316",
+        "id": "kepco_notice", "name": "한전 재분배 용량 공지", "icon": "⚡", "color": "#f97316",
         "url": "https://online.kepco.co.kr/EWM040D00",
         "type": "kepco",
     },
