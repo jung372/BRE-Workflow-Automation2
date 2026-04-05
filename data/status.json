@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-05 20:57:26",
+  "checked_at": "2026-04-05 23:06:27",
   "sites": [
     {
       "id": "notice",
@@ -8,8 +8,69 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 10,
+      "new_items": [
+        {
+          "num": "1",
+          "title": "\"전기화 시대의 그리드 코드와 전력 거버넌스\" 포럼 개최",
+          "date": "2026-04-05",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "2",
+          "title": "제320차 전기위원회 회의록",
+          "date": "2026-03-16",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "3",
+          "title": "포항 호미곶풍력 발전사업 등 9개 발전사업 허가취소 처분에 대한 청문 실시 공고",
+          "date": "2026-02-26",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "4",
+          "title": "삼척 덕항산풍력 발전사업 등 5개 발전사업 허가취소 처분 공고",
+          "date": "2026-02-26",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "5",
+          "title": "제319차 전기위원회 회의록",
+          "date": "2026-02-25",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "6",
+          "title": "청도 금천풍력 발전사업 등 22개 발전사업 허가취소 처분 공고",
+          "date": "2026-02-02",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "7",
+          "title": "제318차 전기위원회 회의록",
+          "date": "2026-01-23",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "8",
+          "title": "봉화풍력 발전사업 등 28개 발전사업 허가취소 처분에 대한 청문 실시 공고",
+          "date": "2026-01-14",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "9",
+          "title": "케이에스피1호 태양광 발전사업 등 21개 발전사업 허가취소 처분에 대한  청문 실시 공고",
+          "date": "2025-12-04",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
+        {
+          "num": "10",
+          "title": "제317차 전기위원회 회의록",
+          "date": "2025-12-02",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        }
+      ],
       "total": 15
     },
     {
