@@ -227,7 +227,7 @@ def main():
 
         # 고유 ID = "번호||제목"
         def item_id(n):
-            return f"{n['num']}||{n['title']}"
+            return f"{n['title']}||{n['date']}"
 
         new_items = [n for n in notices if item_id(n) not in prev_ids]
         current_ids = [item_id(n) for n in notices]

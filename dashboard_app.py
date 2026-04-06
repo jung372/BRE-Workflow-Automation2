@@ -173,7 +173,7 @@ def update_data_task():
                             "url": site["url"], "error": err or "실패", "new_count": 0, "new_items": [], "total": 0
                         })
                     else:
-                        def item_id(n): return f"{n['num']}||{n['title']}"
+                        def item_id(n): return f"{n['title']}||{n['date']}"
                         prev_ids = set(state.get(site["id"], []))
                         current_ids = [item_id(n) for n in current]
                         new_items = [n for n in current if item_id(n) not in prev_ids] if prev_ids else []
