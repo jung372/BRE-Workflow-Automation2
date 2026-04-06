@@ -152,9 +152,16 @@ def fetch_eiass(site):
         for r in rows:
             tds = r.find_all('td')
             if len(tds) >= 4:
-                biz_code = tds[0].get_text(strip=True)
-                biz_name = tds[2].get_text(strip=True)
-                date_rcv = tds[3].get_text(strip=True).replace('.', '-') # YYYY-MM-DD 형식 통일
+                code_text = tds[0].get_text(strip=True)
+                if code_text.startswith("ME") or len(code_text) == 10:
+                    biz_code = code_text
+                    biz_name = tds[2].get_text(strip=True)
+                    date_rcv = tds[3].get_text(strip=True).replace('.', '-')
+                else:
+                    biz_code = "-"
+                    biz_name = code_text
+                    date_rcv = tds[2].get_text(strip=True).replace('.', '-') if len(tds) > 2 else ""
+
                 notices.append({
                     "num": biz_code,
                     "title": biz_name,
