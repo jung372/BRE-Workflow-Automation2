@@ -486,10 +486,12 @@
         try { hostname = new URL(site.url).hostname; } catch(e) {}
         card.innerHTML = `
           <div class="card-header">
-            <div>
-              <div class="card-icon">${site.icon || '📌'}</div>
-              <div class="card-name">${site.name}</div>
-              <div class="card-url">${hostname}</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="card-icon" style="margin-bottom: 0;">${site.icon || '📌'}</div>
+              <div>
+                <div class="card-name">${site.name}</div>
+                <div class="card-url">${hostname}</div>
+              </div>
             </div>
           </div>
           <div class="new-count-wrap" id="count-wrap-${site.id}">
@@ -536,7 +538,7 @@
     if (site.new_count === 0) {
       return `<div class="no-new-msg"><span style="font-size:18px;">✅</span> 새 게시글 없음</div>`;
     }
-    const items = site.new_items || [];
+    const items = (site.new_items || []).slice(0, 5);
     const rows  = items.map((item, i) => `
       <div class="new-item" style="animation-delay:${i * 0.05}s">
         <div class="new-item-dot"></div>
