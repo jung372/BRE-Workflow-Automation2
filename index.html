@@ -11,289 +11,348 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #0d1117;
-      --surface:     #161b22;
-      --surface2:    #21262d;
-      --border:      #30363d;
-      --text:        #e6edf3;
-      --text-muted:  #8b949e;
-      --blue:        #3b82f6;
-      --green:       #10b981;
-      --amber:       #f59e0b;
-      --red:         #ef4444;
-      --glow-blue:   rgba(59,130,246,0.25);
-      --glow-green:  rgba(16,185,129,0.25);
-      --radius:      16px;
+      --baywa-green: #8fc31f; /* BayWa signature green */
+      --baywa-dk-green: #007a33;
+      --baywa-white: rgba(255, 255, 255, 0.95);
+      
+      /* Glassmorphism Variables */
+      --glass-bg: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+      --glass-blur: blur(16px);
+      --glass-hover: rgba(255, 255, 255, 0.15);
+
+      --text: #ffffff;
+      --text-muted: #e2e8f0;
+      --text-dark: #1e293b;
+      
+      --blue: #3b82f6;
+      --green: #2ecc71;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      
+      --radius: 20px;
+      --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
 
     body {
       font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
-      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
+      
+      /* Background setup with generated image */
+      background: url('assets/bg.png') no-repeat center center fixed;
+      background-size: cover;
     }
 
+    /* Dark overlay for better readability */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background:
-        radial-gradient(ellipse 600px 400px at 10% 20%, rgba(59,130,246,.08) 0%, transparent 70%),
-        radial-gradient(ellipse 500px 350px at 90% 80%, rgba(16,185,129,.07) 0%, transparent 70%);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%);
       pointer-events: none;
       z-index: 0;
     }
 
-    .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1150px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
 
-    /* ── 헤더 ── */
-    header { text-align: center; margin-bottom: 24px; }
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 30px; }
     .header-badge {
       display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3);
-      color: var(--blue); border-radius: 999px;
-      font-size: 11px; font-weight: 500; padding: 4px 12px;
-      margin-bottom: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--baywa-green);
+      color: var(--baywa-green);
+      border-radius: 999px;
+      font-size: 12px; font-weight: 600; padding: 6px 16px;
+      margin-bottom: 16px;
       animation: fadeSlideDown .5s ease both;
+      box-shadow: 0 4px 12px rgba(143, 195, 31, 0.2);
     }
     .pulse-dot {
       width: 8px; height: 8px; border-radius: 50%;
-      background: var(--blue);
+      background: var(--baywa-green);
+      box-shadow: 0 0 10px var(--baywa-green);
       animation: pulse 1.8s ease-in-out infinite;
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: .4; transform: scale(.7); }
+      50%       { opacity: .5; transform: scale(.7); }
     }
     h1 {
-      font-size: clamp(20px, 3vw, 24px); font-weight: 700; letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #e6edf3 0%, #8b949e 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: clamp(24px, 4vw, 36px); font-weight: 700; letter-spacing: -0.5px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
       animation: fadeSlideDown .6s ease .1s both;
+      margin-bottom: 8px;
     }
     .subtitle {
-      margin-top: 6px; color: var(--text-muted); font-size: 13px;
+      color: var(--text-muted); font-size: 15px; font-weight: 300;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
       animation: fadeSlideDown .6s ease .2s both;
     }
 
-    /* ── GitHub Actions 배지 ── */
+    /* ── Actions Badge ── */
     .actions-badge {
       display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(16,185,129,.10); border: 1px solid rgba(16,185,129,.25);
-      color: var(--green); border-radius: 999px;
-      font-size: 11px; font-weight: 500; padding: 3px 10px;
-      margin-top: 8px;
+      background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      color: var(--baywa-white); border-radius: 999px;
+      font-size: 12px; font-weight: 400; padding: 4px 14px;
+      margin-top: 12px;
       animation: fadeSlideDown .6s ease .3s both;
     }
 
-    /* ── 컨트롤 바 ── */
+    /* ── Control Bar ── */
     .control-bar {
       display: flex; align-items: center; justify-content: space-between;
       flex-wrap: wrap; gap: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
       margin-bottom: 28px;
+      box-shadow: var(--shadow);
       animation: fadeSlideDown .5s ease .4s both;
     }
-    .last-check { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
-    .last-check .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .last-check { font-size: 14px; color: var(--baywa-white); display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    .last-check .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; box-shadow: 0 0 8px var(--green); }
+    
     .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 500;
-      cursor: pointer; border: none; transition: all .2s;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; border: none; transition: all .3s;
+      outline: none;
     }
-    .btn-primary { background: var(--blue); color: #fff; }
-    .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,.4); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+    .btn-primary { 
+      background: linear-gradient(135deg, var(--baywa-green) 0%, var(--baywa-dk-green) 100%); 
+      color: #fff; 
+      box-shadow: 0 4px 15px rgba(143, 195, 31, 0.4);
+    }
+    .btn-primary:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 6px 20px rgba(143, 195, 31, 0.6);
+      background: linear-gradient(135deg, #a4d23a 0%, var(--baywa-dk-green) 100%);
+    }
+    .btn:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
+    
     .spin { animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── 카드 그리드 ── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 30px; }
+    /* ── Stats Bar ── */
+    .stats-bar {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius); padding: 18px 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      animation: fadeSlideUp .5s ease .25s both;
+    }
+    .stat { flex: 1; min-width: 120px; border-right: 1px solid rgba(255,255,255,0.1); }
+    .stat:last-child { border-right: none; }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 24px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .stat-value.amber { color: var(--amber); }
+    .stat-value.green { color: var(--baywa-green); }
+
+    /* ── Card Grid ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; margin-bottom: 40px; }
 
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px 16px 12px;
+      background: rgba(20, 25, 30, 0.5);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 24px;
       position: relative; overflow: hidden;
-      transition: transform .25s, box-shadow .25s;
+      transition: all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       animation: fadeSlideUp .5s ease both;
+      box-shadow: var(--shadow);
     }
     .card:nth-child(2) { animation-delay: .1s; }
     .card:nth-child(3) { animation-delay: .15s; }
     .card:nth-child(4) { animation-delay: .2s; }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+    
+    .card:hover { 
+      transform: translateY(-8px); 
+      background: rgba(30, 40, 45, 0.6);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.4);
+    }
 
     .card::before {
       content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: var(--card-color, var(--blue));
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: line-gradient(90deg, var(--baywa-green), var(--baywa-dk-green));
       border-radius: var(--radius) var(--radius) 0 0;
     }
-    .card::after {
-      content: '';
-      position: absolute; top: -60px; right: -60px;
-      width: 180px; height: 180px; border-radius: 50%;
-      background: var(--card-glow, var(--glow-blue));
-      pointer-events: none;
-    }
-    .card[data-id="result"] { --card-color: var(--green); --card-glow: var(--glow-green); }
+    /* Dynamic colored top border per card */
+    .card[data-id="result"]::before { background: linear-gradient(90deg, var(--baywa-green), #2ecc71); }
+    .card[data-id="notice"]::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .card[data-id="news"]::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 
-    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .card-icon { font-size: 28px; line-height: 1; }
-    .card-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .card-url  { font-size: 12px; color: var(--text-muted); }
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+    .card-icon { font-size: 36px; line-height: 1; margin-bottom: 12px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+    .card-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .card-url  { font-size: 13px; color: var(--text-muted); opacity: 0.8; }
 
-    .new-count-wrap { margin-bottom: 12px; }
-    .new-count-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .new-count-wrap { margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+    .new-count-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .new-count {
-      font-size: 32px; font-weight: 700; line-height: 1;
+      font-size: 38px; font-weight: 800; line-height: 1;
       color: var(--text);
       transition: color .3s;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    .new-count.has-new { color: var(--amber); }
+    .new-count.has-new { color: var(--amber); text-shadow: 0 0 20px rgba(245, 158, 11, 0.5); }
     .new-count.is-error { color: var(--red); font-size: 24px; }
 
     .new-count-link {
       display: inline-block;
       text-decoration: underline;
-      text-decoration-color: var(--blue);
+      text-decoration-color: rgba(255,255,255,0.3);
       text-decoration-thickness: 3px;
-      text-underline-offset: 4px;
+      text-underline-offset: 6px;
       color: inherit;
       cursor: pointer;
-      transition: transform .2s;
+      transition: all .2s;
     }
-    .new-count-link:hover { transform: scale(1.04); }
-    .new-count-link:hover .new-count { text-shadow: 0 0 20px rgba(245,158,11,.5); }
+    .new-count-link:hover { transform: scale(1.05); text-decoration-color: var(--amber); }
 
-    .new-items { margin-top: 14px; }
+    .new-items { margin-top: 16px; }
     .new-item {
-      display: flex; align-items: baseline; gap: 8px;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--surface2);
-      animation: fadeSlideRight .3s ease both;
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      animation: fadeSlideRight .4s ease both;
     }
     .new-item:last-child { border-bottom: none; }
-    .new-item-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; margin-top: 5px; }
+    .new-item-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 6px var(--amber); }
     .new-item a {
-      font-size: 13px; color: var(--text); text-decoration: none;
+      font-size: 14px; color: var(--text); text-decoration: none; font-weight: 500;
+      line-height: 1.4;
       display: -webkit-box;
-      -webkit-line-clamp: 1;
-      line-clamp: 1;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
       transition: color .2s;
     }
-    .new-item a:hover { color: var(--blue); }
-    .new-item-date { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+    .new-item a:hover { color: var(--baywa-green); }
+    .new-item-date { font-size: 12px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; }
 
-    .no-new-msg { font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .no-new-msg { font-size: 15px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-top: 8px; }
     .error-msg { font-size: 13px; color: var(--red); margin-top: 8px; }
 
-    .card-footer { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--surface2); display: flex; justify-content: space-between; align-items: center; }
-    .total-count { font-size: 10px; color: var(--text-muted); }
+    .card-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .total-count { font-size: 12px; color: var(--text-muted); font-weight: 500; }
     .visit-link {
-      font-size: 11px; color: var(--text-muted); text-decoration: none;
-      display: flex; align-items: center; gap: 4px;
-      transition: color .2s;
+      font-size: 12px; color: var(--text); text-decoration: none; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px;
+      transition: all .2s;
     }
-    .visit-link:hover { color: var(--text); }
+    .visit-link:hover { background: var(--baywa-green); color: #fff; box-shadow: 0 4px 12px rgba(143, 195, 31, 0.3); }
 
-    /* ── 통계 바 ── */
-    .stats-bar {
-      display: flex; gap: 16px; flex-wrap: wrap;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 12px 20px;
-      margin-bottom: 16px;
-      animation: fadeSlideUp .5s ease .25s both;
-    }
-    .stat { flex: 1; min-width: 100px; }
-    .stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
-    .stat-value { font-size: 18px; font-weight: 700; }
-    .stat-value.amber { color: var(--amber); }
-    .stat-value.green { color: var(--green); }
+    /* ── Progress Bar ── */
+    .auto-bar-wrap { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--baywa-white); font-weight: 500; }
+    .auto-bar-bg { flex: 1; width: 140px; height: 6px; background: rgba(0,0,0,0.3); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+    .auto-bar-fill { height: 100%; background: var(--baywa-green); border-radius: 999px; width: 100%; transition: width 1s linear; box-shadow: 0 0 10px var(--baywa-green); }
 
-    /* ── 로딩 스켈레톤 ── */
+    /* ── Skeleton Loaders ── */
     .skeleton {
-      border-radius: 4px; overflow: hidden;
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      border-radius: 6px; overflow: hidden;
+      background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
       background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
+      animation: shimmer 1.5s infinite;
     }
     @keyframes shimmer { to { background-position: -200% 0; } }
-    .sk-count { height: 32px; width: 60px; margin-bottom: 8px; }
-    .sk-line  { height: 12px; width: 100%; margin-bottom: 6px; }
+    .sk-count { height: 40px; width: 80px; margin-bottom: 12px; border-radius: 8px; }
+    .sk-line  { height: 14px; width: 100%; margin-bottom: 8px; }
     .sk-line.short { width: 60%; }
 
-    /* ── 애니메이션 ── */
-    @keyframes fadeSlideDown {
-      from { opacity: 0; transform: translateY(-12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeSlideUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeSlideRight {
-      from { opacity: 0; transform: translateX(-8px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-
-    /* ── 토스트 알림 ── */
+    /* ── Toast Notification ── */
     #toast {
-      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); padding: 12px 24px; border-radius: 999px;
-      font-size: 14px; opacity: 0; transition: all .3s; pointer-events: none; z-index: 999;
-      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(20, 25, 30, 0.9); border: 1px solid var(--baywa-green);
+      backdrop-filter: var(--glass-blur);
+      color: #fff; padding: 14px 28px; border-radius: 999px;
+      font-size: 15px; font-weight: 600; opacity: 0; transition: all .3s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+      pointer-events: none; z-index: 999;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(143, 195, 31, 0.2);
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ── 자동 새로고침 바 ── */
-    .auto-bar-wrap { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
-    .auto-bar-bg { flex: 1; max-width: 120px; height: 4px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
-    .auto-bar-fill { height: 100%; background: var(--blue); border-radius: 999px; width: 100%; transition: width 1s linear; }
+    /* ── Animations ── */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideRight {
+      from { opacity: 0; transform: translateX(-15px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
 
-    footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 24px; animation: fadeSlideUp .5s ease .5s both; padding-bottom: 40px; }
-    footer a { color: var(--text-muted); text-decoration: none; }
-    footer a:hover { color: var(--text); }
+    footer { 
+      text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; margin-top: 40px; 
+      animation: fadeSlideUp .5s ease .5s both; padding-bottom: 40px; 
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+    footer a { color: var(--baywa-green); text-decoration: none; font-weight: 500; }
+    footer a:hover { color: #fff; text-decoration: underline; }
   </style>
 </head>
 <body>
 <div class="wrapper">
 
-  <!-- 헤더 -->
+  <!-- Header -->
   <header>
     <div class="header-badge"><div class="pulse-dot"></div> 실시간 모니터링 활성</div>
     <h1>주요 사이트 공지 모니터링 대시보드</h1>
-    <p class="subtitle">기후에너지환경부 전기위원회 공지사항 신규 게시글을 자동으로 감지합니다</p>
+    <p class="subtitle">기후에너지환경부 전기위원회 등 신규 게시글 자동 감지</p>
     <div class="actions-badge">
-      ⚙️ 매 1시간마다 자동 갱신
+      ⚡ 매 1시간마다 자동 갱신
     </div>
   </header>
 
-  <!-- 컨트롤 바 -->
+  <!-- Control Bar -->
   <div class="control-bar">
     <div class="last-check">
       <div class="dot" id="statusDot"></div>
       <span id="lastCheck">데이터를 불러오는 중…</span>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;">
+    <div style="display:flex;gap:16px;align-items:center;">
       <div class="auto-bar-wrap">
         <span>화면갱신</span>
         <div class="auto-bar-bg"><div class="auto-bar-fill" id="autoBar"></div></div>
-        <span id="autoCountdown">60s</span>
+        <span id="autoCountdown" style="min-width: 32px; text-align:right;">60s</span>
       </div>
       <button class="btn btn-primary" id="btnRefresh" onclick="refresh()">
-        <span id="refreshIcon">↻</span> 새로고침
+        <span id="refreshIcon" style="font-size:18px;">↻</span> 새로고침
       </button>
     </div>
   </div>
 
-  <!-- 통계 바 -->
+  <!-- Stats Bar -->
   <div class="stats-bar" id="statsBar" style="display:none;">
     <div class="stat">
       <div class="stat-label">전체 신규 게시글</div>
@@ -303,48 +362,48 @@
       <div class="stat-label">모니터링 사이트</div>
       <div class="stat-value green" id="statSites">4</div>
     </div>
-    <div class="stat">
+    <div class="stat" style="border:none;">
       <div class="stat-label">마지막 확인</div>
-      <div class="stat-value" style="font-size:16px;" id="statTime">—</div>
+      <div class="stat-value" style="font-size:20px; color:var(--text);" id="statTime">—</div>
     </div>
   </div>
 
-  <!-- 카드 영역 -->
+  <!-- Cards Area -->
   <div class="cards" id="cards">
-    <!-- 스켈레톤 (4개) -->
+    <!-- Skeletons (4) -->
     <div class="card" id="skel1">
       <div class="card-header"><div>
-        <div class="skeleton sk-line short" style="width:40px;height:28px;margin-bottom:10px;"></div>
-        <div class="skeleton sk-line short" style="width:120px;"></div>
+        <div class="skeleton sk-line short" style="width:40px;height:36px;margin-bottom:12px;"></div>
+        <div class="skeleton sk-line short" style="width:140px;height:18px;"></div>
       </div></div>
-      <div class="skeleton sk-count"></div>
+      <div class="new-count-wrap"><div class="skeleton sk-count"></div></div>
       <div class="skeleton sk-line"></div>
       <div class="skeleton sk-line short"></div>
     </div>
     <div class="card" id="skel2">
       <div class="card-header"><div>
-        <div class="skeleton sk-line short" style="width:40px;height:28px;margin-bottom:10px;"></div>
-        <div class="skeleton sk-line short" style="width:140px;"></div>
+        <div class="skeleton sk-line short" style="width:40px;height:36px;margin-bottom:12px;"></div>
+        <div class="skeleton sk-line short" style="width:160px;height:18px;"></div>
       </div></div>
-      <div class="skeleton sk-count"></div>
+      <div class="new-count-wrap"><div class="skeleton sk-count"></div></div>
       <div class="skeleton sk-line"></div>
       <div class="skeleton sk-line short"></div>
     </div>
     <div class="card" id="skel3">
       <div class="card-header"><div>
-        <div class="skeleton sk-line short" style="width:40px;height:28px;margin-bottom:10px;"></div>
-        <div class="skeleton sk-line short" style="width:130px;"></div>
+        <div class="skeleton sk-line short" style="width:40px;height:36px;margin-bottom:12px;"></div>
+        <div class="skeleton sk-line short" style="width:150px;height:18px;"></div>
       </div></div>
-      <div class="skeleton sk-count"></div>
+      <div class="new-count-wrap"><div class="skeleton sk-count"></div></div>
       <div class="skeleton sk-line"></div>
       <div class="skeleton sk-line short"></div>
     </div>
     <div class="card" id="skel4">
       <div class="card-header"><div>
-        <div class="skeleton sk-line short" style="width:40px;height:28px;margin-bottom:10px;"></div>
-        <div class="skeleton sk-line short" style="width:150px;"></div>
+        <div class="skeleton sk-line short" style="width:40px;height:36px;margin-bottom:12px;"></div>
+        <div class="skeleton sk-line short" style="width:130px;height:18px;"></div>
       </div></div>
-      <div class="skeleton sk-count"></div>
+      <div class="new-count-wrap"><div class="skeleton sk-count"></div></div>
       <div class="skeleton sk-line"></div>
       <div class="skeleton sk-line short"></div>
     </div>
@@ -352,28 +411,25 @@
 
 </div>
 
-<!-- 토스트 -->
+<!-- Toast -->
 <div id="toast"></div>
 
 <footer>
   KOREC Monitoring Dashboard &nbsp;·&nbsp;
-  GitHub Actions 자동 갱신: 매 1시간마다 &nbsp;·&nbsp;
-  <a href="https://www.korec.go.kr" target="_blank" rel="noopener">korec.go.kr 바로가기</a>
+  Automated by GitHub Actions &nbsp;·&nbsp;
+  <a href="https://www.korec.go.kr" target="_blank" rel="noopener">korec.go.kr</a>
 </footer>
 
 <script>
-  // GitHub Pages의 경우 data/status.json을 직접 읽음 (Flask 서버 불필요)
   const DATA_URL         = 'data/status.json';
-  const AUTO_REFRESH_SEC = 300;  // 화면 자동 갱신: 5분마다 JSON 재조회
+  const AUTO_REFRESH_SEC = 300;
   let countdown  = AUTO_REFRESH_SEC;
   let autoTimer, countdownTimer;
 
-  // ─── 데이터 로드 ───
   async function loadData() {
     setBtnLoading(true);
     let data = null;
     try {
-      // 캐시 우회를 위해 타임스탬프 파라미터 추가
       const res = await fetch(DATA_URL + '?t=' + Date.now());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       data = await res.json();
@@ -388,16 +444,14 @@
 
   function refresh() { resetAutoTimer(); loadData(); }
 
-  // ─── 렌더링 ───
   function render(data) {
-    // 스켈레톤 제거
     ['skel1','skel2','skel3','skel4'].forEach(id => {
       const el = document.getElementById(id); if(el) el.remove();
     });
 
-    const lastTime = data.checked_at === '-' ? '첫 실행 대기 중 (Actions 탭에서 수동 실행)' : `마지막 수집: ${data.checked_at} (KST)`;
-    document.getElementById('lastCheck').textContent = lastTime;
-    document.getElementById('statTime').textContent  = (data.checked_at && data.checked_at !== '-') ? data.checked_at.slice(11, 16) : '--:--';
+    const isFirstTime = !data.checked_at || data.checked_at === '-';
+    document.getElementById('lastCheck').textContent = isFirstTime ? '첫 실행 대기 중' : `수집 완료: ${data.checked_at}`;
+    document.getElementById('statTime').textContent  = isFirstTime ? '--:--' : data.checked_at.slice(11, 16);
 
     const totalNew = data.sites.reduce((s, x) => s + (x.new_count || 0), 0);
     document.getElementById('statTotal').textContent = totalNew;
@@ -419,30 +473,30 @@
         card.innerHTML = `
           <div class="card-header">
             <div>
-              <div class="card-icon">${site.icon}</div>
+              <div class="card-icon">${site.icon || '📌'}</div>
               <div class="card-name">${site.name}</div>
               <div class="card-url">${hostname}</div>
             </div>
           </div>
           <div class="new-count-wrap" id="count-wrap-${site.id}">
-            <div class="new-count-label">신규 게시글</div>
+            <div class="new-count-label">신규 등록 게시글</div>
             <div class="count-content" id="count-content-${site.id}">
               <div class="skeleton sk-count"></div>
             </div>
           </div>
           <div class="items-wrap" id="items-wrap-${site.id}"></div>
           <div class="card-footer">
-            <div class="total-count" id="total-${site.id}">전체 0개 게시글</div>
+            <div class="total-count" id="total-${site.id}">전체 0개</div>
             <a class="visit-link" href="${site.url}" target="_blank" rel="noopener">
-              사이트 방문 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              방문하기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
           </div>
         `;
         container.appendChild(card);
       }
 
-      const hasNew     = site.new_count > 0;
-      const isErr      = !!site.error;
+      const hasNew = site.new_count > 0;
+      const isErr  = !!site.error;
       const countContent = document.getElementById(`count-content-${site.id}`);
       const itemsWrap    = document.getElementById(`items-wrap-${site.id}`);
       const totalText    = document.getElementById(`total-${site.id}`);
@@ -451,16 +505,16 @@
         countContent.innerHTML = `<div class="new-count is-error">오류</div><div class="error-msg">${site.error}</div>`;
       } else {
         countContent.innerHTML = `
-          <a class="new-count-link" href="${site.url}" target="_blank" rel="noopener" title="${site.name} 바로가기">
+          <a class="new-count-link" href="${site.url}" target="_blank" rel="noopener" title="바로가기">
             <div class="new-count ${hasNew ? 'has-new' : ''}">${site.new_count}</div>
           </a>`;
         itemsWrap.innerHTML = renderItems(site);
-        totalText.textContent = `전체 ${site.total}개 게시글`;
+        totalText.textContent = `총 확보 ${site.total || 0}건 데이터`;
       }
     });
 
     if (totalNew > 0) {
-      showToast(`🔔 총 ${totalNew}건의 새 게시글이 있습니다!`, 3500);
+      showToast(`✨ 총 ${totalNew}건의 새 게시글이 감지되었습니다!`, 4000);
     }
   }
 
@@ -472,17 +526,18 @@
     const rows  = items.map((item, i) => `
       <div class="new-item" style="animation-delay:${i * 0.05}s">
         <div class="new-item-dot"></div>
-        <a href="${item.url || site.url}" target="_blank" rel="noopener">${item.title}</a>
-        <span class="new-item-date">${item.date}</span>
+        <div>
+          <a href="${item.url || site.url}" target="_blank" rel="noopener">${item.title}</a>
+          <div class="new-item-date">${item.date || ''}</div>
+        </div>
       </div>`).join('');
     return `<div class="new-items">${rows}
       ${site.new_count > items.length
-        ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">외 ${site.new_count - items.length}건 → <a href="${site.url}" target="_blank" style="color:var(--blue);text-decoration:none;">사이트 방문</a></div>`
+        ? `<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:10px;text-align:right;">외 ${site.new_count - items.length}건 더보기 →</div>`
         : ''}
     </div>`;
   }
 
-  // ─── 자동 갱신 타이머 (5분마다 JSON 재조회) ───
   function resetAutoTimer() {
     clearInterval(autoTimer);
     clearInterval(countdownTimer);
@@ -507,7 +562,6 @@
       countdown >= 60 ? Math.ceil(countdown/60) + 'm' : countdown + 's';
   }
 
-  // ─── 버튼 로딩 상태 ───
   function setBtnLoading(on) {
     const btn  = document.getElementById('btnRefresh');
     const icon = document.getElementById('refreshIcon');
@@ -515,18 +569,15 @@
     icon.className = on ? 'spin' : '';
   }
 
-  // ─── 토스트 ───
-  function showToast(msg, ms = 2500) {
+  function showToast(msg, ms = 3000) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), ms);
   }
 
-  // ─── 초기 실행 ───
   loadData();
   resetAutoTimer();
 </script>
-
 </body>
 </html>
