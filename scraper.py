@@ -4,10 +4,11 @@
 출력: data/status.json  (GitHub Pages 대시보드에서 읽음)
 
 [새 게시글 판정 기준]
-  실행 시점 기준 7일 전 게시글 목록과 현재 목록을 비교.
-  현재 목록에는 있지만 7일 전 목록에는 없던 게시글 = 신규.
-  - 7일치 데이터 미만이면 가장 오래된 저장 목록 기준
+  실행 시점 기준 5일 전 게시글 목록과 현재 목록을 비교.
+  현재 목록에는 있지만 5일 전 목록에는 없던 게시글 = 신규.
+  - 5일치 데이터 미만이면 가장 오래된 저장 목록 기준
   - 첫 실행 시에는 오늘 목록만 저장하고 새 글 = 0
+  - DB 보관 기간: 10일 (KEEP_DAYS=11, 기준 5일 + 여유 6일)
 """
 import json, os, logging, requests, urllib3
 from datetime import datetime, timezone, timedelta
@@ -22,8 +23,8 @@ STATE_FILE    = os.path.join(BASE_DIR, "last_state.json")
 DATA_DIR      = os.path.join(BASE_DIR, "data")
 OUTPUT        = os.path.join(DATA_DIR, "status.json")
 KST           = timezone(timedelta(hours=9))
-BASELINE_DAYS = 5   # 비교 기준: 며칠 전 목록과 비교할지
-KEEP_DAYS     = 6   # 목록 보관 기간 (기준일 + 여유 1일)
+BASELINE_DAYS = 5    # 비교 기준: 며칠 전 목록과 비교할지
+KEEP_DAYS     = 11   # 목록 보관 기간: 10일 보관 (기준 5일 + 여유 6일)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def save_state(state):
 # ── 날짜별 게시글 목록 관리 ──────────────────────────────────────
 def get_baseline_ids(site_state):
     """
-    7일 전 날짜 기준의 게시글 ID 목록(set) 반환.
+    5일 전 날짜 기준의 게시글 ID 목록(set) 반환.
     """
     if isinstance(site_state, list):
         return set()
