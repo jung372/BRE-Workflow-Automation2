@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-14 14:22:58",
+  "checked_at": "2026-04-14 15:55:01",
   "sites": [
     {
       "id": "notice",
@@ -30,8 +30,17 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "ME20230070",
+          "title": "영월 접산 풍력발전단지 조성사업",
+          "date": "2024-01-23",
+          "comp_date": "2024-02-01",
+          "status": "",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        }
+      ],
       "total": 100
     },
     {
