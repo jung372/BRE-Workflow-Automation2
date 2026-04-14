@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-14 10:55:41",
+  "checked_at": "2026-04-14 11:33:49",
   "sites": [
     {
       "id": "notice",
@@ -8,69 +8,8 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 16,
-      "new_items": [
-        {
-          "num": "공지",
-          "title": "발전사업 준비기간 및 공사계획인가기간 연장 관련 안내",
-          "date": "2024-08-02",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "공지",
-          "title": "3MW초과 발전사업 허가대장",
-          "date": "2026-01-20",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "공지",
-          "title": "발전사업 허가 심의를 위한 계통영향 검토관련, 제11차 장기송변전설비계획 적용시기 알림",
-          "date": "2025-09-22",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "공지",
-          "title": "밤실산 풍력 발전사업 등 14개 발전사업 허가취소 처분 공고",
-          "date": "2026-03-18",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "공지",
-          "title": "삼척 평산풍력 발전사업 등 10개 발전사업 허가취소 처분에 대한 청문 실시 공고",
-          "date": "2026-03-25",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "공지",
-          "title": "제321차 전기위원회 회의록",
-          "date": "2026-04-14",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "1",
-          "title": "\"전기화 시대의 그리드 코드와 전력 거버넌스\" 포럼 개최",
-          "date": "2026-04-05",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "2",
-          "title": "제320차 전기위원회 회의록",
-          "date": "2026-03-16",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "3",
-          "title": "포항 호미곶풍력 발전사업 등 9개 발전사업 허가취소 처분에 대한 청문 실시 공고",
-          "date": "2026-02-26",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        },
-        {
-          "num": "4",
-          "title": "삼척 덕항산풍력 발전사업 등 5개 발전사업 허가취소 처분 공고",
-          "date": "2026-02-26",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 16
     },
     {
@@ -80,69 +19,8 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 11,
-      "new_items": [
-        {
-          "num": "공지",
-          "title": "제322차 전기위원회 개최 결과",
-          "date": "2026-04-14",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "1",
-          "title": "제321차 전기위원회 개최 결과",
-          "date": "2026-03-16",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "2",
-          "title": "제320차 전기위원회 개최 결과",
-          "date": "2026-02-26",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "3",
-          "title": "제319차 전기위원회 개최결과",
-          "date": "2026-01-23",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "4",
-          "title": "제318차 전기위원회 개최결과",
-          "date": "2025-12-02",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "5",
-          "title": "제317차 전기위원회 개최결과",
-          "date": "2025-11-03",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "6",
-          "title": "제316차 전기위원회 개최결과",
-          "date": "2025-10-13",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "7",
-          "title": "제315차 전기위원회 개최결과",
-          "date": "2025-08-26",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "8",
-          "title": "제314차 전기위원회 개최결과",
-          "date": "2025-07-31",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        },
-        {
-          "num": "9",
-          "title": "제313차 전기위원회 개최결과",
-          "date": "2025-07-01",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 11
     },
     {
@@ -152,89 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 100,
-      "new_items": [
-        {
-          "num": "ME20260047",
-          "title": "울진 전곡 풍력발전단지 조성사업 소규모 환경영향평가서",
-          "date": "2026-03-19",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260037",
-          "title": "AWP 영양풍력발전단지 소규모 환경영향평가 변경협의",
-          "date": "2026-03-11",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260028",
-          "title": "울진 온정풍력 발전사업",
-          "date": "2026-02-26",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "GW20260013",
-          "title": "고성 간성풍력발전사업 및 농어촌도로(리도201호선) 정비사업",
-          "date": "2026-02-06",
-          "comp_date": "2026-03-04",
-          "status": "변경협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "GW20250183",
-          "title": "정선 고한풍력발전단지 조성사업",
-          "date": "2026-01-12",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "GW20250178",
-          "title": "정선 동산풍력 발전단지 조성사업",
-          "date": "2026-01-12",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "GW20250167",
-          "title": "정선 도진풍력 발전사업",
-          "date": "2025-12-29",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "DG20250269",
-          "title": "AWP 풍력발전단지 주기기야적장 설치공사",
-          "date": "2025-10-31",
-          "comp_date": "2025-12-09",
-          "status": "본협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20250169",
-          "title": "포항 장기곶풍력 발전단지",
-          "date": "2025-11-06",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20250169",
-          "title": "포항 장기곶풍력 발전단지",
-          "date": "2026-02-24",
-          "comp_date": "",
-          "status": "",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 100
     },
     {
@@ -244,69 +41,8 @@
       "color": "#f97316",
       "url": "https://online.kepco.co.kr/EWM040D00",
       "error": null,
-      "new_count": 10,
-      "new_items": [
-        {
-          "num": "-",
-          "title": "'25년 하반기 전국 3단계 대상 재분배 시행 안내('25.11.03)",
-          "date": "2025.11.03",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 전국 2단계 대상 재분배 시행 안내 ('25.10.20)",
-          "date": "2025.10.20",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "25년 하반기 전력계통 회수용량 재분배 신청 안내('25.10. 1.)",
-          "date": "2025.10.01",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 호남권 3단계 대상 재분배 기간 연장 및 4단계 시행 안내",
-          "date": "2025.09.05",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 호남권 3단계 대상 재분배 시행안내('25.08.18)",
-          "date": "2025.08.18",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 호남권 전력계통 회수용량 재분배 일정 및 대상 재안내('25.8.14.)",
-          "date": "2025.08.18",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 호남권 2단계 대상 재분배 시행 안내('25.07.28)",
-          "date": "2025.07.28",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 하반기 전력계통 회수용량 재분배 및 유연접속 신청 안내('25.7.15)",
-          "date": "2025.07.15",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "'25년 상반기 잔여 용량 사업자 재분배 용량 안내('25. 5. 28.)",
-          "date": "2025.05.28",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        },
-        {
-          "num": "-",
-          "title": "’25년 상반기 신규사업자 재분배(호남권 외) 용량 안내(’25. 4.28.)",
-          "date": "2025.04.28",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     },
     {
@@ -316,69 +52,8 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 10,
-      "new_items": [
-        {
-          "num": "공지",
-          "title": "[공고 제2026-40호] 2026년 생태·자연도(生態 自然圖) 정기고시...",
-          "date": "2026-02-27",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "공지",
-          "title": "생태·자연도 등급 변경 절차 및 관련 서류",
-          "date": "2022-03-16",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "687",
-          "title": "[공고 제2026-66호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
-          "date": "2026-04-10",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "686",
-          "title": "[공고 제2026-65호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
-          "date": "2026-04-10",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "685",
-          "title": "[공고 제2026-68호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
-          "date": "2026-04-10",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "684",
-          "title": "[공고 제2026-59호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-04-02",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "683",
-          "title": "[공고 제2026-45호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-03-11",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "682",
-          "title": "[공고 제2026-37호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-02-26",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "681",
-          "title": "[공고 제2026-35호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-02-25",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "680",
-          "title": "[공고 제2026-32호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-02-24",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     }
   ],
