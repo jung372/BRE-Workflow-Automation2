@@ -106,7 +106,11 @@ def get_baseline_ids(site_state):
             baseline_date = d
 
     if baseline_date is None:
-        baseline_date = sorted_dates[0]
+        # 5일 전보다 오래된 스냅샷이 없음 (오늘 데이터만 존재)
+        # → 오늘을 기준으로 삼으면 current == baseline이 되어 신규 감지 불가
+        # → 빈 set 반환하여 첫 실행 처리 (새 글 = 0, 다음 사이클부터 정상 비교)
+        log.info(f"  비교 기준 날짜: 없음 (5일 전 스냅샷 미존재, 첫 실행 처리)")
+        return set()
 
     log.info(f"  비교 기준 날짜: {baseline_date} (목표 {BASELINE_DAYS}일 전: {target_str})")
     return set(daily[baseline_date])
