@@ -10,7 +10,7 @@
   - 첫 실행 시에는 오늘 목록만 저장하고 새 글 = 0
   - DB 보관 기간: 10일 (KEEP_DAYS=11, 기준 5일 + 여유 6일)
 """
-import json, os, logging, requests, urllib3
+import json, os, re, logging, requests, urllib3
 from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
@@ -150,19 +150,22 @@ def fetch_eiass(site):
         rows = soup.select('tbody tr')
         
         notices = []
+        # 사업코드 패턴: 영문 2자리 + 숫자 8자리 (예: ME20260047, GW20250183)
+        biz_code_pattern = re.compile(r'^[A-Z]{2}\d{8}$')
+
         for r in rows:
             tds = r.find_all('td')
-            if len(tds) >= 4:
-                code_text = tds[0].get_text(strip=True)
-                if code_text.startswith("ME") or len(code_text) == 10:
-                    biz_code = code_text
-                    biz_name = tds[2].get_text(strip=True)
-                    date_rcv = tds[3].get_text(strip=True).replace('.', '-')
-                else:
-                    biz_code = "-"
-                    biz_name = code_text
-                    date_rcv = tds[2].get_text(strip=True).replace('.', '-') if len(tds) > 2 else ""
+            if len(tds) < 4:
+                continue
+            code_text = tds[0].get_text(strip=True)
+            # 사업코드 형식이 아닌 행(두 번째 tbody 등)은 건너뜀
+            if not biz_code_pattern.match(code_text):
+                continue
+            biz_code = code_text
+            biz_name = tds[2].get_text(strip=True)   # tds[2] = 사업명
+            date_rcv = tds[3].get_text(strip=True).replace('.', '-')  # tds[3] = 접수일
 
+            if biz_name:
                 notices.append({
                     "num": biz_code,
                     "title": biz_name,
