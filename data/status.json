@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-14 15:55:01",
+  "checked_at": "2026-04-14 16:44:39",
   "sites": [
     {
       "id": "notice",
@@ -8,8 +8,15 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제321차 전기위원회 회의록",
+          "date": "2026-04-14",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        }
+      ],
       "total": 16
     },
     {
@@ -19,8 +26,15 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제322차 전기위원회 개최 결과",
+          "date": "2026-04-14",
+          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
+        }
+      ],
       "total": 11
     },
     {
@@ -30,17 +44,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "ME20230070",
-          "title": "영월 접산 풍력발전단지 조성사업",
-          "date": "2024-01-23",
-          "comp_date": "2024-02-01",
-          "status": "",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 100
     },
     {
@@ -61,8 +66,27 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 3,
+      "new_items": [
+        {
+          "num": "687",
+          "title": "[공고 제2026-66호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "date": "2026-04-10",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        },
+        {
+          "num": "686",
+          "title": "[공고 제2026-65호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "date": "2026-04-10",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        },
+        {
+          "num": "685",
+          "title": "[공고 제2026-68호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "date": "2026-04-10",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        }
+      ],
       "total": 10
     }
   ],
