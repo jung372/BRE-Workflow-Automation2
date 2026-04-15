@@ -209,7 +209,6 @@
       background: line-gradient(90deg, var(--baywa-green), var(--baywa-dk-green));
       border-radius: var(--radius) var(--radius) 0 0;
     }
-    /* Dynamic colored top border per card */
     .card[data-id="result"]::before { background: linear-gradient(90deg, var(--baywa-green), #2ecc71); }
     .card[data-id="notice"]::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
     .card[data-id="nie_notice"]::before { background: linear-gradient(90deg, #eab308, #facc15); }
@@ -217,6 +216,15 @@
     .card[data-id="eiass_wind"]::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
     .card[data-id="news"]::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
     .card[data-id="metmast"]::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+    /* 대시보드 강제 정렬 순서 */
+    .card[data-id="notice"] { order: 1; }
+    .card[data-id="result"] { order: 2; }
+    .card[data-id="metmast"] { order: 3; }
+    .card[data-id="kepco_notice"] { order: 4; }
+    .card[data-id="eiass_wind"] { order: 5; }
+    .card[data-id="nie_notice"] { order: 6; }
+    .card { order: 99; } /* 기본 위치 (그 외 카드) */
 
     .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
     .card-icon { font-size: 36px; line-height: 1; margin-bottom: 12px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
