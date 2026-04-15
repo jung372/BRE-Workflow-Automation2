@@ -216,6 +216,7 @@
     .card[data-id="kepco_notice"]::before { background: linear-gradient(90deg, #f97316, #fb923c); }
     .card[data-id="eiass_wind"]::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
     .card[data-id="news"]::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .card[data-id="metmast"]::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
 
     .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
     .card-icon { font-size: 36px; line-height: 1; margin-bottom: 12px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
@@ -531,6 +532,45 @@
 
     if (totalNew > 0) {
       showToast(`✨ 총 ${totalNew}건의 새 게시글이 감지되었습니다!`, 4000);
+    }
+    
+    // 풍황계측기 목업 대시보드 강제 주입 (Visually Only)
+    let mockCard = document.getElementById('card-metmast');
+    if (!mockCard) {
+      mockCard = document.createElement('div');
+      mockCard.className = 'card';
+      mockCard.id = 'card-metmast';
+      mockCard.setAttribute('data-id', 'metmast');
+      
+      mockCard.innerHTML = `
+        <div class="card-header">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="card-icon" style="margin-bottom: 0;">📡</div>
+            <div>
+              <div class="card-name">풍황계측기 모니터링</div>
+              <div class="card-url">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="new-count-wrap" id="count-wrap-metmast">
+          <div class="new-count-label">신규 알림 내역</div>
+          <div class="count-content" id="count-content-metmast">
+            <a class="new-count-link" href="#" rel="noopener" title="바로가기">
+              <div class="new-count">0</div>
+            </a>
+          </div>
+        </div>
+        <div class="items-wrap" id="items-wrap-metmast">
+          <div class="no-new-msg"><span style="font-size:18px;">✅</span> 준비 중인 서비스입니다.</div>
+        </div>
+        <div class="card-footer">
+          <div class="total-count" id="total-metmast">실시간 수집 준비중</div>
+          <a class="visit-link" href="#" target="_blank" rel="noopener">
+            연동하기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      `;
+      container.appendChild(mockCard);
     }
   }
 
