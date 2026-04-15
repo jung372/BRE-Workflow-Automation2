@@ -14,6 +14,9 @@ import json, os, re, logging, requests, urllib3
 from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # SSL 경고 비활성화 (EIASS 사이트 특성 대응)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -55,6 +58,13 @@ SITES = [
         "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
         "title_idx": 1, "date_idx": 4, "num_idx": 0,
     },
+]
+
+METMASTS = [
+    {"id": "SIRU", "name": "SIRU", "env_prefix": "METMAST_SIRU", "url": os.environ.get("METMAST_SIRU_URL", "https://D225107.connect.ammonit.com/")},
+    {"id": "GOGK", "name": "GOGK", "env_prefix": "METMAST_GOGK", "url": os.environ.get("METMAST_GOGK_URL", "https://D243097.connect.ammonit.com/")},
+    {"id": "BLMU", "name": "BLMU", "env_prefix": "METMAST_BLMU", "url": os.environ.get("METMAST_BLMU_URL", "")},
+    {"id": "DKAM", "name": "DKAM", "env_prefix": "METMAST_DKAM", "url": os.environ.get("METMAST_DKAM_URL", "")}
 ]
 
 
@@ -262,6 +272,58 @@ def fetch_notices(site, p_instance):
     return notices, None
 
 
+def check_metmast(m, p_instance):
+    url = m["url"]
+    user = os.environ.get(f"{m['env_prefix']}_ID", "")
+    pw = os.environ.get(f"{m['env_prefix']}_PW", "")
+    
+    if not url or not user or not pw:
+        return {"id": m["id"], "name": m["name"], "status": "Offline"}
+    
+    try:
+        browser = p_instance.chromium.launch(headless=True)
+        context = browser.new_context(ignore_https_errors=True)
+        page = context.new_page()
+        
+        # 기본 인증 대응 (401 방지)
+        # 만약 HTTP Basic Auth 팝업이라면:
+        page.set_extra_http_headers({"Authorization": "Basic QW1tb25pdDpBbW1vbml0"}) # Ammonit:Ammonit 인코딩 값 등, 필요시 무시.
+        
+        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+        
+        # 1. Access Code: Ammonit 입력 후 Send
+        try:
+            page.fill('input[type="password"], input[name*="code"], input[name*="access"]', 'Ammonit', timeout=5000)
+            page.click('input[type="submit"], button:has-text("Send"), button[type="submit"]')
+            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_timeout(2000)
+        except Exception as e:
+            # 폼이 없거나 못 찾은 경우 기본 인증일 수도 있음 (위 ignore_https_errors 등이 처리)
+            pass
+            
+        # 2. Login: user / pw
+        try:
+            page.fill('input[type="text"], input[name*="user"], input[name*="login"]', user, timeout=5000)
+            page.fill('input[type="password"], input[name*="pass"]', pw)
+            page.click('input[type="submit"], button:has-text("Login"), button[type="submit"]')
+            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_timeout(2000)
+        except Exception:
+            pass
+            
+        content = page.content()
+        browser.close()
+        
+        if "Welcome to Meteo-40" in content or "Meteo-40 plus" in content or "Logout" in content:
+            return {"id": m["id"], "name": m["name"], "status": "Online"}
+        else:
+            return {"id": m["id"], "name": m["name"], "status": "Offline"}
+
+    except Exception as e:
+        log.error(f"MetMast {m['name']} check failed: {e}")
+        return {"id": m["id"], "name": m["name"], "status": "Offline"}
+
+
 # ── 메인 ─────────────────────────────────────────────────────────
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -270,10 +332,18 @@ def main():
     results = {
         "checked_at": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
         "sites": [],
+        "metmasts": [],
         "is_updating": False,
     }
 
     with sync_playwright() as p:
+        # MetMast 체크
+        for m in METMASTS:
+            log.info(f"[MetMast] {m['name']} 상태 확인 중...")
+            status = check_metmast(m, p)
+            results["metmasts"].append(status)
+            log.info(f" -> {status['status']}")
+
         for site in SITES:
             log.info(f"[{site['name']}] 데이터 수집 시작")
             current, err = fetch_notices(site, p)

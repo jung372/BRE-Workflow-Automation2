@@ -10,6 +10,7 @@ monitor.log
 
 # 민감 설정 (이메일 계정 등)
 config.json
+.env
 
 # 압축 파일
 *.zip
