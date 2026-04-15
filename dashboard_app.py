@@ -13,6 +13,9 @@ import threading
 import time
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(BASE_DIR, "last_state.json")
@@ -49,13 +52,28 @@ SITES = [
         "title_idx": 1, "date_idx": 4, "num_idx": 0,
     },
     {
+        "id":    "eiass_wind",
+        "name":  "소규모 환평(풍력)",
+        "url":   "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
+        "icon":  "🌬️",
+        "color": "#0ea5e9",
+        "type":  "eiass",
+    },
+    {
         "id":    "kepco_notice",
         "name":  "한전 설계포털 공지",
         "url":   "https://online.kepco.co.kr/EWM040D00",
         "icon":  "⚡",
         "color": "#f97316",
-        "type":  "kepco", # 특별 파서 타입
+        "type":  "kepco",
     },
+]
+
+METMASTS = [
+    {"id": "SIRU", "name": "SIRU", "env_prefix": "METMAST_SIRU", "url": os.environ.get("METMAST_SIRU_URL", "https://D225107.connect.ammonit.com/")},
+    {"id": "GOGK", "name": "GOGK", "env_prefix": "METMAST_GOGK", "url": os.environ.get("METMAST_GOGK_URL", "https://D243097.connect.ammonit.com/")},
+    {"id": "BLMU", "name": "BLMU", "env_prefix": "METMAST_BLMU", "url": os.environ.get("METMAST_BLMU_URL", "")},
+    {"id": "DKAM", "name": "DKAM", "env_prefix": "METMAST_DKAM", "url": os.environ.get("METMAST_DKAM_URL", "")}
 ]
 
 # 전역 데이터 상태 초기화
@@ -66,6 +84,10 @@ _latest_data = {
          "url": s["url"], "error": None, "new_count": 0, "new_items": [], "total": 0} 
         for s in SITES
     ], 
+    "metmasts": [
+        {"id": m["id"], "name": m["name"], "status": "Offline"}
+        for m in METMASTS
+    ],
     "is_updating": True
 }
 _data_lock = threading.Lock()
@@ -149,6 +171,49 @@ def fetch_notices(site, p_instance):
     log.info(f"[{site['name']}] {len(notices)}건 파싱 완료")
     return notices, None
 
+def check_metmast(m, p_instance):
+    url = m["url"]
+    user = os.environ.get(f"{m['env_prefix']}_ID", "")
+    pw = os.environ.get(f"{m['env_prefix']}_PW", "")
+    if not url or not user or not pw:
+        return {"id": m["id"], "name": m["name"], "status": "Offline"}
+    try:
+        browser = p_instance.chromium.launch(headless=True)
+        context = browser.new_context(ignore_https_errors=True)
+        page = context.new_page()
+        page.goto(url, timeout=40000, wait_until="load")
+        
+        # 1. Access Code
+        access_sel = 'input[name="access"], input[type="password"]'
+        try:
+            page.wait_for_selector(access_sel, timeout=10000)
+            page.fill(access_sel, 'Ammonit')
+            page.keyboard.press("Enter")
+            page.wait_for_load_state("load")
+        except: pass
+            
+        # 2. Login
+        user_sel = 'input[name="user"], input[name*="login"]'
+        try:
+            page.wait_for_selector(user_sel, timeout=10000)
+            page.fill(user_sel, user)
+            page.fill('input[type="password"]', pw)
+            page.keyboard.press("Enter")
+            page.wait_for_load_state("networkidle", timeout=20000)
+            page.wait_for_timeout(3000)
+        except: pass
+            
+        try: content = page.content()
+        except: content = ""
+        browser.close()
+        
+        if any(kw in content for kw in ["Welcome", "Meteo-40", "Logout", "Dashboard"]):
+            return {"id": m["id"], "name": m["name"], "status": "Online"}
+        return {"id": m["id"], "name": m["name"], "status": "Offline"}
+    except Exception as e:
+        log.error(f"  [{m['name']}] 체크 오류: {e}")
+        return {"id": m["id"], "name": m["name"], "status": "Offline"}
+
 def update_data_task():
     global _latest_data
     while True:
@@ -160,11 +225,17 @@ def update_data_task():
             new_results = {
                 "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "sites": [],
+                "metmasts": [],
                 "is_updating": False
             }
             state = load_state()
             
             with sync_playwright() as p:
+                for m in METMASTS:
+                    log.info(f"[MetMast] {m['name']} 확인 중...")
+                    status = check_metmast(m, p)
+                    new_results["metmasts"].append(status)
+                
                 for site in SITES:
                     current, err = fetch_notices(site, p)
                     if err or current is None:
