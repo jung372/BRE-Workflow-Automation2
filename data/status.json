@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-15 22:56:55",
+  "checked_at": "2026-04-15 23:15:34",
   "sites": [
     {
       "id": "notice",
@@ -94,7 +94,7 @@
     {
       "id": "SIRU",
       "name": "SIRU",
-      "status": "Offline"
+      "status": "Online"
     },
     {
       "id": "GOGK",
@@ -104,7 +104,7 @@
     {
       "id": "BLMU",
       "name": "BLMU",
-      "status": "Offline"
+      "status": "Online"
     },
     {
       "id": "DKAM",
