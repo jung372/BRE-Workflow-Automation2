@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-15 23:15:34",
+  "checked_at": "2026-04-17 17:50:24",
   "sites": [
     {
       "id": "notice",
@@ -8,8 +8,14 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
+        {
+          "num": "공지",
+          "title": "3MW초과 발전사업 허가대장",
+          "date": "2026-04-17",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        },
         {
           "num": "공지",
           "title": "제321차 전기위원회 회의록",
@@ -66,23 +72,29 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 3,
+      "new_count": 4,
       "new_items": [
         {
+          "num": "688",
+          "title": "[공고 제2026-70호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "date": "2026-04-16",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        },
+        {
           "num": "687",
-          "title": "[공고 제2026-66호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "title": "[공고 제2026-66호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
           "date": "2026-04-10",
           "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
         },
         {
           "num": "686",
-          "title": "[공고 제2026-65호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "title": "[공고 제2026-65호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
           "date": "2026-04-10",
           "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
         },
         {
           "num": "685",
-          "title": "[공고 제2026-68호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
+          "title": "[공고 제2026-68호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
           "date": "2026-04-10",
           "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
         }
