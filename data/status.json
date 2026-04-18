@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-19 05:36:16",
+  "checked_at": "2026-04-19 06:34:56",
   "sites": [
     {
       "id": "notice",
@@ -56,10 +56,10 @@
       "icon": "⚡",
       "color": "#f97316",
       "url": "https://online.kepco.co.kr/EWM040D00",
-      "error": null,
+      "error": "Page.goto: Timeout 40000ms exceeded.\nCall log:\n  - navigating to \"https://online.kepco.co.kr/EWM040D00\", waiting until \"domcontentloaded\"\n",
       "new_count": 0,
       "new_items": [],
-      "total": 10
+      "total": 0
     },
     {
       "id": "nie_notice",
