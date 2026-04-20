@@ -3,7 +3,12 @@ name: Teams 정기 보고 (평일 09:00 KST)
 on:
   schedule:
     - cron: '0 0 * * 1-5'   # 평일 09:00 KST (= UTC 00:00)
-  workflow_dispatch:          # 수동 테스트용
+  workflow_dispatch:          # 수동 실행
+    inputs:
+      force_send:
+        description: '조건 무시하고 강제 발송 (신규글 0건 + 계측기 정상이어도 발송)'
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -31,4 +36,5 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           DASHBOARD_URL: https://jung372.github.io/BRE-Workflow-Automation2/
+          FORCE_SEND: ${{ inputs.force_send }}
         run: python notify_teams.py

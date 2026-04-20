@@ -8,14 +8,16 @@ MS Teams 정기 보고 스크립트 (평일 09:00 KST)
   4. 조건 충족 시 Teams MessageCard Webhook 발송
      - 조건 A: 신규 게시글 1건 이상
      - 조건 B: 오프라인 계측기 1대 이상
-     - 두 조건 모두 미충족 시 발송 생략
+     - 두 조건 모두 미충족 시 발송 생략 (--force 플래그로 강제 발송 가능)
 
 실행:
-  TEAMS_WEBHOOK_URL=<url> python notify_teams.py
+  TEAMS_WEBHOOK_URL=<url> python notify_teams.py           # 조건부 발송
+  TEAMS_WEBHOOK_URL=<url> python notify_teams.py --force   # 조건 무시, 강제 발송
 
 환경변수:
   TEAMS_WEBHOOK_URL  (필수) GitHub Secret에서 주입
   DASHBOARD_URL      (선택) 대시보드 바로가기 URL
+  FORCE_SEND         (선택) "true" 설정 시 --force와 동일 (workflow_dispatch 입력용)
 """
 
 import json
@@ -24,6 +26,8 @@ import sys
 from datetime import datetime, timezone, timedelta
 
 import requests
+
+FORCE_SEND = "--force" in sys.argv or os.environ.get("FORCE_SEND", "").lower() == "true"
 
 # ── 경로 및 상수 ──────────────────────────────────────────────────
 KST           = timezone(timedelta(hours=9))
@@ -158,8 +162,11 @@ def main():
 
     # 발송 조건 평가
     if not new_items and not offline:
-        print("✅ 신규 게시글 없음 + 모든 계측기 정상 → 알림 생략")
-        return
+        if FORCE_SEND:
+            print("⚡ --force 모드: 조건 미충족이나 강제 발송")
+        else:
+            print("✅ 신규 게시글 없음 + 모든 계측기 정상 → 알림 생략")
+            return
 
     card = build_card(new_items, metmasts)
     resp = requests.post(WEBHOOK_URL, json=card, timeout=15)
