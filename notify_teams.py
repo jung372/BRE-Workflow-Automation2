@@ -29,6 +29,9 @@ import requests
 
 FORCE_SEND = "--force" in sys.argv or os.environ.get("FORCE_SEND", "").lower() == "true"
 
+# 알림에서 제외할 계측기 ID 목록 (별도 지시 전까지 유지)
+MUTED_METMASTS = {"DKAM"}
+
 # ── 경로 및 상수 ──────────────────────────────────────────────────
 KST           = timezone(timedelta(hours=9))
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
@@ -96,7 +99,7 @@ def load_metmasts() -> list:
 
 # ── MessageCard 빌드 ──────────────────────────────────────────────
 def build_card(new_items: list, metmasts: list) -> dict:
-    offline = [m for m in metmasts if m.get("status") != "Online"]
+    offline = [m for m in metmasts if m.get("status") != "Online" and m.get("id") not in MUTED_METMASTS]
 
     theme_color  = "E74C3C" if offline else "8FC31F"
     metmast_text = (
