@@ -41,6 +41,14 @@ def fetch_eiass(site: dict) -> tuple:
                 "status":    tds[5].get_text(strip=True) if len(tds) > 5 else "",
                 "url":       site["url"],
             })
+        # 동일 사업코드(num)의 복수 행을 가장 최신 date 기준으로 1개만 유지
+        seen: dict = {}
+        for r in notices:
+            n = r["num"]
+            if n not in seen or r["date"] > seen[n]["date"]:
+                seen[n] = r
+        notices = list(seen.values())
+
         log.info(f"[{site['name']}] {len(notices)}건 파싱 완료")
         return notices, None
     except Exception as e:
