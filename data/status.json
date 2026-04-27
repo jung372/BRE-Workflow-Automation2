@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-04-27 11:41:16",
+  "checked_at": "2026-04-27 13:41:56",
   "sites": [
     {
       "id": "notice",
@@ -30,7 +30,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
         {
           "num": "ME20250143",
@@ -39,17 +39,9 @@
           "comp_date": "2026-04-24",
           "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20250143",
-          "title": "홍천 와야리풍력 발전사업",
-          "date": "2025-10-01",
-          "comp_date": "2026-04-24",
-          "status": "본협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
-      "total": 100
+      "total": 62
     },
     {
       "id": "kepco_notice",
