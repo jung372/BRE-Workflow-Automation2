@@ -1,8 +1,8 @@
-name: Teams 정기 보고 (평일 09:00 KST)
+name: Teams 정기 보고 (평일 08:30 KST)
 
 on:
   schedule:
-    - cron: '0 0 * * 1-5'   # 평일 09:00 KST (= UTC 00:00)
+    - cron: '30 23 * * 0-4'  # 평일 08:30 KST (= UTC 23:30)
   workflow_dispatch:          # 수동 실행
     inputs:
       force_send:
