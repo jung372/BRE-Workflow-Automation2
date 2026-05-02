@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-02 23:45:38",
+  "checked_at": "2026-05-03 00:44:14",
   "sites": [
     {
       "id": "notice",
@@ -52,21 +52,8 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 2,
-      "new_items": [
-        {
-          "num": "692",
-          "title": "[공고 제2026-81호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-04-28",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "691",
-          "title": "[공고 제2026-80호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...",
-          "date": "2026-04-28",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     }
   ],
