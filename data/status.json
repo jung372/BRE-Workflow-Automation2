@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-08 22:45:09",
+  "checked_at": "2026-05-09 00:25:21",
   "sites": [
     {
       "id": "notice",
@@ -8,15 +8,8 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "공지",
-          "title": "봉화풍력 발전사업 등 7개 발전사업 허가취소 처분 공고",
-          "date": "2026-05-04",
-          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 15
     },
     {
