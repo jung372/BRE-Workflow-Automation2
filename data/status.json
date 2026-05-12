@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-12 23:23:20",
+  "checked_at": "2026-05-13 02:14:06",
   "sites": [
     {
       "id": "notice",
@@ -69,15 +69,8 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "694",
-          "title": "[공고 제2026-93호] 생태·자연도(生態 自然圖) 수시고시(안) 국민...NEW",
-          "date": "2026-05-08",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     }
   ],
