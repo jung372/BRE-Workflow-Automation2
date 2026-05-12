@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-12 20:54:11",
+  "checked_at": "2026-05-12 23:23:20",
   "sites": [
     {
       "id": "notice",
@@ -95,7 +95,7 @@
     {
       "id": "BLMU",
       "name": "BLMU",
-      "status": "Offline"
+      "status": "Online"
     },
     {
       "id": "DKAM",
