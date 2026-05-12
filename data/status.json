@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-12 12:37:07",
+  "checked_at": "2026-05-12 15:36:23",
   "sites": [
     {
       "id": "notice",
@@ -30,8 +30,16 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
+        {
+          "num": "ME20260061",
+          "title": "삼척 내봉산풍력발전사업",
+          "date": "2026-04-28",
+          "comp_date": "",
+          "status": "변경협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
         {
           "num": "ME20250169",
           "title": "포항 장기곶풍력 발전단지",
@@ -41,7 +49,7 @@
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
-      "total": 61
+      "total": 62
     },
     {
       "id": "kepco_notice",
