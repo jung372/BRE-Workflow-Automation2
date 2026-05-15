@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-15 15:55:03",
+  "checked_at": "2026-05-15 18:48:09",
   "sites": [
     {
       "id": "notice",
@@ -49,10 +49,27 @@
       "icon": "🌬️",
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
-      "error": "HTTPSConnectionPool(host='www.eiass.go.kr', port=443): Max retries exceeded with url: /searchApi/search.do (Caused by NameResolutionError(\"HTTPSConnection(host='www.eiass.go.kr', port=443): Failed to resolve 'www.eiass.go.kr' ([Errno -3] Temporary failure in name resolution)\"))",
-      "new_count": 0,
-      "new_items": [],
-      "total": 0
+      "error": null,
+      "new_count": 2,
+      "new_items": [
+        {
+          "num": "ME20260061",
+          "title": "삼척 내봉산풍력발전사업",
+          "date": "2026-04-28",
+          "comp_date": "",
+          "status": "변경협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "ME20250169",
+          "title": "포항 장기곶풍력 발전단지",
+          "date": "2026-05-11",
+          "comp_date": "",
+          "status": "",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        }
+      ],
+      "total": 62
     },
     {
       "id": "kepco_notice",
