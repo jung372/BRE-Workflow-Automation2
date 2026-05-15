@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-15 23:06:27",
+  "checked_at": "2026-05-16 01:50:56",
   "sites": [
     {
       "id": "notice",
@@ -50,7 +50,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
         {
           "num": "ME20260061",
@@ -58,14 +58,6 @@
           "date": "2026-04-28",
           "comp_date": "",
           "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20250169",
-          "title": "포항 장기곶풍력 발전단지",
-          "date": "2026-05-11",
-          "comp_date": "",
-          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
