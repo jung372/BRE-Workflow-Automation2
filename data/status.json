@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-16 23:55:35",
+  "checked_at": "2026-05-17 00:58:19",
   "sites": [
     {
       "id": "notice",
@@ -50,17 +50,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "ME20260061",
-          "title": "삼척 내봉산풍력발전사업",
-          "date": "2026-04-28",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 62
     },
     {
