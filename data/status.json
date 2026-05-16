@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-05-16 08:02:59",
+  "checked_at": "2026-05-16 11:48:40",
   "sites": [
     {
       "id": "notice",
@@ -49,10 +49,19 @@
       "icon": "🌬️",
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
-      "error": "HTTPSConnectionPool(host='www.eiass.go.kr', port=443): Max retries exceeded with url: /searchApi/search.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.eiass.go.kr', port=443) at 0x7f2c018dad10>, 'Connection to www.eiass.go.kr timed out. (connect timeout=30)'))",
-      "new_count": 0,
-      "new_items": [],
-      "total": 0
+      "error": null,
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "ME20260061",
+          "title": "삼척 내봉산풍력발전사업",
+          "date": "2026-04-28",
+          "comp_date": "",
+          "status": "변경협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        }
+      ],
+      "total": 62
     },
     {
       "id": "kepco_notice",
