@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-08 13:00:04",
+  "checked_at": "2026-09-08 14:00:04",
   "sites": [
     {
       "id": "notice",
@@ -29,10 +29,10 @@
       "icon": "🌬️",
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
-      "error": "HTTPSConnectionPool(host='www.eiass.go.kr', port=443): Max retries exceeded with url: /searchApi/search.do (Caused by NameResolutionError(\"HTTPSConnection(host='www.eiass.go.kr', port=443): Failed to resolve 'www.eiass.go.kr' ([Errno 11001] getaddrinfo failed)\"))",
+      "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 61
     },
     {
       "id": "kepco_notice",
