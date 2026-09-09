@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-09 13:00:02",
+  "checked_at": "2026-09-09 14:00:04",
   "sites": [
     {
       "id": "notice",
@@ -8,8 +8,15 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제327차 전기위원회 회의록",
+          "date": "2026-09-09",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        }
+      ],
       "total": 15
     },
     {
@@ -19,8 +26,21 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 2,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제328차 전기위원회 개최 결과",
+          "date": "2026-09-09",
+          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
+        },
+        {
+          "num": "1",
+          "title": "제327차 전기위원회 개최 결과",
+          "date": "2026-08-19",
+          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
+        }
+      ],
       "total": 11
     },
     {
@@ -94,7 +114,7 @@
     {
       "id": "BLMU",
       "name": "BLMU",
-      "status": "Offline",
+      "status": "Online",
       "url": "http://d243101.connect.ammonit.com/"
     },
     {
