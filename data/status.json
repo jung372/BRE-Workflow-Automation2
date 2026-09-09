@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-10 06:00:03",
+  "checked_at": "2026-09-10 07:00:03",
   "sites": [
     {
       "id": "notice",
@@ -83,9 +83,34 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 41,
+      "new_count": 2,
+      "new_items": [
+        {
+          "uid": "DCTE9F97F4F48046E0CADC8F964C13E7DBD",
+          "title": "경주 시루풍력 2호 발전사업 허가 심의를 위한 의견문의 회신",
+          "dept": "신성장산업과",
+          "dept_full": "경상북도 경주시 경제산업국 신성장산업과",
+          "instt": "경상북도 경주시",
+          "date": "2026-09-10",
+          "prod_date": "2026-09-09",
+          "doc_no": "신성장산업과-25103",
+          "keyword": "시루풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%8B%9C%EB%A3%A8%ED%92%8D%EB%A0%A5"
+        },
+        {
+          "uid": "DCT0CA7CAB8CFD897233F3001949C4F1C6E",
+          "title": "경주시루풍력 2호 발전사업 허가심의에 따른 경주시 검토의견 결재 건",
+          "dept": "신성장산업과",
+          "dept_full": "경상북도 경주시 경제산업국 신성장산업과",
+          "instt": "경상북도 경주시",
+          "date": "2026-09-10",
+          "prod_date": "2026-09-09",
+          "doc_no": "신성장산업과-25021",
+          "keyword": "시루풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%8B%9C%EB%A3%A8%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 43,
       "keywords": [
         "시루풍력",
         "왕신풍력",
