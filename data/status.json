@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-10 12:00:03",
+  "checked_at": "2026-09-10 13:00:03",
   "sites": [
     {
       "id": "notice",
@@ -50,8 +50,17 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "ME20260028",
+          "title": "울진 온정풍력 발전사업",
+          "date": "2026-08-12",
+          "comp_date": "2026-09-10",
+          "status": "",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        }
+      ],
       "total": 61
     },
     {
