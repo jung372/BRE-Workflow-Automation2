@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-11 14:00:04",
+  "checked_at": "2026-09-11 15:00:03",
   "sites": [
     {
       "id": "notice",
@@ -81,8 +81,27 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 3,
+      "new_items": [
+        {
+          "num": "721",
+          "title": "[공고 제2026-157호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
+          "date": "2026-09-11",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        },
+        {
+          "num": "720",
+          "title": "[공고 제2026-156호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
+          "date": "2026-09-11",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        },
+        {
+          "num": "719",
+          "title": "[공고 제2026-155호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
+          "date": "2026-09-11",
+          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
+        }
+      ],
       "total": 10
     },
     {
