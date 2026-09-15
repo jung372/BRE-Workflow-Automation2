@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-15 20:00:04",
+  "checked_at": "2026-09-16 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -52,27 +52,8 @@
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
       "error": null,
-      "new_count": 3,
-      "new_items": [
-        {
-          "num": "721",
-          "title": "[공고 제2026-157호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
-          "date": "2026-09-11",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "720",
-          "title": "[공고 제2026-156호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
-          "date": "2026-09-11",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        },
-        {
-          "num": "719",
-          "title": "[공고 제2026-155호] 생태·자연도(生態 自然圖) 수시고시(안) 국...NEW",
-          "date": "2026-09-11",
-          "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword="
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     },
     {
@@ -82,22 +63,9 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "uid": "DCT4517BA526CAE4D41F94A72A4AF765BEE",
-          "title": "경주시루풍력 2호 발전사업 관련 주민수용성 확보 계획 제출",
-          "dept": "신성장산업과",
-          "dept_full": "경상북도 경주시 경제산업국 신성장산업과",
-          "instt": "경상북도 경주시",
-          "date": "2026-09-11",
-          "prod_date": "2026-09-10",
-          "doc_no": "신성장산업과-25282",
-          "keyword": "시루풍력",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%8B%9C%EB%A3%A8%ED%92%8D%EB%A0%A5"
-        }
-      ],
-      "total": 42,
+      "new_count": 0,
+      "new_items": [],
+      "total": 41,
       "keywords": [
         "시루풍력",
         "왕신풍력",
