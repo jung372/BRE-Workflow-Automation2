@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-17 20:00:04",
+  "checked_at": "2026-09-18 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -71,10 +71,23 @@
       "icon": "📄",
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
-      "error": "모든 키워드 조회 실패: 시루풍력, 왕신풍력, 고곡풍력, 고실풍력, 삼척에코윈드, 운제풍력, 한국바람, 해파랑육상풍력",
-      "new_count": 0,
-      "new_items": [],
-      "total": 0,
+      "error": null,
+      "new_count": 1,
+      "new_items": [
+        {
+          "uid": "DCTC3A5E02C2D0A1749556CF8AFE55D78F0",
+          "title": "풍력발전사업 관련 주민 민원사항 전달(경주 다산풍력, 경주 왕신풍력)",
+          "dept": "신성장산업과",
+          "dept_full": "경상북도 경주시 경제산업국 신성장산업과",
+          "instt": "경상북도 경주시",
+          "date": "2026-09-17",
+          "prod_date": "2026-09-16",
+          "doc_no": "신성장산업과-25867",
+          "keyword": "왕신풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 42,
       "keywords": [
         "시루풍력",
         "왕신풍력",
