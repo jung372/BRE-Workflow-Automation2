@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-20 18:00:03",
+  "checked_at": "2026-09-20 19:00:03",
   "sites": [
     {
       "id": "notice",
@@ -60,10 +60,10 @@
       "icon": "🍃",
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
-      "error": null,
+      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=\nCall log:\n  - navigating to \"https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=\", waiting until \"domcontentloaded\"\n",
       "new_count": 0,
       "new_items": [],
-      "total": 10
+      "total": 0
     },
     {
       "id": "open_portal",
