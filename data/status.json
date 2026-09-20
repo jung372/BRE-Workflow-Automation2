@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-20 20:00:03",
+  "checked_at": "2026-09-21 06:00:03",
   "sites": [
     {
       "id": "notice",
@@ -30,17 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "ME20260109",
-          "title": "영천 고경풍력발전단지 조성사업",
-          "date": "2026-09-02",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 61
     },
     {
@@ -60,10 +51,10 @@
       "icon": "🍃",
       "color": "#eab308",
       "url": "https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=",
-      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=\nCall log:\n  - navigating to \"https://www.nie.re.kr/nie/bbs/BMSR00038/list.do?menuNo=200099&pageIndex=1&gubunCd=&searchCondition=&searchKeyword=\", waiting until \"domcontentloaded\"\n",
+      "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     },
     {
       "id": "open_portal",
