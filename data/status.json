@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-22 06:00:03",
+  "checked_at": "2026-09-22 07:00:03",
   "sites": [
     {
       "id": "notice",
@@ -63,9 +63,22 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 41,
+      "new_count": 1,
+      "new_items": [
+        {
+          "uid": "DCT76691E2150F7D95F6AEF98ECEE6A24BA",
+          "title": "풍력발전사업 관련 주민 민원사항 전달(경주 왕신풍력)",
+          "dept": "신성장산업과",
+          "dept_full": "경상북도 경주시 경제산업국 신성장산업과",
+          "instt": "경상북도 경주시",
+          "date": "2026-09-22",
+          "prod_date": "2026-09-21",
+          "doc_no": "신성장산업과-26312",
+          "keyword": "왕신풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 42,
       "keywords": [
         "시루풍력",
         "왕신풍력",
