@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-28 14:00:04",
+  "checked_at": "2026-09-28 15:00:04",
   "sites": [
     {
       "id": "notice",
@@ -72,9 +72,58 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 41,
+      "new_count": 4,
+      "new_items": [
+        {
+          "uid": "DCTCE004921D790F19F8E92DC1AE1065655",
+          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 심의를 위한 의견 조회",
+          "dept": "축수산과",
+          "dept_full": "울산광역시 울주군 경제산업국 축수산과",
+          "instt": "울산광역시 울주군",
+          "date": "2026-09-24",
+          "prod_date": "2026-09-23",
+          "doc_no": "축수산과-41351",
+          "keyword": "이스트블루파워",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
+        },
+        {
+          "uid": "DCTB9FCE913D669A192D6A61C12A0BEC4EB",
+          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 심의를 위한 의견 조회",
+          "dept": "에너지정책과",
+          "dept_full": "울산광역시 울주군 경제산업국 에너지정책과",
+          "instt": "울산광역시 울주군",
+          "date": "2026-09-19",
+          "prod_date": "2026-09-18",
+          "doc_no": "에너지정책과-26943",
+          "keyword": "이스트블루파워",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
+        },
+        {
+          "uid": "DM202608241840",
+          "title": "[「문무바람 부유식 해상풍력」] 공동개발 양해각서 변경 합의서 체결 시행(안)",
+          "dept": "한국남부발전(주)",
+          "dept_full": "한국남부발전(주)",
+          "instt": "한국남부발전(주)",
+          "date": "2026-09-16",
+          "prod_date": "2026-09-15",
+          "doc_no": "재생(해상풍력)-546",
+          "keyword": "문무바람",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
+        },
+        {
+          "uid": "DCT26407F7F1B30664EF8802A6ECE96A581",
+          "title": "공유수면 점용·사용료 징수 의뢰[㈜해울이해상풍력발전1]",
+          "dept": "해양수산환경과",
+          "dept_full": "해양수산부 울산지방해양수산청 해양수산환경과",
+          "instt": "해양수산부",
+          "date": "2026-08-05",
+          "prod_date": "2026-08-04",
+          "doc_no": "해양수산환경과-3070",
+          "keyword": "해울이해상풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%ED%95%B4%EC%9A%B8%EC%9D%B4%ED%95%B4%EC%83%81%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 45,
       "keywords": [
         "시루풍력",
         "왕신풍력",
@@ -82,6 +131,10 @@
         "고실풍력",
         "삼척에코윈드",
         "운제풍력",
+        "문무바람",
+        "이스트블루파워",
+        "한국부유식풍력",
+        "해울이해상풍력",
         "한국바람",
         "해파랑육상풍력"
       ]
