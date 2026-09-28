@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-28 12:00:03",
+  "checked_at": "2026-09-28 13:00:03",
   "sites": [
     {
       "id": "notice",
@@ -30,8 +30,17 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "JN20260032",
+          "title": "곡성군 오곡면 미산리 군도2호선 확포장 조성사업",
+          "date": "2026-08-27",
+          "comp_date": "2026-09-28",
+          "status": "본협의(완료)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        }
+      ],
       "total": 61
     },
     {
