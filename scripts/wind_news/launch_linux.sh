@@ -14,7 +14,7 @@ collection = json.loads((source / 'wind_news_collection.json').read_text())
 assert collection['provider'] == 'public_publishers'
 collection['enabled'] = True
 config['collection'] = collection
-config['policy'].update(require_rights_review=False, require_free_access=True,
+config['policy'].update(require_rights_review=False, require_free_access=True, auto_recover=True,
     source_authorization_basis='user_instruction_2026-09-30_public_articles')
 config['policy']['publisher']['enabled'] = True
 path.write_text(json.dumps(config, ensure_ascii=False, indent=2))
