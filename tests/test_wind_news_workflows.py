@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import unittest
+import shutil
+import subprocess
 
 from scripts.wind_news.build_workflows import build
 
@@ -9,6 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WorkflowsTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "Node.js is required for Code node syntax validation")
+    def test_code_nodes_are_valid_javascript(self):
+        snippets = [node["parameters"]["jsCode"] for flow in build() for node in flow["nodes"]
+                    if node["type"] == "n8n-nodes-base.code"]
+        result = subprocess.run([shutil.which("node"), "-e",
+            "for(const code of JSON.parse(require('fs').readFileSync(0,'utf8')))new Function(code);"],
+            input=json.dumps(snippets), text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_exports_match_generator_and_connections(self):
         for flow in build():
             with self.subTest(flow=flow["name"]):

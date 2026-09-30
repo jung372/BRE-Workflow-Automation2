@@ -56,7 +56,7 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
         edge("Manual test", "Configure")
     code = ("const issue_date = $now.setZone('Asia/Seoul').toFormat('yyyy-MM-dd');\n"
             f"return [{{json: {{service_url: {json.dumps(service_url)}, issue_date, "
-            "issue_id: 'wind-' + issue_date, deadline: Date.now() + 1100000}}}];")
+            "issue_id: 'wind-' + issue_date, deadline: Date.now() + 1100000}}];")
     nodes.append(node("Configure", "code", {"jsCode": code}, 220, version=2))
     if publish:
         nodes.append(http("Read issue", "GET", "'/v1/issues/' + $json.issue_id", x=440))
@@ -95,7 +95,7 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
     nodes.append(node("Setup instructions", "stickyNote", {"content":
         "## Import inactive\nBind every HTTP node to Header Auth `BRE Wind Service`: "
         "Authorization = Bearer <service token>. Edit Configure.service_url. "
-        "No credentials are included. Shadow review is the default. "
+        "No credentials are included. Codex OAuth performs automatic evidence review. "
         "Set Error workflow to imported BRE-WIND-05A-Errors. "
         "Read docs/wind-news-operations.md before enabling schedules.",
         "height": 240, "width": 600}, 160, -300))

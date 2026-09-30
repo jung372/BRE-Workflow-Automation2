@@ -2,6 +2,8 @@
 set -euo pipefail
 umask 077
 root="$HOME/bre-wind-news"
+source_root=$(realpath "$1")
+release_sha=$2
 container=bre-wind-news-news-service-1
 n8n=n8n-personal-n8n-1
 [[ -L "$root/current" ]] || { echo NEWS_NOT_INSTALLED; exit 1; }
@@ -31,18 +33,18 @@ if not (clone / '.git').exists():
 print('PUBLISH_DEPLOY_PUBLIC_KEY='+key.with_suffix('.pub').read_text().strip())
 PY
 
-if [[ -f "$root/settings/n8n-import-complete" ]]; then
+if [[ -f "$root/settings/n8n-import-complete" ]] && [[ "$(cat "$root/settings/n8n-import-complete")" == "$release_sha" ]]; then
     echo N8N_ALREADY_CONNECTED
     exit 0
 fi
 temp=$(mktemp -d "$root/settings/n8n-import.XXXXXXXX")
 container_temp="/tmp/bre-wind-$(basename "$temp")"
 trap 'docker exec --user root "$n8n" rm -rf "$container_temp" >/dev/null 2>&1 || true; rm -rf -- "$temp"' EXIT
-python3 - "$root" "$temp" <<'PY'
+python3 - "$root" "$temp" "$source_root" <<'PY'
 import json, sys, uuid
 from pathlib import Path
-root, temp = map(Path, sys.argv[1:])
-flows = [json.loads(p.read_text()) for p in sorted((root / 'current/automation/n8n').glob('*.json'))]
+root, temp, source = map(Path, sys.argv[1:])
+flows = [json.loads(p.read_text()) for p in sorted((source / 'automation/n8n').glob('*.json'))]
 manifest = root / 'settings/n8n-links.json'
 if manifest.exists(): links = json.loads(manifest.read_text())
 else:
@@ -68,7 +70,7 @@ fi
 if ! docker exec "$n8n" n8n import:workflow --input="$container_temp/workflows.json" >"$temp/workflows.log" 2>&1; then
     echo N8N_WORKFLOW_IMPORT_FAILED; exit 1
 fi
-touch "$root/settings/n8n-import-complete"
+printf '%s' "$release_sha" > "$root/settings/n8n-import-complete"
 echo N8N_IMPORTED_7_INACTIVE_WORKFLOWS
 python3 - "$root/settings/n8n-links.json" <<'PY'
 import json, sys
