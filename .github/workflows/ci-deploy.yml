@@ -23,7 +23,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, preflight, install]
+        options: [normal, preflight, install, connect]
         default: normal
 
 env:
@@ -39,7 +39,7 @@ concurrency:
 jobs:
   news-install:
     needs: test
-    if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'install'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect')
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 30
     environment: production
@@ -49,7 +49,9 @@ jobs:
           persist-credentials: false
       - name: Install isolated news container in existing WSL
         shell: powershell
-        run: .\scripts\wind_news\operate_server.ps1 -Action install
+        env:
+          NEWS_ACTION: ${{ inputs.news_action }}
+        run: .\scripts\wind_news\operate_server.ps1 -Action $env:NEWS_ACTION
 
   news-preflight:
     if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'preflight'
