@@ -58,6 +58,10 @@ now = datetime.now(timezone(timedelta(hours=9)))
 day = (now.date() if (now.hour, now.minute) >= (7,30) else (now-timedelta(days=1)).date()).isoformat()
 prepare = {'issue_date':day, 'retry_blocked':True}
 if os.environ.get('WIND_NEWS_LAUNCH_MODE') == 'correct':
+    response = s.get(base+'/v1/issues', timeout=15); response.raise_for_status()
+    completed = [i for i in response.json()['issues'] if i['state'] in ('COMMITTED','WEB_VERIFIED')]
+    assert completed, 'NO_PUBLISHED_ISSUE_TO_CORRECT'
+    prepare['issue_date'] = max(i['issue']['issue_date'] for i in completed)
     prepare['correction_reason'] = '공개 원문 수집 전환 후 제목·도입부를 우선하는 기사 분류 기준 정정'
 issue = job('/v1/issues/prepare', prepare)
 print('LAUNCH_ISSUE_STATE='+issue['state'], flush=True)
