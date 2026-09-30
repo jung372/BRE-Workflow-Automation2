@@ -14,7 +14,8 @@ $container = 'bre-wind-news-news-service-1'
 $source = (Resolve-Path (Join-Path $PSScriptRoot 'oauth_device.py')).Path.Replace('\', '/')
 $linuxSource = (& wsl -d Ubuntu-24.04 --exec wslpath -a $source).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'WSL path conversion failed' }
-& wsl -d Ubuntu-24.04 --exec docker cp $linuxSource "${container}:/tmp/bre-oauth-device.py"
+$prepare = $linuxSource.Replace('/oauth_device.py', '/prepare_oauth_linux.sh')
+& wsl -d Ubuntu-24.04 --exec bash $prepare $linuxSource
 if ($LASTEXITCODE -ne 0) { throw 'Device helper installation failed' }
 $session = [guid]::NewGuid().ToString('N')
 & wsl -d Ubuntu-24.04 --exec docker exec -d -e CODEX_HOME=/var/lib/bre-wind/codex-auth $container python /tmp/bre-oauth-device.py run $session

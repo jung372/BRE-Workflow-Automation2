@@ -2,7 +2,7 @@
 
 - 작성·확인 기준일: 2026-09-30
 - 계획 버전: v1.1 — 사용자 지정 저장소·뉴스 DB 지속 축적·웹 우선 조회 반영
-- 상태: 뉴스 서비스·DB·웹 검색·n8n import 파일 구현. 서버 설치·workflow import/활성화·실제 발간은 운영 연계 단계로 남음. 실행 절차는 [구현·운영 안내](wind-news-operations.md)를 따른다.
+- 상태: 뉴스 서비스·DB 서버 설치, 웹 배포, n8n 7개 연결 및 백업 일정 활성화 완료. OpenAI 최초 계정 인증, 허용된 뉴스 수집원 연결 및 실제 발간은 남음. 실행 절차는 [구현·운영 안내](wind-news-operations.md)를 따른다.
 - 기준 요구사항: [PRD-daily-wind-briefing.md](PRD-daily-wind-briefing.md)
 - 기존 설치 참고자료: [n8n-windows-setup-guide.md](n8n-windows-setup-guide.md)
 - 운영 대상: 서버 PC `desktop-evu6usl`의 기존 n8n
@@ -12,6 +12,12 @@
 - 아침 확인용 고정 주소(화면 구현, 운영 배포 전): <https://jung372.github.io/BRE-Workflow-Automation2/#/daily>
 
 ## 1. 실행 방향
+
+### 2026-09-30 수집원 정정
+
+네이버 검색 API의 현행 특약 2.3·2.4는 AI 입력 및 영구 DB 축적과 맞지 않으므로 아래 네이버 발견원·키 발급 계획은 폐기한다. 실제 호출도 코드에서 차단한다. 무료 대체 후보인 정책브리핑은 RSS가 2026-07-01 종료되어 기존 RSS 주소를 사용하지 않는다. 자료별 공공누리 제1유형 표시와 텍스트 이용조건을 확인하는 별도 수집 경로가 필요하며 일반 언론 기사 수집을 대체했다고 간주하지 않는다. 저장·요약·게시 권한 및 실제 수집 검증 전까지 발간 일정은 비활성이다.
+
+근거: [네이버 약관](https://developers.naver.com/products/terms/), [정책브리핑 RSS 종료](https://www.korea.kr/etc/noticeView.do?newsId=132038885), [정책브리핑 저작권정책](https://www.korea.kr/guide/copyRight.do).
 
 ### 2026-09-30 최종 구현 변경: OAuth 자동 요약·검증
 
