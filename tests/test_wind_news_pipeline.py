@@ -43,6 +43,29 @@ class PipelineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 normalize_url(url, ["example.kr"])
 
+    def test_paid_and_unverified_articles_are_excluded_before_storage_and_summary(self):
+        self.pipeline.policy["require_free_access"] = True
+        payload = copy.deepcopy(self.fixture)
+        sample = payload["articles"][0]
+        payload["articles"] = [dict(sample, url=f"https://example.kr/{number}", **flags)
+            for number, flags in enumerate([{"access_status": "free"}, {"access_status": "paid"},
+                {}, {"access_status": "free", "is_paywalled": True}, {"access_status": "free", "is_paywalled": "false"}])]
+        calls = []
+        self.pipeline.summarizer = lambda article, cfg: (calls.append(article) or summary(article, cfg))
+        ingested = self.pipeline.ingest(payload, "access-filter")
+        self.assertEqual((ingested["ingested"], ingested["excluded"]), (1, 4))
+        self.assertEqual(self.store.call(lambda db: db.execute("SELECT count(*) FROM articles").fetchone()[0]), 1)
+        self.pipeline.prepare({"issue_date": "2026-09-30", "batch_ids": ["access-filter"]})
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["access_status"], "free")
+
+    def test_enabling_free_only_also_filters_existing_unverified_batches(self):
+        self.pipeline.ingest(self.fixture, "legacy")
+        self.pipeline.policy["require_free_access"] = True
+        self.pipeline.summarizer = lambda *args: self.fail("Unverified article reached LLM")
+        record = self.pipeline.prepare({"issue_date": "2026-09-30", "batch_ids": ["legacy"]})
+        self.assertEqual(record["candidates"], [])
+
     def test_mou_epc_and_finance_stages_never_merge(self):
         result = self.prepare()
         self.assertEqual(len(result["candidates"]), 2)

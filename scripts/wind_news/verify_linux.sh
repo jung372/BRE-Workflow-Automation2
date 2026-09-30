@@ -41,7 +41,10 @@ if oauth:
     print('CODEX_TWO_PASS_RESULT='+result['validation_status'])
     if not result.get('valid'): print('CODEX_TEST_CODE='+result.get('fallback_reason','UNKNOWN'))
     assert result.get('valid'), 'CODEX_TWO_PASS_NOT_VERIFIED'
-print('NAVER_CONFIGURED='+str(bool(os.environ.get('WIND_NEWS_NAVER_CLIENT_ID') and os.environ.get('WIND_NEWS_NAVER_CLIENT_SECRET'))).lower())
+from news.service import load_config
+config=load_config(os.environ['WIND_NEWS_CONFIG'])
+print('FREE_ONLY_POLICY='+str(config['policy'].get('require_free_access',False)).lower())
+print('COLLECTION_ENABLED='+str(config['collection'].get('enabled',False)).lower())
 git=subprocess.run(['git','-C','/var/lib/bre-wind/publish','ls-remote','--exit-code','origin','refs/heads/main'],capture_output=True,text=True,timeout=30)
 print('PUBLISH_REPO_ACCESS='+str(git.returncode==0).lower())
 PY

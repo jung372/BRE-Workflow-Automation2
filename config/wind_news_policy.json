@@ -8,6 +8,7 @@
   "summary_deadline_seconds": 900,
   "raw_text_retention_days": 30,
   "require_rights_review": true,
+  "require_free_access": true,
   "summarizer": {"enabled": true, "provider": "codex_oauth", "model": "gpt-6.1-sol", "review_model": "gpt-6.1-sol", "reasoning_effort": "low", "review_reasoning_effort": "medium", "max_calls_per_day": 120, "timeout_seconds": 90, "max_input_chars": 12000},
   "publisher": {"enabled": false, "branch": "main", "remote": "origin", "pages_base_url": "https://jung372.github.io/BRE-Workflow-Automation2/"}
 }

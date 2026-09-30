@@ -26,6 +26,11 @@ policy_path = root / 'settings' / 'config.json'
 if not policy_path.exists():
     config = {name: json.loads((release / 'config' / f'wind_news_{name}.json').read_text()) for name in ('collection', 'policy')}
     policy_path.write_text(json.dumps(config, ensure_ascii=False, indent=2))
+# Explicit user scope update: paid or unverified-access articles are excluded.
+# Preserve all other operator settings when upgrading an existing installation.
+config = json.loads(policy_path.read_text())
+config.setdefault('policy', {})['require_free_access'] = True
+policy_path.write_text(json.dumps(config, ensure_ascii=False, indent=2))
 token_path = root / 'settings' / 'service-token'
 if not token_path.exists():
     token_path.write_text(secrets.token_urlsafe(48))

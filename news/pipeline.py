@@ -46,6 +46,11 @@ def clean(value):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]*>", "", str(value or "")))).strip()
 
 
+def free_access(article):
+    """A missing paywall flag is not evidence that an article is free to read."""
+    return article.get("access_status") == "free" and article.get("is_paywalled", False) is False
+
+
 def classify(article):
     text = article["title"] + " " + article.get("description", "") + " " + article.get("text", "")
     stages = [("해지·변경", r"해지|계약 변경"), ("조건부 계약", r"조건부.{0,8}계약"), ("금융종결", r"금융종결|금융 종결|PF\s*종결|financial close"), ("실행", r"대출.{0,6}실행|자금.{0,6}집행"), ("금융약정", r"금융약정|금융 약정|대출 약정|대출약정"), ("MOU", r"MOU|양해각서|업무협약"), ("우선협상", r"우선협상"), ("본계약", r"본계약|EPC.{0,10}(체결|계약)|공급계약.{0,5}체결"), ("검토", r"검토|추진 예정")]
@@ -107,6 +112,9 @@ class Pipeline:
                 source = sources[entry["source_id"]]
                 if not source.get("enabled", True) or not source.get("domestic") or source.get("language") != "ko":
                     raise ValueError("ineligible_source")
+                if self.policy.get("require_free_access", False) and not free_access(entry):
+                    excluded += 1
+                    continue
                 url = normalize_url(entry["url"], source.get("hosts", source.get("allowed_hosts", [])))
                 title, description = clean(entry["title"]), clean(entry.get("description"))
                 text = clean(entry.get("text")) if source.get("allow_body", False) else ""
@@ -129,6 +137,7 @@ class Pipeline:
                     event_date = None
                 article_id = hashlib.sha256(url.encode()).hexdigest()
                 normalized.append({"article_id": article_id, "url": url, "title": title, "description": description, "text": text, "source_id": source["source_id"], "source_name": source.get("name", source["source_id"]), "source_published_at": published.isoformat(), "timestamp_basis": entry.get("timestamp_basis", entry.get("published_at_basis", "source")), "evidence_scope": "full_text" if text else "description" if description else "title", "project_name": project, "companies": companies, "region": region, "event_date": event_date, "trust_score": source.get("trust_score", 0)})
+                normalized[-1]["access_status"] = "free" if free_access(entry) else "paid" if entry.get("access_status") == "paid" else "unknown"
             except (KeyError, ValueError, TypeError, OverflowError):
                 rejected.append(entry.get("source_id") if isinstance(entry, dict) else None)
         # Polars performs vectorized whitespace cleanup and exact content dedup.
@@ -217,6 +226,8 @@ class Pipeline:
         coverage = {"expected_sources": len(active), "successful_sources": successes, "partial": successes < len(active), "source_results": list(source_status.values())}
         candidates, groups, eligible = [], {}, 0
         for article in articles:
+            if self.policy.get("require_free_access", False) and not free_access(article):
+                continue
             published = instant(article["source_published_at"])
             if not end.astimezone(timezone.utc) - timedelta(hours=72) <= published < end.astimezone(timezone.utc) or article["article_id"] in prior_articles:
                 continue
