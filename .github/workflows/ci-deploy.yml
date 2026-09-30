@@ -23,7 +23,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, preflight, install, connect, verify, oauth]
+        options: [normal, preflight, install, connect, verify, oauth, launch]
         default: normal
 
 env:
@@ -52,7 +52,7 @@ jobs:
 
   news-install:
     needs: test
-    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect')
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect' || inputs.news_action == 'launch')
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 30
     environment: production

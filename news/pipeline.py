@@ -138,6 +138,8 @@ class Pipeline:
                 article_id = hashlib.sha256(url.encode()).hexdigest()
                 normalized.append({"article_id": article_id, "url": url, "title": title, "description": description, "text": text, "source_id": source["source_id"], "source_name": source.get("name", source["source_id"]), "source_published_at": published.isoformat(), "timestamp_basis": entry.get("timestamp_basis", entry.get("published_at_basis", "source")), "evidence_scope": "full_text" if text else "description" if description else "title", "project_name": project, "companies": companies, "region": region, "event_date": event_date, "trust_score": source.get("trust_score", 0)})
                 normalized[-1]["access_status"] = "free" if free_access(entry) else "paid" if entry.get("access_status") == "paid" else "unknown"
+                normalized[-1]["access_basis"] = clean(entry.get("access_basis", ""))[:80]
+                normalized[-1]["access_checked_at"] = instant(entry["access_checked_at"]).isoformat() if entry.get("access_checked_at") else None
             except (KeyError, ValueError, TypeError, OverflowError):
                 rejected.append(entry.get("source_id") if isinstance(entry, dict) else None)
         # Polars performs vectorized whitespace cleanup and exact content dedup.

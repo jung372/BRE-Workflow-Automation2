@@ -1,16 +1,83 @@
 {
   "enabled": false,
-  "provider": "naver",
+  "provider": "public_publishers",
   "overlap_hours": 72,
-  "page_size": 100,
-  "max_pages": 10,
+  "max_pages": 5,
   "timeout_seconds": 15,
-  "client_id_env": "WIND_NEWS_NAVER_CLIENT_ID",
-  "client_secret_env": "WIND_NEWS_NAVER_CLIENT_SECRET",
-  "queries": ["풍력", "해상풍력 EPC", "풍력 금융약정", "풍력 PF", "풍력 사고", "풍력 주민", "풍력 MOU", "풍력 터빈", "풍력 해저케이블", "풍력 하부구조", "풍력 설치선", "풍력 O&M"],
+  "queries": [
+    "풍력",
+    "해상풍력 EPC",
+    "풍력 금융약정",
+    "풍력 PF",
+    "풍력 사고",
+    "풍력 주민",
+    "풍력 MOU",
+    "풍력 터빈",
+    "풍력 해저케이블",
+    "풍력 하부구조",
+    "풍력 설치선",
+    "풍력 O&M"
+  ],
   "sources": [
-    {"source_id": "yonhap", "name": "연합뉴스", "hosts": ["www.yna.co.kr"], "enabled": true, "required": true, "domestic": true, "language": "ko", "rights_reviewed": false, "trust_score": 30},
-    {"source_id": "energynews", "name": "에너지신문", "hosts": ["www.energy-news.co.kr"], "enabled": true, "required": false, "domestic": true, "language": "ko", "rights_reviewed": false, "trust_score": 25},
-    {"source_id": "electimes", "name": "전기신문", "hosts": ["www.electimes.com"], "enabled": true, "required": false, "domestic": true, "language": "ko", "rights_reviewed": false, "trust_score": 25}
-  ]
+    {
+      "source_id": "yonhap",
+      "name": "연합뉴스",
+      "hosts": [
+        "www.yna.co.kr"
+      ],
+      "enabled": true,
+      "required": true,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 30,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-09-30_public_articles",
+      "discovery": "rss",
+      "feed_urls": [
+        "https://www.yna.co.kr/rss/industry.xml",
+        "https://www.yna.co.kr/rss/economy.xml",
+        "https://www.yna.co.kr/rss/local.xml"
+      ],
+      "body_selector": ".story-news.article"
+    },
+    {
+      "source_id": "energynews",
+      "name": "에너지신문",
+      "hosts": [
+        "www.energy-news.co.kr"
+      ],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-09-30_public_articles",
+      "discovery": "ndsoft_list",
+      "list_url": "https://www.energy-news.co.kr/news/articleList.html?sc_area=A&view_type=sm&sc_word=%ED%92%8D%EB%A0%A5",
+      "body_selector": "#article-view-content-div"
+    },
+    {
+      "source_id": "electimes",
+      "name": "전기신문",
+      "hosts": [
+        "www.electimes.com"
+      ],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-09-30_public_articles",
+      "discovery": "ndsoft_list",
+      "list_url": "https://www.electimes.com/news/articleList.html?sc_area=A&view_type=sm&sc_word=%ED%92%8D%EB%A0%A5",
+      "body_selector": "#article-view-content-div"
+    }
+  ],
+  "max_articles_per_source": 30,
+  "request_interval_seconds": 0.4
 }

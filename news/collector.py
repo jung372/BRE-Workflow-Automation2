@@ -76,6 +76,9 @@ class Collector:
                     count=count, **({"error_code": code} if code else {})) for s in sources]}
         if not cfg.get("enabled", False):
             return result("disabled", "COLLECTION_DISABLED")
+        if cfg.get("provider") == "public_publishers":
+            from .public_sources import PublicCollector
+            return PublicCollector(cfg, transport=self.transport, clock=self.clock).collect(since, until)
         if cfg.get("provider", "naver") != "naver":
             return result("request_error", "UNSUPPORTED_PROVIDER")
         if self.transport is None:
