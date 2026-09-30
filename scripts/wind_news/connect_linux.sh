@@ -22,7 +22,7 @@ if not keys or not all(k.startswith(('ssh-ed25519 ', 'ecdsa-sha2-nistp256 ', 'ss
 subprocess.run(['git','config','--global','core.sshCommand',f'ssh -i {key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile={ssh / "known_hosts"}'], check=True)
 clone = pathlib.Path('/var/lib/bre-wind/publish')
 if not (clone / '.git').exists():
-    subprocess.run(['git','clone','--branch','main','https://github.com/jung372/BRE-Workflow-Automation2.git',str(clone)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    subprocess.run(['git','clone','--depth','1','--branch','main','https://github.com/jung372/BRE-Workflow-Automation2.git',str(clone)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=300)
     subprocess.run(['git','-C',str(clone),'remote','set-url','origin','git@github.com:jung372/BRE-Workflow-Automation2.git'],check=True)
     subprocess.run(['git','-C',str(clone),'config','user.name','BRE Wind News'],check=True)
     subprocess.run(['git','-C',str(clone),'config','user.email','wind-news@users.noreply.github.com'],check=True)

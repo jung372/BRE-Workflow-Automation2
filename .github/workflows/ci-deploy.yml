@@ -23,7 +23,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, preflight, install, connect]
+        options: [normal, preflight, install, connect, verify]
         default: normal
 
 env:
@@ -54,7 +54,7 @@ jobs:
         run: .\scripts\wind_news\operate_server.ps1 -Action $env:NEWS_ACTION
 
   news-preflight:
-    if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'preflight'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'preflight' || inputs.news_action == 'verify')
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 10
     steps:
@@ -63,10 +63,17 @@ jobs:
           persist-credentials: false
       - name: Inspect news service prerequisites without secrets
         shell: powershell
-        run: .\scripts\wind_news\preflight_server.ps1
+        env:
+          NEWS_ACTION: ${{ inputs.news_action }}
+        run: |
+          if ($env:NEWS_ACTION -eq 'verify') {
+            .\scripts\wind_news\operate_server.ps1 -Action verify
+          } else {
+            .\scripts\wind_news\preflight_server.ps1
+          }
 
   test:
-    if: inputs.news_action != 'preflight'
+    if: inputs.news_action != 'preflight' && inputs.news_action != 'verify'
     runs-on: windows-latest   # 서버 PC와 동일한 OS에서 검증한다
     timeout-minutes: 20
 
