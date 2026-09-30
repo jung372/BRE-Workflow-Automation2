@@ -1,0 +1,17 @@
+.git
+.venv*
+.env
+auth.json
+**/auth.json
+.codex/
+.codex-news/
+**/.env
+**/*.duckdb*
+**/*.sqlite*
+.news-runtime
+_smoke
+data
+last_state.json
+logs
+**/__pycache__
+*.log

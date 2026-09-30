@@ -25,6 +25,17 @@ release.json
 config.json
 .env
 
+# News service: isolated dependencies and private persistent data
+.venv-news/
+.news-runtime/
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.sqlite3
+infra/wind-news/.env
+auth.json
+.codex-news/
+
 # 압축 파일
 *.zip
 

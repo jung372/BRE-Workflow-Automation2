@@ -1,0 +1,49 @@
+# Adds only the news service. It neither replaces nor upgrades the existing n8n.
+services:
+  news-service:
+    build:
+      context: ../..
+      dockerfile: infra/wind-news/Dockerfile
+      args:
+        PYTHON_IMAGE: ${WIND_NEWS_PYTHON_IMAGE:-python:3.12-slim-bookworm}
+        CODEX_VERSION: ${WIND_NEWS_CODEX_VERSION:-0.159.2}
+    image: bre-wind-news:${WIND_NEWS_RELEASE:-local}
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    environment:
+      TZ: Asia/Seoul
+      WIND_NEWS_HOST: 0.0.0.0
+      WIND_NEWS_PORT: "8090"
+      WIND_NEWS_RUNTIME_DIR: /var/lib/bre-wind/runtime
+      WIND_NEWS_PUBLISH_CLONE: /var/lib/bre-wind/publish
+      WIND_NEWS_CONFIG: /etc/bre-wind/config.json
+      WIND_NEWS_CODEX_HOME: /var/lib/bre-wind/codex-auth
+      WIND_NEWS_API_TOKEN: ${WIND_NEWS_API_TOKEN:?Set a dedicated service token}
+      WIND_NEWS_NAVER_CLIENT_ID: ${WIND_NEWS_NAVER_CLIENT_ID:-}
+      WIND_NEWS_NAVER_CLIENT_SECRET: ${WIND_NEWS_NAVER_CLIENT_SECRET:-}
+      WIND_NEWS_TEAMS_WEBHOOK_URL: ${WIND_NEWS_TEAMS_WEBHOOK_URL:-}
+      GIT_TERMINAL_PROMPT: "0"
+      GIT_CONFIG_GLOBAL: /var/lib/bre-wind/runtime/gitconfig
+    ports:
+      - "127.0.0.1:${WIND_NEWS_PORT:-8090}:8090"
+    volumes:
+      - ${WIND_NEWS_RUNTIME_ROOT:?Set private runtime outside repository}:/var/lib/bre-wind/runtime
+      - ${WIND_NEWS_PUBLISH_ROOT:?Set dedicated publish clone}:/var/lib/bre-wind/publish
+      - ${WIND_NEWS_CONFIG_FILE:?Set non-secret policy file}:/etc/bre-wind/config.json:ro
+      - ${WIND_NEWS_CODEX_AUTH_ROOT:?Set private dedicated Codex login directory}:/var/lib/bre-wind/codex-auth
+    networks:
+      - existing-n8n
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8090/health/ready', headers={'Authorization': 'Bearer ' + os.environ['WIND_NEWS_API_TOKEN']}), timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    stop_grace_period: 60s
+networks:
+  existing-n8n:
+    external: true
+    name: ${WIND_NEWS_DOCKER_NETWORK:?Set the existing n8n Docker network name}

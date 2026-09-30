@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>풍력 브리핑 내부 검토</title>
+<style>body{font:16px system-ui;max-width:1000px;margin:2rem auto;padding:0 1rem;background:#f3f6fa;color:#182638}input,button,textarea{font:inherit;padding:.6rem;margin:.25rem}article{background:white;padding:1rem;margin:1rem 0;border-radius:8px}textarea{width:95%;min-height:6rem}small{display:block;color:#46536b}button{cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere}#status{white-space:pre-wrap}</style>
+<h1>풍력 브리핑 내부 검토</h1><p>인증 토큰은 이 탭의 메모리에만 보관합니다. 공개 화면에는 후보·검토 이력이 노출되지 않습니다.</p>
+<label>서비스 토큰 <input id="token" type="password" autocomplete="off"></label><button id="load">호 불러오기</button><button id="logout">잠금</button><label>발행일 <input id="day" type="date"></label><p id="status" role="status"></p><main id="issues"></main>
+<script>
+let active=null;
+const $=id=>document.getElementById(id);
+$('day').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+async function api(path,data){const response=await fetch(path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+$('token').value,...(data?{'Content-Type':'application/json'}:{})},...(data?{body:JSON.stringify(data)}:{})});const result=await response.json();if(!response.ok)throw Error(result.error_code||'요청 실패');return result;}
+function node(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
+function render(record){active=record;const root=$('issues');root.replaceChildren();root.append(node('h2',record.issue.issue_date+' · r'+record.revision+' · '+record.state));root.append(node('pre',JSON.stringify({coverage:record.issue.coverage,counts:record.issue.counts,batch_ids:record.batch_ids},null,2)));for(const candidate of record.candidates){const item=candidate.item,a=node('article','');a.append(node('h3',item.headline));const link=node('a','대표기사 원문');link.href=item.source_url;link.target='_blank';link.rel='noopener noreferrer';a.append(link,node('small',item.source_name+' · '+item.source_published_at+' · '+item.contract_stage+' · 근거 '+item.evidence_scope+' · '+candidate.reason));const summary=node('textarea','');summary.value=item.summary;a.append(summary);for(const [label,action] of [['승인','approve'],['보류','hold'],['제외','exclude'],['요약 수정','edit']]){const b=node('button',label);b.onclick=async()=>{const reason=prompt('검토 사유 (근거 부족·권리 확인 항목의 승인은 확인 근거를 기록하세요)');if(reason===null)return;try{const data={revision:active.revision,approval_hash:active.content_hash,action,item_ids:[item.event_id],reason};if(action==='edit')data.changes={summary:summary.value};render(await api('/v1/issues/'+active.issue_id+'/review',data));$('status').textContent='저장 완료';}catch(e){$('status').textContent=e.message;}};a.append(b);}root.append(a);}const empty=node('button','현재 승인 항목으로 호 승인');empty.onclick=async()=>{try{const ids=active.candidates.filter(c=>c.approved).map(c=>c.item.event_id);render(await api('/v1/issues/'+active.issue_id+'/review',{revision:active.revision,approval_hash:active.content_hash,action:'approve',item_ids:ids,reason:'호 최종 검토'}));$('status').textContent='READY 저장 완료. 게시 작업은 별도로 실행합니다.';}catch(e){$('status').textContent=e.message;}};root.append(empty);}
+$('load').onclick=async()=>{try{render(await api('/v1/issues/wind-'+$('day').value));$('status').textContent='';}catch(e){$('status').textContent=e.message;}};
+$('logout').onclick=()=>{$('token').value='';$('issues').replaceChildren();active=null;$('status').textContent='잠김';};
+</script>
+<script>
+const renderBase=render;
+render=function(record){
+  renderBase(record);
+  const root=$('issues'),selected=new Set();
+  root.prepend(node('p','선정 '+record.issue.counts.published_topics+'건 · 검토 보류 '+record.issue.counts.held+'건. 선정 0건은 뉴스 자체가 없었다는 의미가 아닐 수 있습니다.'));
+  async function change(action,ids,extras={}){
+    const reason=prompt('변경 사유 또는 확인 근거');if(reason===null)return;
+    try{render(await api('/v1/issues/'+active.issue_id+'/review',{revision:active.revision,approval_hash:active.content_hash,action,item_ids:ids,reason,...extras}));$('status').textContent='저장 완료';}catch(e){$('status').textContent=e.message;}
+  }
+  [...root.querySelectorAll('article')].forEach((a,index)=>{
+    const candidate=record.candidates[index],item=candidate.item;
+    const checkbox=node('input','');checkbox.type='checkbox';checkbox.onchange=()=>checkbox.checked?selected.add(item.event_id):selected.delete(item.event_id);a.prepend(checkbox,node('span','병합 선택'));
+    const details=node('details','');details.append(node('summary','기업·사업·지역·분류 메타데이터 JSON'));
+    const editor=node('textarea','');editor.value=JSON.stringify(Object.fromEntries(['headline','companies','project_name','region','wind_type','primary_category','contract_stage','tags'].map(k=>[k,item[k]])),null,2);details.append(editor);
+    const save=node('button','메타데이터 수정');save.onclick=()=>{try{change('edit',[item.event_id],{changes:JSON.parse(editor.value)});}catch(e){$('status').textContent='JSON 형식을 확인하세요';}};details.append(save);a.append(details);
+    const evidence=node('button','수집 근거 보기'),box=node('pre','');evidence.onclick=async()=>{try{box.textContent=JSON.stringify((await api('/v1/articles/'+item.representative_article_id)).evidence,null,2);}catch(e){$('status').textContent=e.message;}};a.append(evidence,box);
+    if(candidate.member_article_ids.length>1){
+      const select=node('select','');for(const id of candidate.member_article_ids){const option=node('option',id);option.value=id;option.selected=id===item.representative_article_id;select.append(option);}a.append(select);
+      const replace=node('button','대표기사 교체');replace.onclick=()=>change('representative',[item.event_id],{article_id:select.value});a.append(replace);
+      const split=node('button','기사별 사건 분리');split.onclick=()=>change('split',[item.event_id]);a.append(split);
+    }
+  });
+  const merge=node('button','선택 사건 병합');merge.onclick=()=>change('merge',[...selected]);root.append(merge);
+};
+</script></html>

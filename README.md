@@ -6,6 +6,21 @@ GitHub Pages 대시보드와 MS Teams 로 알리는 모니터링 시스템입니
 - 대시보드: <https://jung372.github.io/BRE-Workflow-Automation2/>
 - 설계 문서: [docs/PRD-auto-deploy.md](docs/PRD-auto-deploy.md)
 
+## 풍력 일간 브리핑
+
+정적 웹의 `일간 시황` 메뉴는 오늘 보고서·날짜별 과거 호·누적 기사 검색을 제공합니다.
+뉴스 서비스는 DuckDB에 발간 기사와 요약·정정 이력을 지속 보관하고, 검증한 JSON을
+GitHub Pages에 게시합니다. Teams 알림은 웹 발간과 독립적으로 처리합니다.
+
+- 아침 확인: `#/daily`, 누적 검색: `#/daily/archive`
+- [실행계획](docs/PLAN-daily-wind-briefing-n8n.md) · [요구사항](docs/PRD-daily-wind-briefing.md)
+- [서비스·n8n 연결 및 운영 안내](docs/wind-news-operations.md)
+- 서비스 코드 `news/`, 비활성 n8n export `automation/n8n/`
+
+요약·검증은 뉴스 전용 Codex CLI의 ChatGPT OAuth 로그인으로 자동 처리합니다(요약 Sol/low, 검증 Sol/medium). 실제 수집·Git 게시·스케줄은 서버 연결 전까지 비활성입니다.
+코드 push와 별도로 서버 서비스 실행·credential 등록·n8n import가 필요합니다.
+뉴스 DB 의존성은 `news/requirements.txt`의 별도 환경에 설치합니다.
+
 ## PC별 역할과 경로
 
 | 장비 | Tailscale 이름 | 역할 | 경로 |

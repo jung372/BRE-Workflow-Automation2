@@ -1,0 +1,13 @@
+{
+  "automatic_publication": true,
+  "review_mode": "codex_oauth",
+  "auto_recover": false,
+  "quality_gate": {"approved": false, "private_days": 0, "evaluated_article_pairs": 0, "evaluated_events": 0, "verified_representatives": 0, "merge_precision": 0, "merge_recall": 0, "stage_merge_errors": 0, "fact_match_rate": 0},
+  "max_items": 15,
+  "max_summary_candidates": 20,
+  "summary_deadline_seconds": 900,
+  "raw_text_retention_days": 30,
+  "require_rights_review": true,
+  "summarizer": {"enabled": true, "provider": "codex_oauth", "model": "gpt-6.1-sol", "review_model": "gpt-6.1-sol", "reasoning_effort": "low", "review_reasoning_effort": "medium", "max_calls_per_day": 120, "timeout_seconds": 90, "max_input_chars": 12000},
+  "publisher": {"enabled": false, "branch": "main", "remote": "origin", "pages_base_url": "https://jung372.github.io/BRE-Workflow-Automation2/"}
+}
