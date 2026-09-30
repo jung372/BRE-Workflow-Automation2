@@ -165,7 +165,7 @@ python -m compileall -q news scripts/wind_news
 | 설치 버전 | Codex CLI 0.159.2 / DuckDB 1.5.6 / Polars 1.44.2 |
 | 상태·백업 | 인증 없는 호출 401, 인증된 ready 정상, 실제 DB 백업 해시·읽기 검증 통과 |
 | 초기 데이터 | 실기사 0건·발간 호 0건. 인증 전 가상 기사는 게시하지 않음 |
-| n8n | 전용 Header Auth를 연결하여 7개 workflow import, 서버 DB에 암호화 저장 |
+| n8n | 전용 Header Auth를 연결하여 7개 workflow import, 서버 DB에 암호화 저장. 실제 백업 전체 노드 성공, 06-Backup은 매일 02:30 KST 게시 완료 |
 
 실제 n8n 실행에서 발견한 Configure 노드의 JavaScript 괄호 오류를 수정하고 생성된 모든 Code 노드를 Node.js로 구문 검사하는 회귀 검증을 추가했다.
 
@@ -187,7 +187,9 @@ wsl -d Ubuntu-24.04 --exec python3 /home/n8nops/bre-wind-news/operator/setup_nav
 
 네이버 앱에 검색 API 사용이 설정되어 있어야 한다. 키 저장만으로 수집·게시 일정이 활성화되지는 않는다. 실제 사용 범위에 대한 출처 정책 검토 후 운영 JSON의 수집·게시 설정을 활성화하고 컨테이너를 재생성하여 새 환경값을 반영한다. OpenAI 로그인은 기존 인증 볼륨을 사용하므로 토큰을 복사할 필요가 없다.
 
-게시용 SSH 키는 뉴스 컨테이너 안에서 새로 생성했다. 저장소 전용 deploy key의 **쓰기 권한 등록은 명시적 승인 전 대기**한다. GitHub deploy key는 파일 경로별 권한을 제공하지 않으며, `data/wind-news/**` 제한은 publisher 코드가 적용한다. 키의 비밀 부분은 서버 runtime 밖으로 꺼내지 않는다.
+게시용 SSH 키는 뉴스 컨테이너 안에서 새로 생성했다. 사용자의 명시적 승인 후 `BRE Wind News server publisher` deploy key(등록 ID `164912220`)를 해당 저장소에 read-write로 등록했다. GitHub deploy key는 파일 경로별 권한을 제공하지 않으며, `data/wind-news/**` 제한은 publisher 코드가 적용한다. 키의 비밀 부분은 서버 runtime 밖으로 꺼내지 않는다.
+
+PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`다. GitHub Pages 배포가 성공했고 운영 주소의 오늘 브리핑·누적 검색을 브라우저에서 확인했다. 최초 발간 전에는 발간 준비 상태를 표시한다. 네이버 앱은 아직 미발급이며 OpenAI 최초 로그인은 사용자가 서버에 접속할 수 있을 때 진행하기로 했다. 수집·요약·발간·알림 일정은 이에 따라 비활성으로 유지한다.
 
 ### 반복 가능한 서버 작업
 

@@ -18,6 +18,7 @@ test('routes preserve existing default, dated issues and archive parameters', ()
   assert.equal(N.parseRoute('#/daily/archive?q=%ED%95%B4%EC%83%81').params.get('q'), '해상');
 });
 test('today and publication delay are computed in KST across midnight', () => {
+  assert.equal(W.statusForDate(null, new Date('2026-09-29T23:15:00Z')), '첫 브리핑 발간 준비 중');
   assert.equal(W.kstDate(new Date('2026-09-29T15:01:00Z')), '2026-09-30');
   assert.equal(W.statusForDate('2026-09-29', new Date('2026-09-29T23:14:59Z')), '오늘 브리핑 준비 중');
   assert.equal(W.statusForDate('2026-09-29', new Date('2026-09-29T23:15:00Z')), '오늘 브리핑 발행 지연');

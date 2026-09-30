@@ -3,6 +3,7 @@
   const KST_OFFSET = 9 * 60 * 60 * 1000;
   function kstDate(now = new Date()) { return new Date(+now + KST_OFFSET).toISOString().slice(0, 10); }
   function statusForDate(issueDate, now = new Date()) {
+    if (!issueDate) return '첫 브리핑 발간 준비 중';
     const shifted = new Date(+now + KST_OFFSET);
     if (issueDate === kstDate(now)) return '오늘 브리핑 발행 완료';
     return shifted.getUTCHours() * 60 + shifted.getUTCMinutes() >= 495 ? '오늘 브리핑 발행 지연' : '오늘 브리핑 준비 중';
