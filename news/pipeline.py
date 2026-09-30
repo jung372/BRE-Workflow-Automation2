@@ -58,7 +58,15 @@ def classify(article):
     # Multiple explicit stages can mean a historical comparison. Human review resolves it.
     stage = matches[0] if len(matches) == 1 else "미확인"
     categories = [("사고·안전", r"사고|사망|부상|화재|안전사고"), ("민원·수용성", r"민원|주민 반대|분쟁|소송|갈등"), ("금융·PF", r"금융|PF|대출|자금조달"), ("EPC·시공", r"EPC|시공"), ("MOU·협약", r"MOU|양해각서|업무협약"), ("터빈·공급계약", r"터빈|공급계약"), ("인허가·정책", r"인허가|허가|정책|법안|입찰"), ("착공·준공·상업운전", r"착공|준공|상업운전"), ("산업·공급망", r"공급망|해저케이블|하부구조|설치선|O&M")]
-    category = next((name for name, pattern in categories if re.search(pattern, text, re.I)), "기타 주요 동향")
+    # Full public articles contain historical/incidental accident or complaint
+    # references. Classify the subject from the headline first, then the lead.
+    headline_categories = [("민원·수용성", r"어민|상생|공존|수용성|보상"),
+                           ("인허가·정책", r"전력망|계통|예측|풍황|RPS|입찰")]
+    category = next((name for name, pattern in categories + headline_categories
+                     if re.search(pattern, article["title"], re.I)), None)
+    if category is None:
+        lead = article.get("description") or article.get("text", "")[:400]
+        category = next((name for name, pattern in categories if re.search(pattern, lead, re.I)), "기타 주요 동향")
     wind_type = "부유식 해상" if "부유식" in text else "고정식 해상" if "해상풍력" in text else "육상" if "육상풍력" in text else "공통"
     return {"contract_stage": stage, "primary_category": category, "wind_type": wind_type, "review_required": len(matches) > 1 or category in {"사고·안전", "민원·수용성"}, "stage_conflict": len(matches) > 1}
 

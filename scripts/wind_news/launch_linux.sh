@@ -5,6 +5,8 @@ umask 077
 source_root=$(realpath "$1")
 root="$HOME/bre-wind-news"
 container=bre-wind-news-news-service-1
+mode=${3:-launch}
+[[ "$mode" == launch || "$mode" == correct ]] || exit 2
 python3 - "$root/settings/config.json" "$source_root/config" <<'PY'
 import json, sys
 from pathlib import Path
@@ -26,7 +28,7 @@ for attempt in $(seq 1 30); do
     sleep 2
 done
 [[ "$health" == healthy ]] || { echo NEWS_HEALTH_FAILED; exit 1; }
-docker exec -i "$container" python -u - <<'PY'
+docker exec -i -e WIND_NEWS_LAUNCH_MODE="$mode" "$container" python -u - <<'PY'
 from datetime import datetime, timedelta, timezone
 import json, os, re, time, uuid
 import requests
@@ -54,14 +56,25 @@ print('LAUNCH_INGESTED='+str(collected['ingested']), flush=True)
 assert collected['ingested'] > 0, 'NO_ARTICLES_COLLECTED'
 now = datetime.now(timezone(timedelta(hours=9)))
 day = (now.date() if (now.hour, now.minute) >= (7,30) else (now-timedelta(days=1)).date()).isoformat()
-issue = job('/v1/issues/prepare', {'issue_date':day, 'retry_blocked':True})
+prepare = {'issue_date':day, 'retry_blocked':True}
+if os.environ.get('WIND_NEWS_LAUNCH_MODE') == 'correct':
+    prepare['correction_reason'] = '공개 원문 수집 전환 후 제목·도입부를 우선하는 기사 분류 기준 정정'
+issue = job('/v1/issues/prepare', prepare)
 print('LAUNCH_ISSUE_STATE='+issue['state'], flush=True)
 print('LAUNCH_COUNTS='+json.dumps(issue['issue']['counts']), flush=True)
 assert issue['state'] in ('READY','COMMITTED','WEB_VERIFIED'), 'ISSUE_NOT_READY'
 assert issue['issue']['counts']['published_topics'] > 0, 'NO_VERIFIED_TOPICS'
 published = job('/v1/issues/'+issue['issue_id']+'/publish',
     {'revision':issue['revision'], 'approval_hash':issue['approval_hash']})
+# Pages may finish after the publisher's first verification window. Retry the
+# same immutable revision, including when this run crosses Korean midnight.
+for attempt in range(3):
+    if published['state'] == 'WEB_VERIFIED': break
+    assert published['state'] == 'COMMITTED', 'PUBLICATION_NOT_COMMITTED'
+    time.sleep(20)
+    published = job('/v1/issues/'+issue['issue_id']+'/publish',
+        {'revision':issue['revision'], 'approval_hash':issue['approval_hash']})
 print('LAUNCH_PUBLICATION_STATE='+published['state'], flush=True)
 print('LAUNCH_ISSUE_ID='+published['issue_id'], flush=True)
-assert published['state'] in ('COMMITTED','WEB_VERIFIED'), 'PUBLICATION_NOT_COMMITTED'
+assert published['state'] == 'WEB_VERIFIED', 'PUBLICATION_WEB_VERIFICATION_PENDING'
 PY
