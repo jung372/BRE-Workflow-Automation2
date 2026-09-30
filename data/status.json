@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-30 14:00:03",
+  "checked_at": "2026-09-30 15:00:02",
   "sites": [
     {
       "id": "notice",
@@ -174,7 +174,7 @@
     {
       "id": "DKAM",
       "name": "DKAM",
-      "status": "Offline",
+      "status": "Online",
       "url": "https://d244024.connect.ammonit.com/"
     }
   ],
