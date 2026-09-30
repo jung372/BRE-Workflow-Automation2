@@ -189,7 +189,9 @@ wsl -d Ubuntu-24.04 --exec docker exec -it -e CODEX_HOME=/var/lib/bre-wind/codex
 
 게시용 SSH 키는 뉴스 컨테이너 안에서 새로 생성했다. 사용자의 명시적 승인 후 `BRE Wind News server publisher` deploy key(등록 ID `164912220`)를 해당 저장소에 read-write로 등록했다. GitHub deploy key는 파일 경로별 권한을 제공하지 않으며, `data/wind-news/**` 제한은 publisher 코드가 적용한다. 키의 비밀 부분은 서버 runtime 밖으로 꺼내지 않는다.
 
-PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`다. GitHub Pages 배포가 성공했고 운영 주소의 오늘 브리핑·누적 검색을 브라우저에서 확인했다. 최초 발간 전에는 발간 준비 상태를 표시한다. 네이버 앱은 아직 미발급이며 OpenAI 최초 로그인은 사용자가 서버에 접속할 수 있을 때 진행하기로 했다. 수집·요약·발간·알림 일정은 이에 따라 비활성으로 유지한다.
+PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`다. GitHub Pages 배포가 성공했고 운영 주소의 오늘 브리핑·누적 검색을 브라우저에서 확인했다. 최초 발간 전에는 발간 준비 상태를 표시한다. 이후 서버 직접 접속 없이 사용자 PC에서 공식 기기 인증을 완료하도록 Taildrop 전달 방식을 추가했다. 수집·요약·발간·알림 일정은 인증 및 수집원 이용조건 확인 전까지 비활성으로 유지한다.
+
+2026-09-30 추가 배포: `ef2a4f70bd882c599b145779dfe546f9a6f21952`의 코드가 main·작업 브랜치에 반영되고 기존 서버·GitHub Pages·뉴스 전용 컨테이너 배포가 모두 성공했다. 로컬 Python 197개 및 웹 모듈 16개 테스트와 GitHub CI가 통과했다. 서버 검증 run `36719569151`에서 서비스 `ready/healthy`, 백업 해시 검증, `FREE_ONLY_POLICY=true`, `PUBLISH_REPO_ACCESS=true`, n8n 비인증 접근 `401`을 확인했다. 실제 DB는 기사 0건·호 0건, `COLLECTION_ENABLED=false`, `CODEX_OAUTH_CONNECTED=false`였다. 아직 실제 LLM 호출·첫 호 발간·Teams 수신을 완료한 상태가 아니다. OAuth 요청은 생성·전달까지 검증됐고 마지막 계정 승인은 사용자 단계로 남았다.
 
 ### 반복 가능한 서버 작업
 
