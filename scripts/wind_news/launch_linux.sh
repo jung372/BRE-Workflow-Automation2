@@ -51,6 +51,35 @@ def job(path, payload):
             raise SystemExit(1)
         time.sleep(5)
     raise SystemExit('LAUNCH_JOB_TIMEOUT')
+if os.environ.get('WIND_NEWS_LAUNCH_MODE') == 'correct':
+    # Correct already-approved but unpublished metadata through the audited API.
+    # Previously held/unapproved candidates are never promoted by this repair.
+    from news.pipeline import classify
+    response = s.get(base+'/v1/issues', timeout=15); response.raise_for_status()
+    repaired = 0
+    for pending in response.json()['issues']:
+        if pending['state'] != 'READY': continue
+        for candidate in pending['candidates']:
+            if not candidate['approved'] or candidate['held']: continue
+            item = candidate['item']
+            response = s.get(base+'/v1/articles/'+item['representative_article_id'], timeout=15)
+            response.raise_for_status(); article = response.json()
+            facts = classify({**article['article'], **article['evidence']})
+            changes = {k: facts[k] for k in ('contract_stage','primary_category') if item[k] != facts[k]}
+            if not changes: continue
+            if 'contract_stage' in changes:
+                changes['tags'] = [t for t in item.get('tags', []) if t != item['contract_stage']]
+                if facts['contract_stage'] != '미확인': changes['tags'].append(facts['contract_stage'])
+            path = base+'/v1/issues/'+pending['issue_id']+'/review'
+            for action in ('edit','approve'):
+                payload = {'action':action, 'revision':pending['revision'], 'approval_hash':pending['content_hash'],
+                    'item_ids':[item['event_id']], 'actor':'classification-maintenance',
+                    'reason':'분류 규칙의 문자열 경계 정정; 기존 OAuth 검증 요약 유지'}
+                if action == 'edit': payload['changes'] = changes
+                response = s.post(path, json=payload, timeout=20); response.raise_for_status()
+                pending = response.json()
+            repaired += 1
+    print('LAUNCH_PENDING_METADATA_REPAIRED='+str(repaired), flush=True)
 collected = job('/v1/collect', {})
 print('LAUNCH_INGESTED='+str(collected['ingested']), flush=True)
 assert collected['ingested'] > 0, 'NO_ARTICLES_COLLECTED'

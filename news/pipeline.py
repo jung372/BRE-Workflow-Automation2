@@ -53,7 +53,7 @@ def free_access(article):
 
 def classify(article):
     text = article["title"] + " " + article.get("description", "") + " " + article.get("text", "")
-    stages = [("해지·변경", r"해지|계약 변경"), ("조건부 계약", r"조건부.{0,8}계약"), ("금융종결", r"금융종결|금융 종결|PF\s*종결|financial close"), ("실행", r"대출.{0,6}실행|자금.{0,6}집행"), ("금융약정", r"금융약정|금융 약정|대출 약정|대출약정"), ("MOU", r"MOU|양해각서|업무협약"), ("우선협상", r"우선협상"), ("본계약", r"본계약|EPC.{0,10}(체결|계약)|공급계약.{0,5}체결"), ("검토", r"검토|추진 예정")]
+    stages = [("해지·변경", r"계약(?:을|이|의)?\s*(?:해지|변경)|(?:해지|변경)\s*(?:된|한)?\s*계약"), ("조건부 계약", r"조건부.{0,8}계약"), ("금융종결", r"금융종결|금융 종결|PF\s*종결|financial close"), ("실행", r"대출.{0,6}실행|자금.{0,6}집행"), ("금융약정", r"금융약정|금융 약정|대출 약정|대출약정"), ("MOU", r"MOU|양해각서|업무협약"), ("우선협상", r"우선협상"), ("본계약", r"본계약|EPC.{0,10}(체결|계약)|공급계약.{0,5}체결"), ("검토", r"검토|추진 예정")]
     matches = [name for name, pattern in stages if re.search(pattern, text, re.I)]
     # Multiple explicit stages can mean a historical comparison. Human review resolves it.
     stage = matches[0] if len(matches) == 1 else "미확인"

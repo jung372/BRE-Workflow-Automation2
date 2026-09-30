@@ -20,6 +20,11 @@ def summary(article, config):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_contract_cancellation_requires_contract_context(self):
+        self.assertEqual(classify({'title':'풍력 투자를 앞둔 발전사', 'text':'재무 체력이 약해지는 셈이다.'})['contract_stage'], '미확인')
+        self.assertEqual(classify({'title':'풍력 공급계약을 해지했다'})['contract_stage'], '해지·변경')
+        self.assertEqual(classify({'title':'풍력 공급계약 변경'})['contract_stage'], '해지·변경')
+
     def test_headline_subject_wins_over_incidental_safety_reference(self):
         for title, expected in [
             ('전력망 더 짓기 전에 있는 망부터 사용', '인허가·정책'),
