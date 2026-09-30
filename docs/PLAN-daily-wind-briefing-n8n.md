@@ -2,7 +2,7 @@
 
 - 작성·확인 기준일: 2026-09-30
 - 계획 버전: v1.1 — 사용자 지정 저장소·뉴스 DB 지속 축적·웹 우선 조회 반영
-- 상태: 공개 기사 수집기·뉴스 DB·웹 배포·n8n 7개 연결을 완료했다. OpenAI OAuth 요약(low)·독립 검증(medium)을 거쳐 첫 2026-09-30 보고서 7건을 웹에 게시했다. 최신 일정 활성화·정정본 검증 결과는 [구현·운영 안내](wind-news-operations.md)를 따른다.
+- 상태: 공개 기사 수집기·뉴스 DB·웹 배포·n8n 연결과 운영 일정 5개 활성화를 완료했다. OAuth 요약(low)·독립 검증(medium)을 거쳐 2026-09-30 보고서 7건을 게시했고, 2026-10-01 08:00 정기 게시에서 3건 발간·1건 보류를 확인했다. Teams는 미연결이다. 최신 검증 근거는 [구현·운영 안내](wind-news-operations.md)를 따른다.
 - 기준 요구사항: [PRD-daily-wind-briefing.md](PRD-daily-wind-briefing.md)
 - 기존 설치 참고자료: [n8n-windows-setup-guide.md](n8n-windows-setup-guide.md)
 - 운영 대상: 서버 PC `desktop-evu6usl`의 기존 n8n

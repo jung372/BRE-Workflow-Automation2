@@ -207,6 +207,22 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 
 2026-10-01 정정 검증: 본문의 부수적인 안전 표현이 기사 주제보다 우선하던 분류를 제목·도입부 우선으로 수정했다. [정정 run 36785268919](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36785268919)에서 2026-09-30 revision 2가 `WEB_VERIFIED`로 완료됐다. 기존 7건과 요약·원문 링크는 유지하고 정정 이유를 공개했다. 로컬 전체 Python 209개와 웹 모듈 16개 테스트가 통과했다. 뉴스 전용 라이브러리가 없는 기존 공고 환경에서는 해당 DB 테스트만 기존 방식대로 분리한다.
 
+추가로 `약해지는` 등의 일반 표현을 계약 해지로 판정하지 않도록 계약 문맥을 요구하는 회귀 검증을 추가했다. [정정 run 36788367752](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36788367752)에서 미게시 초안의 분류 2건을 감사 이력이 남는 API로 수정하고, 2026-09-30 revision 3의 `WEB_VERIFIED`를 확인했다. 이미 OAuth 검증을 통과한 항목만 대상으로 했으며 보류 항목을 승인하지 않았다. 최신 전체 Python 210개 및 웹 모듈 16개 테스트가 통과했고 [main CI·서버 배포 run 36788497091](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36788497091)이 성공했다.
+
+2026-10-01 정기 게시 확인: `wind-2026-10-01` revision 1이 08:00:02 KST에 자동 게시됐다. 마감 대상 4건 중 3건 발간·1건 자동 검증 보류이며 원문 링크·공개 JSON 해시를 검증했다. 9월 30일 7건과 합쳐 웹 발간 기사는 10건이다. 수집 범위 제한 및 보류 항목 때문에 보고서는 `partial`로 표시한다. 브라우저 검색에서 정정 전후 자료가 중복되지 않는 것도 확인했다.
+
+| 활성 n8n 일정 | Asia/Seoul 기준 |
+|---|---|
+| Collect | 매시 05분 및 07:30 마감 수집 |
+| Prepare | 매일 07:40 OAuth 요약·검증 |
+| Publish | 매일 08:00 웹 게시 |
+| Reconcile | 5분 간격 실패·게시 검증 재시도 (`auto_recover=true`) |
+| Backup | 매일 02:30 |
+
+위 5개 workflow의 `Published` 상태를 n8n 화면에서 확인했다. Deliver는 Teams 전용 연결 전까지 비활성이며, Errors는 다른 workflow에서 참조하는 오류 처리용이다. 계정 소유자의 추가 로그인이나 일일 수동 승인은 필요하지 않다.
+
+마지막 [서버 검증 run 36789062167](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36789062167)은 성공했다. DB 백업 해시·읽기 검증에서 기사 11건, 발간 revision 레코드 4건(9월 30일 r1–r3와 10월 1일 r1)을 확인했다. 서비스 `ready/healthy`, OAuth 연결·2단계 검증, 무료 공개 기사 정책, 수집 활성, Git 게시 권한이 모두 정상이며 n8n의 무인증 접근은 401로 차단된다.
+
 ### 반복 가능한 서버 작업
 
 기존 `ci-deploy.yml`을 수동 실행할 때 `news_action`을 지정한다.
