@@ -95,6 +95,13 @@ class CollectorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             safe_public_url("https://news.example.com/a", ["news.example.com"], resolve=True, resolver=resolver)
 
+    def test_live_naver_is_blocked_even_when_collection_enabled(self):
+        from unittest.mock import patch
+        with patch("news.collector.os.environ.get", side_effect=AssertionError("Must not read credentials")):
+            result = Collector(self.config).collect(until=self.end)
+        self.assertEqual(result["articles"], [])
+        self.assertEqual(result["source_results"][0]["error_code"], "NAVER_TERMS_INCOMPATIBLE")
+
 
 if __name__ == "__main__":
     unittest.main()

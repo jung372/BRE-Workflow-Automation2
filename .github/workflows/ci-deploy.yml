@@ -23,7 +23,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, preflight, install, connect, verify]
+        options: [normal, preflight, install, connect, verify, oauth]
         default: normal
 
 env:
@@ -37,6 +37,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  news-oauth:
+    if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'oauth'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Send device login challenge over private Taildrop
+        shell: powershell
+        run: .\scripts\wind_news\start_oauth.ps1
+
   news-install:
     needs: test
     if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect')
@@ -73,7 +86,7 @@ jobs:
           }
 
   test:
-    if: inputs.news_action != 'preflight' && inputs.news_action != 'verify'
+    if: inputs.news_action != 'preflight' && inputs.news_action != 'verify' && inputs.news_action != 'oauth'
     runs-on: windows-latest   # 서버 PC와 동일한 OS에서 검증한다
     timeout-minutes: 20
 

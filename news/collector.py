@@ -1,7 +1,8 @@
-"""Naver discovery boundary. No article-body fetch or credentials in results.
+"""Legacy Naver response parser; live Naver discovery is blocked.
 
 The transport contract is ``get(url, headers=..., timeout=..., allow_redirects=False)``
-and returns a requests-compatible response. Production calls are opt-in.
+and returns a requests-compatible response for historical offline fixtures only.
+Current Naver search terms prohibit AI input and permanent archive storage.
 """
 from __future__ import annotations
 
@@ -77,6 +78,8 @@ class Collector:
             return result("disabled", "COLLECTION_DISABLED")
         if cfg.get("provider", "naver") != "naver":
             return result("request_error", "UNSUPPORTED_PROVIDER")
+        if self.transport is None:
+            return result("disabled", "NAVER_TERMS_INCOMPATIBLE")
         queries = cfg.get("queries", cfg.get("keywords", []))
         if not sources or not queries:
             return result("parse_error", "COLLECTION_CONFIG_INVALID")

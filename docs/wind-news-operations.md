@@ -54,7 +54,9 @@ docker compose --env-file <보호된-환경파일> -f infra/wind-news/compose.ya
 
 `config/wind_news_collection.json`과 `config/wind_news_policy.json`이 기본 정책이다. 운영 JSON의 `collection`, `policy`에 필요한 값을 지정한다. 후보 출처의 실제 도메인·이용 조건을 검토하고 `rights_reviewed`를 기록한 후 수집을 활성화한다. 후보 목록은 수집 권한이 확인된 목록을 뜻하지 않는다.
 
-네이버 검색 응답의 허용 매체 기사 제목·검색 요약·기사시각·원문 링크를 저장한다. 본문 접근을 하지 않은 기사는 화면에서 근거 범위를 구분한다. 검색 결과를 전체 국내 기사 전수 또는 개별 매체 사이트의 정상 응답으로 표현하지 않는다. 필수 발견원/출처 실패와 정상 0건을 구분한다.
+**2026-09-30 수집 경로 정정:** 네이버 검색 API의 현행 특약 2.3은 AI 입력과 저장·파생물 이용을 제한하고, 2.4의 서버 이력 캐시는 최대 21일이다. 따라서 영구 뉴스 DB와 OAuth 자동 요약에 이 경로를 사용하지 않는다. 실제 네트워크 수집은 설정을 켜더라도 `NAVER_TERMS_INCOMPATIBLE`로 차단한다. 기존 파서는 오프라인 fixture 회귀용으로만 남긴다. [확인한 공식 약관](https://developers.naver.com/products/terms/).
+
+대체 수집원은 원 제공자가 텍스트의 저장·AI 처리·요약 게시를 허용한 API/피드 또는 공공누리 등 이용허락 표시를 확인한 공공자료로 한정한다. RSS 제공만으로 AI·영구저장 권한이 있다고 간주하지 않는다. 아직 대체 수집원은 운영 승인·구현되지 않았으며 일반 언론 뉴스 수집 완료로 표시하지 않는다. 필수 발견원/출처 실패와 정상 0건을 구분한다.
 
 자동 수집 재조회 범위는 기본 최근 72시간이다. 그보다 긴 서버 중단 이력은 자동 복원이 보장되지 않으며, 확보된 과거 자료를 인증된 ingest API로 적재하고 명시적인 `batch_ids`로 과거 날짜 호를 준비한다. 네이버 검색의 페이지·쿼터 한도에 도달하면 완전한 수집으로 간주하지 않는다.
 
@@ -179,13 +181,9 @@ OpenAI 계정 로그인:
 wsl -d Ubuntu-24.04 --exec docker exec -it -e CODEX_HOME=/var/lib/bre-wind/codex-auth bre-wind-news-news-service-1 codex login --device-auth
 ```
 
-네이버 검색 API 키 입력(입력값 숨김, API 확인 성공 시 서버에만 저장):
+서버에 직접 로그인할 수 없으면 `news_action=oauth`를 실행한다. 공식 Codex CLI가 생성한 단기 기기 코드를 기존 Tailscale Taildrop으로 같은 계정의 `nb01-PF4JSBDE`에 전송한다. Actions에는 코드·토큰·인증 파일을 출력하지 않는다. 수신 파일 이름은 `bre-wind-device-<session>.json`이며 파일에 있는 공식 OpenAI 주소에서 계정 소유자가 인증한다. 요청은 최대 12분 후 종료되고 서버 임시 로그는 제거된다. 인증 완료 후 `verify`로 실제 두 단계 요약을 검증한다. `auth.json`을 읽거나 복사하지 않는다.
 
-```powershell
-wsl -d Ubuntu-24.04 --exec python3 /home/n8nops/bre-wind-news/operator/setup_naver.py
-```
-
-네이버 앱에 검색 API 사용이 설정되어 있어야 한다. 키 저장만으로 수집·게시 일정이 활성화되지는 않는다. 실제 사용 범위에 대한 출처 정책 검토 후 운영 JSON의 수집·게시 설정을 활성화하고 컨테이너를 재생성하여 새 환경값을 반영한다. OpenAI 로그인은 기존 인증 볼륨을 사용하므로 토큰을 복사할 필요가 없다.
+네이버 앱 등록·키 입력은 중단했다. `setup_naver.py`는 기존 경로로 실행해도 키를 요청하지 않는 중단 안내로 교체했다. 약관 동의나 키 발급으로 현재 사용 목적의 제한이 해소되지 않는다. 수집·게시 일정은 대체 수집원과 최초 발간 검증 전까지 비활성이다.
 
 게시용 SSH 키는 뉴스 컨테이너 안에서 새로 생성했다. 사용자의 명시적 승인 후 `BRE Wind News server publisher` deploy key(등록 ID `164912220`)를 해당 저장소에 read-write로 등록했다. GitHub deploy key는 파일 경로별 권한을 제공하지 않으며, `data/wind-news/**` 제한은 publisher 코드가 적용한다. 키의 비밀 부분은 서버 runtime 밖으로 꺼내지 않는다.
 
@@ -201,6 +199,7 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 | `install` | 전체 테스트 후 뉴스 서비스만 설치·갱신 |
 | `connect` | 전체 테스트 후 뉴스 전용 게시 clone·credential·workflow 연결. 지정 뉴스 workflow는 비활성 draft로 갱신 |
 | `verify` | 인증·백업·n8n 내부 통신·연결 상태 검사. OAuth 연결 시 비공개 입력으로 2단계 요약 검사 |
+| `oauth` | 서버에서 공식 기기 로그인 시작, 같은 소유자의 PC에 단기 인증 안내를 Taildrop 전송 |
 | `normal` | 기존 CI와 main의 공고 서버 배포 |
 
-현재 미검증 항목은 실제 OAuth 모델 호출, 네이버 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 인증·권한이 없는 상태를 정상 발간으로 표시하지 않는다.
+현재 미검증 항목은 실제 OAuth 모델 호출, 허용된 대체 수집원의 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 인증·권한이 없는 상태를 정상 발간으로 표시하지 않는다.
