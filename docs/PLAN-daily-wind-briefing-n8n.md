@@ -2,14 +2,14 @@
 
 - 작성·확인 기준일: 2026-09-30
 - 계획 버전: v1.1 — 사용자 지정 저장소·뉴스 DB 지속 축적·웹 우선 조회 반영
-- 상태: 뉴스 서비스·DB 서버 설치, 웹 배포, n8n 7개 연결 및 백업 일정 활성화 완료. OpenAI 최초 계정 인증, 허용된 뉴스 수집원 연결 및 실제 발간은 남음. 실행 절차는 [구현·운영 안내](wind-news-operations.md)를 따른다.
+- 상태: 뉴스 서비스·DB 서버 설치, 웹 배포, n8n 7개 연결 및 백업 일정 활성화 완료. OpenAI OAuth 인증과 실제 요약(low)·독립 검증(medium) 호출이 모두 통과했다. 허용된 일반 언론 무료 기사 수집원 연결과 첫 발간은 남음. 실행 절차와 최신 증거는 [구현·운영 안내](wind-news-operations.md)를 따른다.
 - 기준 요구사항: [PRD-daily-wind-briefing.md](PRD-daily-wind-briefing.md)
 - 기존 설치 참고자료: [n8n-windows-setup-guide.md](n8n-windows-setup-guide.md)
 - 운영 대상: 서버 PC `desktop-evu6usl`의 기존 n8n
 - 관리 화면: <https://desktop-evu6usl.tailab9675.ts.net:8444/home/workflows>
 - GitHub 저장소(사용자 확정): <https://github.com/jung372/BRE-Workflow-Automation2>
-- 웹 기준 주소: <https://jung372.github.io/BRE-Workflow-Automation2/> — 실제 Pages source·배포 설정은 구현 M0에서 확인
-- 아침 확인용 고정 주소(화면 구현, 운영 배포 전): <https://jung372.github.io/BRE-Workflow-Automation2/#/daily>
+- 웹 기준 주소: <https://jung372.github.io/BRE-Workflow-Automation2/> — GitHub Pages 운영 배포 완료
+- 아침 확인용 고정 주소(첫 발간 준비 상태): <https://jung372.github.io/BRE-Workflow-Automation2/#/daily>
 
 ## 1. 실행 방향
 
@@ -45,6 +45,8 @@
 | 웹·Teams를 묶은 발간 지표 | 웹 게시 완료와 Teams 전달을 별도 관리·측정 |
 
 ## 2. 확인한 사실과 남은 확인
+
+아래 표는 최초 계획 수립 시점의 기록이다. 이후 서버 설치·Pages 배포·n8n 연결·OAuth 실제 2단계 호출은 완료했으며, 현재 상태는 위 요약과 운영 안내의 최신 검증 기록을 따른다.
 
 | 항목 | 2026-09-30 확인 결과 | 계획에 미치는 영향 |
 |---|---|---|
@@ -335,4 +337,4 @@ DuckDB는 writer 일시 정지·checkpoint 후 일관된 백업을 만든다. n8
 - 실행 코드를 변경하지 않아 unittest와 키워드 검증은 실행하지 않았다. 구현 후에는 프로젝트의 기본 unittest를 수행하고 공지 키워드 변경 시에만 추가 검증을 실행한다.
 - 서버 설정 변경, n8n workflow 생성·활성화, 뉴스 API/LLM 실호출, GitHub push, Teams 발송은 수행하지 않았다.
 
-후속 코드 구현에서 뉴스 DB·OAuth adapter·자동 검증·웹 검색·n8n export 및 회귀 테스트를 추가했다. 위 항목은 최초 문서 작성 당시 기록이다. 실제 서버 설치·OAuth 로그인·n8n import·외부 첫 발간 검증은 [구현·운영 안내](wind-news-operations.md)의 운영 연계 단계로 남는다.
+후속 코드 구현에서 뉴스 DB·OAuth adapter·자동 검증·웹 검색·n8n export 및 회귀 테스트를 추가했다. 위 항목은 최초 문서 작성 당시 기록이다. 실제 서버 설치·OAuth 로그인 및 2단계 모델 호출·n8n import는 완료했다. 허용된 수집원 연결과 첫 발간 등 남은 단계는 [구현·운영 안내](wind-news-operations.md)의 최신 운영 기록을 따른다.

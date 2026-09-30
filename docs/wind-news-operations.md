@@ -31,7 +31,7 @@ python -m venv .venv-news
 | `WIND_NEWS_CONFIG` | 선택: `{ "collection": {...}, "policy": {...} }` 형식 운영 JSON |
 | `WIND_NEWS_HOST`, `WIND_NEWS_PORT` | 기본 `127.0.0.1`, `8090`. 내부 도달 경로에 맞게 선택 |
 | `WIND_NEWS_PUBLISH_CLONE` | 뉴스 전용 게시 clone 경로 |
-| `WIND_NEWS_NAVER_CLIENT_ID`, `WIND_NEWS_NAVER_CLIENT_SECRET` | 사용자 뉴스 검색 API 앱 |
+| `WIND_NEWS_NAVER_CLIENT_ID`, `WIND_NEWS_NAVER_CLIENT_SECRET` | 폐기된 네이버 경로의 과거 변수. 새로 발급하거나 입력하지 않음 |
 | `WIND_NEWS_TEAMS_WEBHOOK_URL` | 선택: 뉴스용 Teams Workflows 수신 주소 |
 | `WIND_NEWS_CODEX_HOME` | 저장소 밖 뉴스 전용 Codex OAuth 로그인 디렉터리. CLI가 토큰 갱신을 관리 |
 | `WIND_NEWS_CODEX_BINARY` | 선택: 공식 Codex CLI 실행 파일 경로. 기본 `codex` |
@@ -195,7 +195,11 @@ OAuth 연결 여부와 모델 호출 성공은 별도로 검증한다. API에 �
 
 PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`다. GitHub Pages 배포가 성공했고 운영 주소의 오늘 브리핑·누적 검색을 브라우저에서 확인했다. 최초 발간 전에는 발간 준비 상태를 표시한다. 이후 서버 직접 접속 없이 사용자 PC에서 공식 기기 인증을 완료하도록 Taildrop 전달 방식을 추가했다. 수집·요약·발간·알림 일정은 인증 및 수집원 이용조건 확인 전까지 비활성으로 유지한다.
 
-2026-09-30 추가 배포: `ef2a4f70bd882c599b145779dfe546f9a6f21952`의 코드가 main·작업 브랜치에 반영되고 기존 서버·GitHub Pages·뉴스 전용 컨테이너 배포가 모두 성공했다. 로컬 Python 197개 및 웹 모듈 16개 테스트와 GitHub CI가 통과했다. 서버 검증 run `36719569151`에서 서비스 `ready/healthy`, 백업 해시 검증, `FREE_ONLY_POLICY=true`, `PUBLISH_REPO_ACCESS=true`, n8n 비인증 접근 `401`을 확인했다. 실제 DB는 기사 0건·호 0건, `COLLECTION_ENABLED=false`, `CODEX_OAUTH_CONNECTED=false`였다. 아직 실제 LLM 호출·첫 호 발간·Teams 수신을 완료한 상태가 아니다. OAuth 요청은 생성·전달까지 검증됐고 마지막 계정 승인은 사용자 단계로 남았다.
+2026-09-30 배포 이력: `ef2a4f70bd882c599b145779dfe546f9a6f21952`의 코드가 main·작업 브랜치에 반영되고 기존 서버·GitHub Pages·뉴스 전용 컨테이너 배포가 모두 성공했다. 당시 로컬 Python 197개 및 웹 모듈 16개 테스트와 GitHub CI가 통과했다. 이후 사용자가 OpenAI 계정 승인을 완료했다.
+
+2026-09-30 최신 검증: 출력 스키마 호환성을 수정한 `3a83e5d`를 [설치 run 36723567737](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36723567737)로 뉴스 서버에 배포했다. 로컬 Python 198개 테스트 및 GitHub CI가 통과했다. [검증 run 36724127866](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36724127866)에서 `CODEX_OAUTH_CONNECTED=true`, 실제 CLI 실행 2회 모두 종료 코드 0, `CODEX_TWO_PASS_RESULT=CODEX_VERIFIED`를 확인했다. 요약은 `gpt-6.1-sol/low`, 독립 근거 검증은 `gpt-6.1-sol/medium`이다. 비공개 합성 입력으로 연결을 검증했으며 뉴스 기사로 게시하지 않았다. 계정 재인증은 현재 필요하지 않다.
+
+같은 검증에서 서비스 `ready/healthy`, 실제 DB 백업 해시, `FREE_ONLY_POLICY=true`, `PUBLISH_REPO_ACCESS=true`, n8n 비인증 접근 `401`이 정상이다. DB는 실기사 0건·발간 호 0건이며 `COLLECTION_ENABLED=false`다. 일반 언론의 무료 기사 중 AI 처리·저장·게시가 허용된 수집원을 아직 확보하지 못해 수집·발간 일정은 비활성으로 유지한다. 후보 조건과 발송 전 문의 초안은 [수집 서비스 검토](wind-news-source-review.md)에 있다.
 
 ### 반복 가능한 서버 작업
 
@@ -210,4 +214,4 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 | `oauth` | 서버에서 공식 기기 로그인 시작, 같은 소유자의 PC에 단기 인증 안내를 Taildrop 전송 |
 | `normal` | 기존 CI와 main의 공고 서버 배포 |
 
-현재 미검증 항목은 실제 OAuth 모델 호출, 허용된 대체 수집원의 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 인증·권한이 없는 상태를 정상 발간으로 표시하지 않는다.
+현재 미검증 항목은 허용된 대체 수집원의 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 수집원이 없는 상태를 정상 발간으로 표시하지 않는다.
