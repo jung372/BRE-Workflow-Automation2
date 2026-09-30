@@ -48,7 +48,7 @@ docker compose --env-file <보호된-환경파일> -f infra/wind-news/compose.ya
 docker compose --env-file <보호된-환경파일> -f infra/wind-news/compose.yaml up -d
 ```
 
-이는 설치 시 실행할 안내이며 이번 코드 제공 중 자동 실행하지 않는다. `config`의 전체 출력이나 전체 `docker inspect`는 비밀값을 노출할 수 있으므로 사용하지 않는다. 기존 n8n이 Docker가 아니면 이 구성을 억지로 적용하지 않는다. 컨테이너 간 `http://news-service:8090`과 Windows `localhost`는 서로 다른 주소다.
+이는 설치·갱신 시 사용하는 명령이다. 실제 서버 설치 이력은 아래 9절을 참고한다. `config`의 전체 출력이나 전체 `docker inspect`는 비밀값을 노출할 수 있으므로 사용하지 않는다. 기존 n8n이 Docker가 아니면 이 구성을 억지로 적용하지 않는다. 컨테이너 간 `http://news-service:8090`과 Windows `localhost`는 서로 다른 주소다.
 
 ## 3. 출처·요약·승인 정책
 
@@ -147,6 +147,58 @@ python -m compileall -q news scripts/wind_news
 
 단위 테스트는 임시 DB·모의 응답·격리 Git 원격을 사용하며 뉴스 실수집·유료 API·운영 Git push·Teams 실발송을 하지 않는다. 실제 API 품질, 7일 비공개 검토, n8n import 실행, 서버 무인 복구, Pages/Teams 첫 발간은 운영 연계 단계의 별도 검증이다.
 
-개발 PC에서 데스크톱·360px 모바일 브리핑과 누적 검색을 실제 렌더링해 확인했다. 27,375건의 5년치 합성 이력은 공개 데이터와 분리하여 검색·기간·복합 필터·정정 처리를 검증했다. Docker 실행기가 없는 개발 환경이므로 이미지 build와 실제 n8n import는 서버 단계에서 확인해야 한다. OAuth 어댑터는 모의 CLI로 인증 구분·두 추론 단계·근거 거절·캐시·지속 한도를 검증했으며 실제 계정 호출은 수행하지 않았다.
+개발 PC에서 데스크톱·360px 모바일 브리핑과 누적 검색을 실제 렌더링해 확인했다. 27,375건의 5년치 합성 이력은 공개 데이터와 분리하여 검색·기간·복합 필터·정정 처리를 검증했다. Docker 이미지 build와 실제 n8n import는 이후 서버에서 수행했다(9절). OAuth 어댑터는 모의 CLI로 인증 구분·두 추론 단계·근거 거절·캐시·지속 한도를 검증했으며 실제 계정 호출은 최초 로그인 후 확인한다.
 
 2026-09-30 최종 로컬 검증: Python 전체 192개, Node 웹 모듈 16개 통과. 백업 복원 후 공개 호·월별 검색 파일의 해시가 원본과 동일함을 확인했다.
+
+## 9. 실제 서버 설치 이력 — 2026-09-30
+
+사용자의 후속 설치 요청에 따라 기존 `desktop-evu6usl-bre` GitHub 실행기로 사전 점검 후 설치했다. SSH·WinRM은 추가로 열지 않았다.
+
+| 항목 | 확인한 상태 |
+|---|---|
+| Windows / WSL | `DESKTOP-EVU6USL` / `Ubuntu-24.04`, Linux 사용자 `n8nops` |
+| 기존 n8n | Docker 29.8.1, n8n 2.40.7, 기존 PostgreSQL 유지 |
+| 뉴스 컨테이너 | `bre-wind-news-news-service-1`, 비특권 UID 10001, `unless-stopped` |
+| 전용 경로 | `/home/n8nops/bre-wind-news/{releases,runtime,publish,codex-auth,settings}` |
+| 내부 통신 | 기존 `n8n-personal_outbound` network, `http://news-service:8090` |
+| 설치 버전 | Codex CLI 0.159.2 / DuckDB 1.5.6 / Polars 1.44.2 |
+| 상태·백업 | 인증 없는 호출 401, 인증된 ready 정상, 실제 DB 백업 해시·읽기 검증 통과 |
+| 초기 데이터 | 실기사 0건·발간 호 0건. 인증 전 가상 기사는 게시하지 않음 |
+| n8n | 전용 Header Auth를 연결하여 7개 workflow import, 서버 DB에 암호화 저장 |
+
+실제 n8n 실행에서 발견한 Configure 노드의 JavaScript 괄호 오류를 수정하고 생성된 모든 Code 노드를 Node.js로 구문 검사하는 회귀 검증을 추가했다.
+
+### 최초 인증 입력
+
+다음은 **서버 PC의 사용자 PowerShell**에서 실행한다. 인증 코드·키를 채팅이나 GitHub Actions 입력값으로 보내지 않는다.
+
+OpenAI 계정 로그인:
+
+```powershell
+wsl -d Ubuntu-24.04 --exec docker exec -it -e CODEX_HOME=/var/lib/bre-wind/codex-auth bre-wind-news-news-service-1 codex login --device-auth
+```
+
+네이버 검색 API 키 입력(입력값 숨김, API 확인 성공 시 서버에만 저장):
+
+```powershell
+wsl -d Ubuntu-24.04 --exec python3 /home/n8nops/bre-wind-news/operator/setup_naver.py
+```
+
+네이버 앱에 검색 API 사용이 설정되어 있어야 한다. 키 저장만으로 수집·게시 일정이 활성화되지는 않는다. 실제 사용 범위에 대한 출처 정책 검토 후 운영 JSON의 수집·게시 설정을 활성화하고 컨테이너를 재생성하여 새 환경값을 반영한다. OpenAI 로그인은 기존 인증 볼륨을 사용하므로 토큰을 복사할 필요가 없다.
+
+게시용 SSH 키는 뉴스 컨테이너 안에서 새로 생성했다. 저장소 전용 deploy key의 **쓰기 권한 등록은 명시적 승인 전 대기**한다. GitHub deploy key는 파일 경로별 권한을 제공하지 않으며, `data/wind-news/**` 제한은 publisher 코드가 적용한다. 키의 비밀 부분은 서버 runtime 밖으로 꺼내지 않는다.
+
+### 반복 가능한 서버 작업
+
+기존 `ci-deploy.yml`을 수동 실행할 때 `news_action`을 지정한다.
+
+| 값 | 동작 |
+|---|---|
+| `preflight` | 비밀값 없는 Windows·WSL·Docker 사전 점검 |
+| `install` | 전체 테스트 후 뉴스 서비스만 설치·갱신 |
+| `connect` | 전체 테스트 후 뉴스 전용 게시 clone·credential·workflow 연결. 지정 뉴스 workflow는 비활성 draft로 갱신 |
+| `verify` | 인증·백업·n8n 내부 통신·연결 상태 검사. OAuth 연결 시 비공개 입력으로 2단계 요약 검사 |
+| `normal` | 기존 CI와 main의 공고 서버 배포 |
+
+현재 미검증 항목은 실제 OAuth 모델 호출, 네이버 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 인증·권한이 없는 상태를 정상 발간으로 표시하지 않는다.
