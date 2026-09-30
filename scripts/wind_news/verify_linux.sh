@@ -36,7 +36,34 @@ print('CODEX_OAUTH_CONNECTED='+str(oauth).lower())
 if oauth:
     from news.codex_summary import CodexSummary
     from news.service import load_config
-    result=CodexSummary(load_config(os.environ['WIND_NEWS_CONFIG'])['policy']['summarizer'])({
+    def checked_runner(args, **kwargs):
+        stage = 'EXEC' if len(args)>1 and args[1]=='exec' else 'LOGIN'
+        try:
+            response = subprocess.run(args, **kwargs)
+        except Exception as error:
+            safe_type = type(error).__name__
+            print('CODEX_PROCESS_ERROR='+ (safe_type if safe_type in ('PermissionError','FileNotFoundError','TimeoutExpired') else 'OTHER'))
+            raise
+        print('CODEX_PROCESS_'+stage+'_EXIT='+str(response.returncode))
+        if response.returncode:
+            message=(response.stderr or '').lower()
+            # Fixed categories only. Never expose CLI stderr, paths, tokens or prompts.
+            checks = {
+                'CLI_ARGUMENT': 'unexpected argument' in message or 'unrecognized option' in message,
+                'SCHEMA': 'schema' in message and ('invalid' in message or 'unsupported' in message),
+                'MODEL': 'model' in message and ('not supported' in message or 'not found' in message or 'does not exist' in message),
+                'RATE_LIMIT': 'rate limit' in message or 'usage limit' in message,
+                'READ_ONLY_FS': 'read-only file system' in message,
+                'PERMISSION': 'permission denied' in message or 'operation not permitted' in message,
+                'NETWORK': 'connection' in message or 'certificate' in message or 'timed out' in message,
+                'AUTH': 'unauthorized' in message or '401' in message,
+                'CONFIG': 'config' in message and ('invalid' in message or 'error' in message),
+            }
+            for code, matched in checks.items():
+                if matched: print('CODEX_PROCESS_DIAGNOSTIC='+code)
+            if not any(checks.values()): print('CODEX_PROCESS_DIAGNOSTIC=UNCLASSIFIED')
+        return response
+    result=CodexSummary(load_config(os.environ['WIND_NEWS_CONFIG'])['policy']['summarizer'],runner=checked_runner)({
         'title':'풍력 발전 점검 안내', 'description':'풍력 발전 설비 점검 일정을 안내했다.', 'evidence_scope':'description'})
     print('CODEX_TWO_PASS_RESULT='+result['validation_status'])
     if not result.get('valid'): print('CODEX_TEST_CODE='+result.get('fallback_reason','UNKNOWN'))
