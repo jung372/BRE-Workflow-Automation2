@@ -201,7 +201,11 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 
 2026-09-30 최신 검증: 출력 스키마 호환성을 수정한 `3a83e5d`를 [설치 run 36723567737](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36723567737)로 뉴스 서버에 배포했다. 로컬 Python 198개 테스트 및 GitHub CI가 통과했다. [검증 run 36724127866](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36724127866)에서 `CODEX_OAUTH_CONNECTED=true`, 실제 CLI 실행 2회 모두 종료 코드 0, `CODEX_TWO_PASS_RESULT=CODEX_VERIFIED`를 확인했다. 요약은 `gpt-6.1-sol/low`, 독립 근거 검증은 `gpt-6.1-sol/medium`이다. 비공개 합성 입력으로 연결을 검증했으며 뉴스 기사로 게시하지 않았다. 계정 재인증은 현재 필요하지 않다.
 
-같은 검증에서 서비스 `ready/healthy`, 실제 DB 백업 해시, `FREE_ONLY_POLICY=true`, `PUBLISH_REPO_ACCESS=true`, n8n 비인증 접근 `401`이 정상이다. DB는 실기사 0건·발간 호 0건이며 `COLLECTION_ENABLED=false`다. 일반 언론의 무료 기사 중 AI 처리·저장·게시가 허용된 수집원을 아직 확보하지 못해 수집·발간 일정은 비활성으로 유지한다. 후보 조건과 발송 전 문의 초안은 [수집 서비스 검토](wind-news-source-review.md)에 있다.
+당시 검증에서 서비스 `ready/healthy`, 실제 DB 백업 해시, `FREE_ONLY_POLICY=true`, `PUBLISH_REPO_ACCESS=true`, n8n 비인증 접근 `401`이 정상이었다. DB는 실기사 0건·발간 호 0건, `COLLECTION_ENABLED=false`였다. 이 대기 상태는 아래 공개 기사 운영 개시로 대체됐다.
+
+2026-09-30 공개 기사 운영 개시: 후속 사용자 지시에 따라 계약·유료 API 문의를 선행 조건에서 제외했다. 연합뉴스 RSS, 전기신문·에너지신문의 공개 목록과 원문을 사용하며, 외부 유료/무료 식별값 없이 일반 공개 본문의 접근을 확인한다. [첫 발간 run 36730327242](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36730327242)에서 기사 11건 DB 적재, 마감 대상 7건 OAuth 요약·독립 검증 통과, 보류 0건, `wind-2026-09-30` 첫 호 Git 게시를 완료했다. 공개 파일의 SHA-256과 브라우저의 7개 기사·원문 링크도 확인했다. 목록 조회 한도와 페이지 반복 때문에 수집 범위는 `partial`로 표시한다. 근거 검증 실패를 뜻하지는 않는다.
+
+2026-10-01 정정 검증: 본문의 부수적인 안전 표현이 기사 주제보다 우선하던 분류를 제목·도입부 우선으로 수정했다. [정정 run 36785268919](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/36785268919)에서 2026-09-30 revision 2가 `WEB_VERIFIED`로 완료됐다. 기존 7건과 요약·원문 링크는 유지하고 정정 이유를 공개했다. 로컬 전체 Python 209개와 웹 모듈 16개 테스트가 통과했다. 뉴스 전용 라이브러리가 없는 기존 공고 환경에서는 해당 DB 테스트만 기존 방식대로 분리한다.
 
 ### 반복 가능한 서버 작업
 
@@ -215,7 +219,7 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 | `verify` | 인증·백업·n8n 내부 통신·연결 상태 검사. OAuth 연결 시 비공개 입력으로 2단계 요약 검사 |
 | `oauth` | 서버에서 공식 기기 로그인 시작, 같은 소유자의 PC에 단기 인증 안내를 Taildrop 전송 |
 | `launch` | 공개 매체 수집과 Git 게시를 활성화하고 실제 수집 → OAuth 요약·검증 → 첫 호 게시. 기존 뉴스 서비스만 재시작하며 n8n 스케줄 활성화는 별도 확인 |
-| `correct` | `launch`와 같은 공개 수집 경로에서 최근 07:30 마감 호의 분류를 재계산하고 정정 사유가 표시되는 새 revision 발간 |
+| `correct` | `launch`와 같은 공개 수집 경로에서 가장 최근 발간 호의 분류를 재계산하고 정정 사유가 표시되는 새 revision 발간 |
 | `normal` | 기존 CI와 main의 공고 서버 배포 |
 
-현재 미검증 항목은 허용된 대체 수집원의 실수집과 첫 호 발간, Teams 수신, Windows 재부팅·로그아웃 후 지속 운영이다. 수집원이 없는 상태를 정상 발간으로 표시하지 않는다.
+현재 별도 검증이 남은 항목은 Teams 수신과 Windows 재부팅·로그아웃 후 지속 운영이다. Teams 전용 연결은 미설정이며 웹 발간·검색은 독립적으로 운영한다.

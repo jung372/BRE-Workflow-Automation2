@@ -2,14 +2,14 @@
 
 - 작성·확인 기준일: 2026-09-30
 - 계획 버전: v1.1 — 사용자 지정 저장소·뉴스 DB 지속 축적·웹 우선 조회 반영
-- 상태: 뉴스 서비스·DB 서버 설치, 웹 배포, n8n 7개 연결 및 백업 일정 활성화 완료. OpenAI OAuth 인증과 실제 요약(low)·독립 검증(medium) 호출이 모두 통과했다. 허용된 일반 언론 무료 기사 수집원 연결과 첫 발간은 남음. 실행 절차와 최신 증거는 [구현·운영 안내](wind-news-operations.md)를 따른다.
+- 상태: 공개 기사 수집기·뉴스 DB·웹 배포·n8n 7개 연결을 완료했다. OpenAI OAuth 요약(low)·독립 검증(medium)을 거쳐 첫 2026-09-30 보고서 7건을 웹에 게시했다. 최신 일정 활성화·정정본 검증 결과는 [구현·운영 안내](wind-news-operations.md)를 따른다.
 - 기준 요구사항: [PRD-daily-wind-briefing.md](PRD-daily-wind-briefing.md)
 - 기존 설치 참고자료: [n8n-windows-setup-guide.md](n8n-windows-setup-guide.md)
 - 운영 대상: 서버 PC `desktop-evu6usl`의 기존 n8n
 - 관리 화면: <https://desktop-evu6usl.tailab9675.ts.net:8444/home/workflows>
 - GitHub 저장소(사용자 확정): <https://github.com/jung372/BRE-Workflow-Automation2>
 - 웹 기준 주소: <https://jung372.github.io/BRE-Workflow-Automation2/> — GitHub Pages 운영 배포 완료
-- 아침 확인용 고정 주소(첫 발간 준비 상태): <https://jung372.github.io/BRE-Workflow-Automation2/#/daily>
+- 아침 확인용 고정 주소: <https://jung372.github.io/BRE-Workflow-Automation2/#/daily>
 
 ## 1. 실행 방향
 

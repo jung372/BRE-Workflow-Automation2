@@ -20,6 +20,17 @@ def summary(article, config):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_headline_subject_wins_over_incidental_safety_reference(self):
+        for title, expected in [
+            ('전력망 더 짓기 전에 있는 망부터 사용', '인허가·정책'),
+            ('해상풍력, 어민 보상 넘어 함께 돈 버는 바다', '민원·수용성'),
+            ('해상풍력 작업 중 안전사고 발생', '사고·안전')]:
+            self.assertEqual(classify({'title': title, 'text': '풍력 설비의 안전사고 가능성도 검토했다.'})['primary_category'], expected)
+
+    def test_deep_body_mention_does_not_turn_project_into_accident(self):
+        article = {'title':'풍력 발전 사업의 변화', 'text':'새로운 산업 동향을 소개한다. ' * 40 + '과거 안전사고에 대해서도 언급했다.'}
+        self.assertEqual(classify(article)['primary_category'], '기타 주요 동향')
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.temp.name) / "news.duckdb")
