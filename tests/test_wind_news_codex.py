@@ -80,6 +80,21 @@ class CodexTests(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertEqual(len(self.fake.calls), 1)
 
+    def test_generation_schema_is_portable_but_local_constraints_remain_enforced(self):
+        seen = []
+        def runner(args, **kwargs):
+            if args[1] == "exec":
+                schema = json.loads(Path(args[args.index("--output-schema") + 1]).read_text(encoding="utf-8"))
+                seen.append(schema)
+                self.assertNotIn("uniqueItems", schema["properties"]["companies"])
+                self.assertNotIn("maxLength", schema["properties"]["summary"])
+            return self.fake(args, **kwargs)
+        self.fake.summary["companies"] = ["대한풍력", "대한풍력"]
+        result = CodexSummary(self.config, runner=runner)(self.article)
+        self.assertFalse(result["valid"])
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(len(self.fake.calls), 2)  # Rejected locally before review.
+
     def test_unsupported_company_or_fabricated_summary_is_held(self):
         self.fake.summary["companies"] = ["허구기업"]
         result = self.adapter(self.article)

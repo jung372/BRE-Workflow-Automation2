@@ -43,6 +43,20 @@ def held(code):
             "fallback_reason": code}
 
 
+def generation_schema(schema):
+    """Use the portable Structured Outputs subset; retain full local validation.
+
+    Validation-only string bounds/array uniqueness must not make an otherwise
+    supported response shape fail before the model can return an answer.
+    """
+    if isinstance(schema, dict):
+        return {key: generation_schema(value) for key, value in schema.items()
+                if key not in {"minLength", "maxLength", "uniqueItems"}}
+    if isinstance(schema, list):
+        return [generation_schema(value) for value in schema]
+    return schema
+
+
 class CodexSummary:
     def __init__(self, config, *, runner=None, clock=None):
         self.config = config
@@ -55,7 +69,7 @@ class CodexSummary:
 
     def _request(self, prompt, schema, model, effort, job_dir, env, binary, role):
         schema_file, output = job_dir / (role + ".schema.json"), job_dir / (role + ".json")
-        schema_file.write_text(json.dumps(schema), encoding="utf-8")
+        schema_file.write_text(json.dumps(generation_schema(schema)), encoding="utf-8")
         args = [binary, "exec", "--ignore-user-config", "--ephemeral",
                 "--skip-git-repo-check", "--sandbox", "read-only", "--color", "never",
                 "--model", model, "--output-schema", str(schema_file),

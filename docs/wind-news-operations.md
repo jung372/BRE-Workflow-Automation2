@@ -179,11 +179,15 @@ python -m compileall -q news scripts/wind_news
 
 OpenAI 계정 로그인:
 
+먼저 ChatGPT `설정 → Security and login`에서 `Enable device code sign-in for Codex, Excel, PowerPoint, and Word`를 켠다. 꺼져 있으면 OpenAI 동의 화면의 Continue가 비활성화된다. 설정을 켠 뒤에는 기존 화면만 새로고침하지 말고 서버에서 새 기기 인증 요청을 발급한다. 계정 보안 설정 및 최종 계정 승인은 소유자가 확인한다.
+
 ```powershell
 wsl -d Ubuntu-24.04 --exec docker exec -it -e CODEX_HOME=/var/lib/bre-wind/codex-auth bre-wind-news-news-service-1 codex login --device-auth
 ```
 
 서버에 직접 로그인할 수 없으면 `news_action=oauth`를 실행한다. 공식 Codex CLI가 생성한 단기 기기 코드를 기존 Tailscale Taildrop으로 같은 계정의 `nb01-PF4JSBDE`에 전송한다. Actions에는 코드·토큰·인증 파일을 출력하지 않는다. 수신 파일 이름은 `bre-wind-device-<session>.json`이며 파일에 있는 공식 OpenAI 주소에서 계정 소유자가 인증한다. 요청은 최대 12분 후 종료되고 서버 임시 로그는 제거된다. 인증 완료 후 `verify`로 실제 두 단계 요약을 검증한다. `auth.json`을 읽거나 복사하지 않는다.
+
+OAuth 연결 여부와 모델 호출 성공은 별도로 검증한다. API에 보내는 생성 스키마는 호환 가능한 구조만 포함하며, 문자열 길이·배열 중복 등의 추가 제약은 결과 수신 후 전체 JSON Schema로 검사한다. 제약을 위반한 결과는 독립 근거 검증이나 발간 단계로 넘기지 않는다. 서버 진단은 CLI 원문 오류 대신 고정 분류 코드만 출력한다. [Structured Outputs 제약](https://developers.openai.com/api/docs/guides/structured-outputs#some-type-specific-keywords-are-not-yet-supported).
 
 네이버 앱 등록·키 입력은 중단했다. `setup_naver.py`는 기존 경로로 실행해도 키를 요청하지 않는 중단 안내로 교체했다. 약관 동의나 키 발급으로 현재 사용 목적의 제한이 해소되지 않는다. 수집·게시 일정은 대체 수집원과 최초 발간 검증 전까지 비활성이다.
 
