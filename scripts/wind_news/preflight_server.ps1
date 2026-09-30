@@ -22,8 +22,8 @@ if ($report.tools.wsl) {
     Write-Output '--- WSL distributions ---'
     & wsl --list --verbose
     $linuxProbe = (Resolve-Path (Join-Path $PSScriptRoot 'preflight_linux.sh')).Path
-    $linuxProbe = (& wsl -d Ubuntu-24.04 -- wslpath -a $linuxProbe).Trim()
-    & wsl -d Ubuntu-24.04 -- bash $linuxProbe
+    $linuxProbe = (& wsl -d Ubuntu-24.04 --exec wslpath -a $linuxProbe.Replace('\', '/')).Trim()
+    & wsl -d Ubuntu-24.04 --exec bash $linuxProbe
 }
 if ($report.tools.docker) {
     Write-Output '--- Docker engine ---'
