@@ -7,15 +7,29 @@
   <meta name="description" content="기후에너지환경부 전기위원회 공지사항 신규 게시글 모니터링 대시보드" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="assets/styles.css?v=wind-news-1" />
 </head>
 <body>
-<div class="wrapper">
+<a class="site-skip" href="#mainContent">본문으로 이동</a>
+<div class="site-shell">
+  <aside class="site-sidebar">
+    <a class="site-brand" href="#/notices"><span>BRE</span> WORKFLOW<small>사업 정보 모니터링</small></a>
+    <button class="site-menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="siteMenu">메뉴 ☰</button>
+    <nav id="siteMenu" aria-label="주 메뉴">
+      <a href="#/notices" data-page="notices"><span>01</span> 공지 모니터링 대시보드</a>
+      <a href="#/daily" data-page="daily"><span>02</span> 일간 시황</a>
+    </nav>
+    <p class="site-sidebar-note">국내 풍력 사업의 변화와<br>주요 공지를 한곳에서.</p>
+  </aside>
+<main class="wrapper" id="mainContent">
+<section id="noticesPage" aria-label="공지 모니터링 대시보드">
 
   <header>
     <div class="header-badge"><div class="pulse-dot"></div> 실시간 모니터링 활성</div>
     <h1>주요 사이트 공지 모니터링 대시보드</h1>
   </header>
+
+  <a class="wn-notice-shortcut" href="#/daily"><span>일간 시황 바로가기</span><strong id="dailyShortcutStatus">최신 브리핑 확인 중…</strong><span aria-hidden="true">→</span></a>
 
   <div class="control-bar" id="statsBar">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
@@ -99,6 +113,17 @@
     </div>
   </div>
 
+</section>
+<section id="dailyPage" class="wn-page" hidden aria-label="풍력 일간 시황">
+  <div class="wn-heading"><div><p class="wn-eyebrow">DOMESTIC WIND BRIEFING</p><h1>풍력 일간 시황</h1><p class="wn-muted">국내 풍력 사업 · 기업 · 정책의 주요 변화</p></div><button type="button" id="dailyRefresh" class="wn-button">↻ 새로고침</button></div>
+  <nav class="wn-tabs" aria-label="일간 시황 보기">
+    <a href="#/daily" data-daily-tab="today">오늘 브리핑</a>
+    <a href="#/daily/dates" data-daily-tab="dates">날짜별 보기</a>
+    <a href="#/daily/archive" data-daily-tab="archive">누적 기사 검색</a>
+  </nav>
+  <div id="dailyContent" aria-live="polite"></div>
+</section>
+</main>
 </div>
 
 <div id="toast"></div>
@@ -110,5 +135,8 @@
 </footer>
 
 <script src="assets/app.js"></script>
+<script src="assets/wind-news.js?v=wind-news-1"></script>
+<script src="assets/wind-news-search.js?v=wind-news-1"></script>
+<script src="assets/navigation.js?v=wind-news-1"></script>
 </body>
 </html>

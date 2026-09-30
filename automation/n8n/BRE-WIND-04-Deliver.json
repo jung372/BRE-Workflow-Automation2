@@ -1,0 +1,166 @@
+{
+  "name": "BRE-WIND-04-Deliver",
+  "active": false,
+  "nodes": [
+    {
+      "id": "a6c3e1df-1e6d-5b35-8e8d-eeb86b2524bc",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/5 8-23 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c637d191-85b3-5a45-936d-7b55d63cfe4d",
+      "name": "Manual test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        180
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "2af05afd-a3ac-5e88-a580-f33105887dec",
+      "name": "Configure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const issue_date = $now.setZone('Asia/Seoul').toFormat('yyyy-MM-dd');\nreturn [{json: {service_url: \"http://news-service:8090\", issue_date, issue_id: 'wind-' + issue_date, deadline: Date.now() + 1100000}}}];"
+      }
+    },
+    {
+      "id": "981d0f0e-cd1c-5d56-83db-d54b965b41bc",
+      "name": "Submit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Configure').first().json.service_url + '/v1/deliveries/send' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 35000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date, channel_id: 'wind-news'}) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "BRE Wind Service"
+        }
+      }
+    },
+    {
+      "id": "bb4ef4f0-de83-56a1-b590-7f21f8db0e86",
+      "name": "Check delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        0
+      ],
+      "parameters": {
+        "jsCode": "if (['FAILED','UNKNOWN'].includes($json.status)) throw new Error('delivery_' + $json.status.toLowerCase());\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "af34e3ee-1e82-5fb9-85d1-654336c64d5e",
+      "name": "Setup instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -300
+      ],
+      "parameters": {
+        "content": "## Import inactive\nBind every HTTP node to Header Auth `BRE Wind Service`: Authorization = Bearer <service token>. Edit Configure.service_url. No credentials are included. Shadow review is the default. Set Error workflow to imported BRE-WIND-05A-Errors. Read docs/wind-news-operations.md before enabling schedules.",
+        "height": 240,
+        "width": 600
+      }
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Configure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual test": {
+      "main": [
+        [
+          {
+            "node": "Configure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure": {
+      "main": [
+        [
+          {
+            "node": "Submit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit": {
+      "main": [
+        [
+          {
+            "node": "Check delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul",
+    "executionTimeout": 1200,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

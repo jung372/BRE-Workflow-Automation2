@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bre:wind-news:manifests:1",
+  "oneOf": [{"$ref": "#/$defs/latest"}, {"$ref": "#/$defs/index"}, {"$ref": "#/$defs/search_manifest"}, {"$ref": "#/$defs/search_shard"}],
+  "$defs": {
+    "path": {"type": "string", "pattern": "^data/wind-news/(issues|search)/[0-9]{4}/"},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "descriptor": {"type": "object", "additionalProperties": false, "required": ["issue_id", "issue_date", "revision", "path", "sha256", "published_at", "content_status", "counts"], "properties": {"issue_id": {"type": "string"}, "issue_date": {"type": "string", "format": "date"}, "revision": {"type": "integer", "minimum": 1}, "path": {"$ref": "#/$defs/path"}, "sha256": {"$ref": "#/$defs/sha256"}, "published_at": {"type": "string", "format": "date-time"}, "content_status": {"enum": ["normal", "partial", "no_news"]}, "counts": {"type": "object"}}},
+    "latest": {"type": "object", "additionalProperties": false, "required": ["schema_version", "latest"], "properties": {"schema_version": {"const": 1}, "latest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/descriptor"}]}}},
+    "index": {"type": "object", "additionalProperties": false, "required": ["schema_version", "issues"], "properties": {"schema_version": {"const": 1}, "issues": {"type": "array", "items": {"$ref": "#/$defs/descriptor"}}}},
+    "search_manifest": {"type": "object", "additionalProperties": false, "required": ["schema_version", "generated_at", "snapshot_id", "months"], "properties": {"schema_version": {"const": 1}, "generated_at": {"type": ["string", "null"]}, "snapshot_id": {"type": "string"}, "months": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["month", "path", "sha256", "count"], "properties": {"month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"}, "path": {"$ref": "#/$defs/path"}, "sha256": {"$ref": "#/$defs/sha256"}, "count": {"type": "integer", "minimum": 0}}}}}},
+    "search_shard": {"type": "object", "additionalProperties": false, "required": ["schema_version", "month", "items"], "properties": {"schema_version": {"const": 1}, "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"}, "items": {"type": "array", "items": {"type": "object", "required": ["event_id", "representative_article_id", "headline", "summary", "companies", "issue_id", "issue_date", "revision", "issue_path"], "properties": {"issue_id": {"type": "string"}, "issue_date": {"type": "string", "format": "date"}, "revision": {"type": "integer", "minimum": 1}, "issue_path": {"$ref": "#/$defs/path"}}}}}}
+  }
+}

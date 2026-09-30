@@ -1,0 +1,7 @@
+{
+  "articles": [
+    {"url": "https://example.kr/news?id=001&utm_source=test", "source_id": "fixture", "title": "전남 새바람 해상풍력 EPC 본계약 체결", "description": "새바람 사업의 전남 해상풍력 EPC 본계약을 바람건설이 2026-09-29 체결했다.", "source_published_at": "2026-09-29T10:00:00+09:00", "project_name": "새바람", "region": "전남", "companies": ["바람건설"], "event_date": "2026-09-29"},
+    {"url": "https://example.kr/news?id=002", "source_id": "fixture", "title": "전남 새바람 해상풍력 MOU 체결", "description": "새바람 사업의 전남 해상풍력 MOU를 바람건설이 2026-09-29 체결했다.", "source_published_at": "2026-09-29T11:00:00+09:00", "project_name": "새바람", "region": "전남", "companies": ["바람건설"], "event_date": "2026-09-29"}
+  ],
+  "source_results": [{"source_id": "fixture", "status": "success", "count": 2}]
+}

@@ -4,15 +4,20 @@ on:
   push:
     branches:
       - main
+      - 'feature/**'
     # 서버가 매시간 push 하는 데이터 파일은 배포를 트리거하지 않는다.
     paths-ignore:
       - 'data/status.json'
       - 'last_state.json'
+      - 'data/wind-news/**'
       - 'docs/**'
       - '**/*.md'
       # 키워드는 설정 데이터다. publish clone 에서 읽으므로 재배포가 필요 없고,
       # 검증은 validate-keywords.yml 이 담당한다.
       - 'config/keywords.json'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -45,6 +50,13 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check --upgrade pip
           python -m pip install --disable-pip-version-check -r requirements.txt
+          # 뉴스 DB 의존성은 CI와 뉴스 서비스 환경에만 설치한다.
+          python -m pip install --disable-pip-version-check -r news/requirements.txt
+
+      - name: Node.js for browser module tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: 🔍 문법 검사
         shell: pwsh
@@ -52,10 +64,13 @@ jobs:
           python -m compileall -q `
             config.py state.py runtime_config.py keywords.py scraper.py run_local.py `
             notify_teams.py push_to_github.py dashboard_app.py `
-            logic scrapers presentation tests
+            logic scrapers presentation news tests scripts/wind_news
 
       - name: 🧪 단위 테스트
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: 뉴스 웹 모듈 검증
+        run: node --test tests/test_wind_news_frontend.js
 
       - name: 📥 진입점 임포트 확인
         shell: pwsh
@@ -70,6 +85,8 @@ jobs:
     needs: test
     if: >-
       github.repository == 'jung372/BRE-Workflow-Automation2' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
       vars.SERVER_DEPLOY_ENABLED == 'true'
     runs-on:
       - self-hosted
