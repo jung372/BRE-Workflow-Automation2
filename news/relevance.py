@@ -23,10 +23,13 @@ def editorial_order(groups):
     def grams(title):
         value = re.sub(r"[^가-힣a-z0-9]", "", title.lower())
         return {value[i:i+3] for i in range(max(0, len(value)-2))}
-    while remaining:
+    title_grams = {key: grams(members[0]['title']) for key,members in remaining}
+    # The summarizer accepts at most 30 candidates. Avoid cubic diversity work
+    # over thousands of archived candidates that will not enter this issue.
+    while remaining and len(selected) < 30:
         def score(pair):
             article = pair[1][0]
-            title = grams(article["title"])
+            title = title_grams[pair[0]]
             similarity = max((len(title & other) / max(1, min(len(title), len(other))) for other in titles), default=0)
             priority = 4 * industry_relevant(article["title"]) - 5 * similarity
             priority -= min(3, used.get(article["source_name"], 0)) * .6
@@ -34,6 +37,6 @@ def editorial_order(groups):
         pair = max(remaining, key=score)
         remaining.remove(pair); selected.append(pair)
         article = pair[1][0]
-        titles.append(grams(article["title"]))
+        titles.append(title_grams[pair[0]])
         used[article["source_name"]] = used.get(article["source_name"], 0) + 1
-    return selected
+    return selected + remaining
