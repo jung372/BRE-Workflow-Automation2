@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-02 06:00:05",
+  "checked_at": "2026-10-02 07:00:03",
   "sites": [
     {
       "id": "notice",
@@ -79,8 +79,20 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 5,
+      "new_count": 6,
       "new_items": [
+        {
+          "uid": "DCT731DACE4C6189580F40CFD3137E2D0D4",
+          "title": "개발행위허가신청에 따른 협의 및 의견조회(강동면 왕신리 산217번지 외 9필지 일원, 경주왕신풍력발전소)",
+          "dept": "지역개발과",
+          "dept_full": "경상북도 경주시 안강읍 지역개발과",
+          "instt": "경상북도 경주시",
+          "date": "2026-10-02",
+          "prod_date": "2026-10-01",
+          "doc_no": "지역개발과-12604",
+          "keyword": "왕신풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
+        },
         {
           "uid": "DCT039627F9A00BBE7AA93D568136CDDCBA",
           "title": "공유수면 점용·사용허가 관련 이해관계자 의견수렴 요청[울산 이스트블루파워 해상풍력 발전사업 변경허가 관련]",
@@ -142,7 +154,7 @@
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%ED%95%B4%EC%9A%B8%EC%9D%B4%ED%95%B4%EC%83%81%ED%92%8D%EB%A0%A5"
         }
       ],
-      "total": 45,
+      "total": 46,
       "keywords": [
         "시루풍력",
         "왕신풍력",
