@@ -17,7 +17,7 @@
     "correction_reason": {"type": "string", "minLength": 1}, "corrected_at": {"type": "string", "format": "date-time"}
   },
   "$defs": {
-    "counts": {"type": "object", "additionalProperties": false, "required": ["fetched", "eligible_articles", "merged_duplicates", "published_topics", "held"], "properties": {"fetched": {"type": "integer", "minimum": 0}, "eligible_articles": {"type": "integer", "minimum": 0}, "merged_duplicates": {"type": "integer", "minimum": 0}, "published_topics": {"type": "integer", "minimum": 0, "maximum": 15}, "held": {"type": "integer", "minimum": 0}}},
+    "counts": {"type": "object", "additionalProperties": false, "required": ["fetched", "eligible_articles", "merged_duplicates", "published_topics", "held"], "properties": {"fetched": {"type": "integer", "minimum": 0}, "eligible_articles": {"type": "integer", "minimum": 0}, "merged_duplicates": {"type": "integer", "minimum": 0}, "published_topics": {"type": "integer", "minimum": 0, "maximum": 15}, "held": {"type": "integer", "minimum": 0}, "deferred": {"type": "integer", "minimum": 0}}},
     "item": {
       "type": "object", "additionalProperties": false,
       "required": ["event_id", "representative_article_id", "headline", "summary", "primary_category", "contract_stage", "companies", "project_name", "region", "wind_type", "tags", "source_name", "source_url", "source_published_at", "timestamp_basis", "evidence_scope", "late_arrival"],

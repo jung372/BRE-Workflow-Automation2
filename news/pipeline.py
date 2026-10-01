@@ -10,6 +10,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import polars as pl
 
 from .store import Conflict, canonical, digest, utcnow
+from .relevance import industry_relevant, editorial_order
 
 KST = timezone(timedelta(hours=9))
 SUCCESS = {"success", "success_zero"}
@@ -123,12 +124,16 @@ class Pipeline:
                 if self.policy.get("require_free_access", False) and not free_access(entry):
                     excluded += 1
                     continue
-                url = normalize_url(entry["url"], source.get("hosts", source.get("allowed_hosts", [])))
+                if source.get("discovery") == "naver_news_search":
+                    from .search_sources import publisher_url
+                    url = publisher_url(entry["url"])
+                else:
+                    url = normalize_url(entry["url"], source.get("hosts", source.get("allowed_hosts", [])))
                 title, description = clean(entry["title"]), clean(entry.get("description"))
                 text = clean(entry.get("text")) if source.get("allow_body", False) else ""
                 if not title:
                     raise ValueError("missing_title")
-                if not re.search(r"[가-힣]", title) or not re.search(r"풍력|wind", title + " " + description + " " + text, re.I):
+                if not re.search(r"[가-힣]", title) or not industry_relevant(title, description + " " + text):
                     excluded += 1
                     continue
                 published = instant(entry["source_published_at"])
@@ -146,6 +151,8 @@ class Pipeline:
                 article_id = hashlib.sha256(url.encode()).hexdigest()
                 normalized.append({"article_id": article_id, "url": url, "title": title, "description": description, "text": text, "source_id": source["source_id"], "source_name": source.get("name", source["source_id"]), "source_published_at": published.isoformat(), "timestamp_basis": entry.get("timestamp_basis", entry.get("published_at_basis", "source")), "evidence_scope": "full_text" if text else "description" if description else "title", "project_name": project, "companies": companies, "region": region, "event_date": event_date, "trust_score": source.get("trust_score", 0)})
                 normalized[-1]["access_status"] = "free" if free_access(entry) else "paid" if entry.get("access_status") == "paid" else "unknown"
+                if source.get("discovery") == "naver_news_search":
+                    normalized[-1]["source_name"] = clean(entry.get("source_name"))[:100] or urlsplit(url).hostname
                 normalized[-1]["access_basis"] = clean(entry.get("access_basis", ""))[:80]
                 normalized[-1]["access_checked_at"] = instant(entry["access_checked_at"]).isoformat() if entry.get("access_checked_at") else None
             except (KeyError, ValueError, TypeError, OverflowError):
@@ -159,6 +166,14 @@ class Pipeline:
             safe = {"source_id": result["source_id"], "status": result["status"], "count": result["count"]}
             if result.get("error_code"):
                 safe["error_code"] = re.sub(r"[^A-Z0-9_]", "", str(result["error_code"]).upper())[:80]
+            for field in ("discovered", "attempted", "excluded_restricted"):
+                if isinstance(result.get(field), int) and 0 <= result[field] <= 10000:
+                    safe[field] = result[field]
+            # Structured counts only; never save search snippets or raw errors.
+            for field in ("query_results", "publisher_results", "outcomes"):
+                if isinstance(result.get(field), dict):
+                    value = result[field]
+                    if len(canonical(value)) <= 50000: safe[field] = value
             if result["source_id"] in rejected and result["status"] in SUCCESS:
                 safe.update(status="parse_error", error_code="NORMALIZATION_FAILED")
             safe_results.append(safe)
@@ -173,7 +188,8 @@ class Pipeline:
                 evidence = {"description": article["description"], "text": article["text"], "captured_at": now, "content_hash": content_hash}
                 db.execute("INSERT INTO articles VALUES (?,?,?,?,?,?,?) ON CONFLICT(article_id) DO UPDATE SET content_hash=excluded.content_hash,metadata=excluded.metadata,evidence=excluded.evidence,updated_at=excluded.updated_at", [article["article_id"], article["url"], content_hash, canonical(metadata), canonical(evidence), now, now])
                 db.execute("INSERT INTO batch_articles VALUES (?,?,?) ON CONFLICT DO NOTHING", [batch_id, article["article_id"], canonical({**article, "content_hash": content_hash, "discovered_at": now})])
-            return {"batch_id": batch_id, "ingested": len(normalized), "rejected": len(rejected), "excluded": excluded}
+            return {"batch_id": batch_id, "ingested": len(normalized), "rejected": len(rejected), "excluded": excluded,
+                    "source_results": safe_results, "publisher_counts": dict(pl.DataFrame(normalized).group_by("source_name").len().iter_rows()) if normalized else {}}
         return self.store.call(work, write=True)
 
     def prepare(self, payload):
@@ -252,7 +268,7 @@ class Pipeline:
         summary_start = monotonic_time.monotonic()
         max_summaries = min(30, max(1, int(self.policy.get("max_summary_candidates", 20))))
         summary_deadline = min(900, max(1, int(self.policy.get("summary_deadline_seconds", 900))))
-        for candidate_number, (event_id, members) in enumerate(groups.items()):
+        for candidate_number, (event_id, members) in enumerate(editorial_order(groups)):
             members.sort(key=lambda a: (-a["trust_score"], -len(a.get("text", "")), -len(a.get("description", "")), a["source_published_at"], a["url"]))
             article = members[0]
             if candidate_number >= max_summaries or monotonic_time.monotonic() - summary_start >= summary_deadline:
@@ -282,8 +298,10 @@ class Pipeline:
         max_items = min(15, max(0, int(self.policy.get("max_items", 15))))
         candidates.sort(key=lambda c: (c["item"]["primary_category"], c["item"]["source_published_at"], c["item"]["source_url"]))
         selected = [c["item"] for c in candidates if c["approved"]][:max_items]
-        held_count = sum(not c["approved"] for c in candidates)
+        deferred_count = sum(not c["approved"] and c["reason"] == "SUMMARY_BUDGET_EXHAUSTED" for c in candidates)
+        held_count = sum(not c["approved"] and c["reason"] != "SUMMARY_BUDGET_EXHAUSTED" for c in candidates)
         public = {"schema_version": 1, "issue_id": issue_id, "issue_date": day, "revision": revision, "timezone": "Asia/Seoul", "window_start": start.isoformat(), "window_end": end.isoformat(), "published_at": None, "content_status": "partial" if coverage["partial"] or held_count else "normal" if selected else "no_news", "coverage": coverage, "counts": {"fetched": len(articles), "eligible_articles": eligible, "merged_duplicates": sum(len(m) - 1 for m in groups.values()), "published_topics": len(selected), "held": held_count}, "headline_summary": [item["headline"] for item in selected[:3]], "items": selected}
+        public['counts']['deferred'] = deferred_count
         if correction:
             public.update(correction_reason=clean(payload["correction_reason"]), corrected_at=utcnow())
         state = "BLOCKED" if required_failed else "READY" if automatic_allowed(self.policy) else "REVIEW_REQUIRED" if candidates else "DRAFT"
@@ -369,7 +387,9 @@ class Pipeline:
                 raise ValueError("invalid_review_action")
             selected = [c["item"] for c in candidates if c["approved"]][:min(15, self.policy.get("max_items", 15))]
             public["items"] = selected
-            public["counts"].update(published_topics=len(selected), held=sum(not c["approved"] for c in candidates))
+            public["counts"].update(published_topics=len(selected),
+                held=sum(not c["approved"] and c["reason"] != "SUMMARY_BUDGET_EXHAUSTED" for c in candidates),
+                deferred=sum(not c["approved"] and c["reason"] == "SUMMARY_BUDGET_EXHAUSTED" for c in candidates))
             public["headline_summary"] = [i["headline"] for i in selected[:3]]
             public["content_status"] = "partial" if public["coverage"]["partial"] or public["counts"]["held"] else "normal" if selected else "no_news"
             new_hash = approval_digest(public, candidates, record["batch_ids"])

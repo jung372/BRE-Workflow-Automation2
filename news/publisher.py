@@ -19,7 +19,7 @@ ITEM_FIELDS = {"headline", "title", "summary", "companies", "project_name", "reg
                "contract_stage", "tags", "source_name", "source_url", "source_published_at", "event_id",
                "representative_article_id", "evidence_scope", "late_arrival", "timestamp_basis",
                "amount", "currency", "capacity", "capacity_unit", "event_date"}
-COUNT_FIELDS = {"fetched", "eligible_articles", "merged_duplicates", "published_topics", "held"}
+COUNT_FIELDS = {"fetched", "eligible_articles", "merged_duplicates", "published_topics", "held", "deferred"}
 
 
 def _bytes(value):

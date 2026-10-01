@@ -1,8 +1,9 @@
-"""Legacy Naver response parser; live Naver discovery is blocked.
+"""Collector dispatcher and legacy Naver Search API response parser.
 
 The transport contract is ``get(url, headers=..., timeout=..., allow_redirects=False)``
 and returns a requests-compatible response for historical offline fixtures only.
-Current Naver search terms prohibit AI input and permanent archive storage.
+The legacy Search API path remains disabled. Public web-search link discovery
+and publisher-page evidence extraction live in search_sources/public_sources.
 """
 from __future__ import annotations
 

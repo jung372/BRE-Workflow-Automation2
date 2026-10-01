@@ -6,6 +6,7 @@ Accessibility is established from an ordinary successful article-page response.
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
+import json
 import re
 import time
 from urllib.parse import parse_qs, urljoin, urlsplit
@@ -14,26 +15,91 @@ import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
 from .collector import _instant, clean_text, safe_public_url
+from .relevance import industry_relevant
 
 
 class SourceError(Exception):
     pass
 
 
+BODY_SELECTORS = ["#article-view-content-div", "#articleBody", "#article-body-content",
+    "#articleContents", "#newsct_article", "#dic_area", "#newsEndContents", "#newsct_body",
+    "#articleBodyContents", "#newsView", ".story-news.article", ".news-article-body",
+    '[itemprop="articleBody"]', ".article_body", ".article-body", ".article_content",
+    ".article-content", ".article_txt", ".article-text", ".news_body", ".news-body",
+    ".view-article", ".view_cont", ".view_con", ".view_txt", ".news_view", "article"]
+
+
+def publisher_metadata(soup):
+    metadata = {}
+    for key, selectors in {
+        "title": ['meta[property="og:title"]', 'meta[name="title"]'],
+        "name": ['meta[property="og:site_name"]', 'meta[name="application-name"]'],
+        "published": ['meta[property="article:published_time"]', 'meta[name="article:published_time"]',
+                      'meta[name="pubDate"]', 'meta[name="date"]', 'meta[name="datePublished"]',
+                      'meta[property="dd:published_time"]', 'meta[name="DC.date.issued"]'],
+    }.items():
+        for selector in selectors:
+            tag = soup.select_one(selector)
+            if tag and tag.get("content"):
+                metadata[key] = tag["content"]; break
+    def walk(value):
+        if isinstance(value, list):
+            for item in value: yield from walk(item)
+        elif isinstance(value, dict):
+            if value.get("@type") in ("NewsArticle", "Article", "ReportageNewsArticle"):
+                yield value
+            if "@graph" in value: yield from walk(value["@graph"])
+    for tag in soup.select('script[type="application/ld+json"]'):
+        try:
+            for obj in walk(json.loads(tag.string or tag.get_text())):
+                if obj.get("isAccessibleForFree") in (False, "False", "false"):
+                    raise SourceError("ARTICLE_ACCESS_RESTRICTED")
+                if obj.get("datePublished"): metadata.setdefault("published",obj["datePublished"])
+                if obj.get("headline"): metadata.setdefault("title",obj["headline"])
+                publisher = obj.get("publisher")
+                if isinstance(publisher,dict) and publisher.get("name"):
+                    metadata.setdefault("name",publisher["name"])
+        except (ValueError, TypeError):
+            continue
+    if not metadata.get("published"):
+        tag = soup.select_one('time[datetime], [itemprop="datePublished"]')
+        if tag:
+            metadata["published"] = tag.get("datetime") or tag.get("content") or tag.get_text()
+        else:
+            # Only an explicitly labelled article header timestamp is eligible;
+            # dates mentioned in the article body are never publication dates.
+            header = soup.select_one('.article-view-header, .article_header, .view-info, .news-info')
+            if header:
+                match = re.search(r'(?:입력|승인|등록)\s*(\d{4}[.\-/]\d{2}[.\-/]\d{2}\s+\d{2}:\d{2}(?::\d{2})?)',header.get_text(' ',strip=True))
+                if match: metadata["published"] = match[1]
+    return metadata
+
+
+def publisher_timestamp(value):
+    value = str(value).strip()
+    try: return _instant(value)
+    except ValueError:
+        match = re.fullmatch(r'(\d{4})[.\-/](\d{2})[.\-/](\d{2})\s*\[?(\d{2}):(\d{2})(?::(\d{2}))?\]?', value)
+        if not match: raise SourceError("ARTICLE_DATE_MISSING")
+        return datetime(*[int(v or 0) for v in match.groups()], tzinfo=timezone(timedelta(hours=9)))
+
+
 def parse_article(content, source, url):
     soup = BeautifulSoup(content, "html.parser")
-    body = soup.select_one(source["body_selector"])
-    title = soup.select_one('meta[property="og:title"]')
-    published = soup.select_one('meta[property="article:published_time"]')
-    if not body or not title or not published:
+    metadata = publisher_metadata(soup)
+    selectors = [source["body_selector"]] if source.get("body_selector") else BODY_SELECTORS
+    body = next((node for selector in selectors if (node := soup.select_one(selector)) is not None
+                 and len(node.get_text(' ',strip=True)) >= 100), None)
+    if not body or not metadata.get("title"):
         raise SourceError("ARTICLE_PARSE_FAILED")
-    headline = clean_text(title.get("content", ""))
+    headline = clean_text(metadata["title"])
     if re.match(r"[\[(]?(인사|부고|동정)[\])]?", headline):
         return None
     # Check the article area, not a navigation bar advertising subscriptions.
     if body.select('form[action*="login"], .paywall, .premium-lock, .article-paywall'):
         raise SourceError("ARTICLE_ACCESS_RESTRICTED")
-    for node in body.select("script, style, iframe, figure, .ad, .article-copyright, .reporter-area"):
+    for node in body.select("script, style, iframe, figure, nav, aside, .ad, .article-copyright, .reporter-area, .related-news"):
         node.decompose()
     text = clean_text(body.get_text(" ", strip=True))
     if re.search(r"(로그인|구독|결제|유료회원).{0,30}(후.{0,10}(기사|본문)|전용|읽을 수|이용할 수)|유료.{0,8}기사입니다", text):
@@ -42,15 +108,16 @@ def parse_article(content, source, url):
         raise SourceError("ARTICLE_BODY_INCOMPLETE")
     if not headline:
         raise SourceError("ARTICLE_PARSE_FAILED")
-    if "풍력" not in headline + " " + text:
+    if not industry_relevant(headline, text):
         return None
     # Personnel notices mentioning a wind division are not industry news.
     if re.match(r"[\[(]?(인사|부고|동정)[\])]?", headline):
         return None
-    published_at = _instant(published.get("content", ""))
+    published_at = publisher_timestamp(metadata.get("published", ""))
+    name = (clean_text(metadata.get("name")) or urlsplit(url).hostname) if source.get("discovery") == "naver_news_search" else source["name"]
     return {"article_id": hashlib.sha256(url.encode()).hexdigest(), "url": url,
         "title": headline.removesuffix(" | 연합뉴스"), "description": "", "text": text,
-        "source_id": source["source_id"], "source_name": source["name"],
+        "source_id": source["source_id"], "source_name": name,
         "source_published_at": published_at.isoformat(), "published_at_basis": "publisher_article_meta",
         "evidence_scope": "full_text", "access_status": "free", "is_paywalled": False,
         "access_basis": "public_article_body", "access_checked_at": datetime.now(timezone.utc).isoformat()}
@@ -163,6 +230,13 @@ class PublicCollector:
         articles, results = [], []
         for source in self.config.get("sources", []):
             if not source.get("enabled", True):
+                continue
+            if source.get("discovery") == "naver_news_search":
+                from .search_sources import SearchCollector
+                searched = SearchCollector(self.config, self.transport, self.clock, self.sleep)
+                searched.resolve = self.resolve
+                batch = searched.collect_source(source, start, end)
+                articles.extend(batch["articles"]); results.extend(batch["source_results"])
                 continue
             accepted, errors, excluded, saturated = [], [], 0, False
             try:

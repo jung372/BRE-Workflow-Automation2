@@ -20,6 +20,23 @@ def summary(article, config):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_search_discovered_publisher_survives_db_normalization(self):
+        self.pipeline.collection['sources'][0].update(discovery='naver_news_search',allow_body=True)
+        payload = copy.deepcopy(self.fixture)
+        payload['articles'] = [dict(payload['articles'][0],url='https://new-paper.kr/story/1',
+            source_name='새로운 매체', title='모노파일 공급 확대',text='국내 해상 단지에 공급한다.')]
+        result = self.pipeline.ingest(payload,'new-publisher')
+        self.assertEqual(result['ingested'],1)
+        self.assertEqual(result['publisher_counts'],{'새로운 매체':1})
+        record = self.pipeline.prepare({'issue_date':'2026-09-30','batch_ids':['new-publisher']})
+        self.assertEqual(record['candidates'][0]['item']['source_name'],'새로운 매체')
+
+    def test_summary_limit_is_separate_from_verification_failure(self):
+        self.pipeline.policy['max_summary_candidates'] = 1
+        result = self.prepare()
+        self.assertEqual(result['payload']['counts']['deferred'],1)
+        self.assertEqual(result['payload']['counts']['held'],1)  # one manual-review candidate
+
     def test_contract_cancellation_requires_contract_context(self):
         self.assertEqual(classify({'title':'풍력 투자를 앞둔 발전사', 'text':'재무 체력이 약해지는 셈이다.'})['contract_stage'], '미확인')
         self.assertEqual(classify({'title':'풍력 공급계약을 해지했다'})['contract_stage'], '해지·변경')

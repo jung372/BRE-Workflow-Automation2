@@ -37,7 +37,7 @@
   }
   function countLabel(key) {
     return { fetched: '수집 기사', eligible_articles: '적합 기사', merged_duplicates: '중복 통합', published_topics: '게시 사건',
-      eligible: '적합 기사', deduplicated: '중복 통합', published: '게시 사건', held: '검증 보류', held_articles: '검증 보류', selected: '선정 기사', merged: '중복 통합' }[key] || key;
+      eligible: '적합 기사', deduplicated: '중복 통합', published: '게시 사건', held: '검증 보류', deferred: '이번 호 요약 대상 외', held_articles: '검증 보류', selected: '선정 기사', merged: '중복 통합' }[key] || key;
   }
   function timestampBasisLabel(basis) {
     return { publisher_article_meta: '언론사 원문 발행시각', naver_pubDate: '네이버 뉴스 API 제공 발행시각', discovered_at: '수집 시각 (원문 발행시각 미확인)',

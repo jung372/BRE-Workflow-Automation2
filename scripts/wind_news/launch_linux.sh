@@ -82,6 +82,9 @@ if os.environ.get('WIND_NEWS_LAUNCH_MODE') == 'correct':
     print('LAUNCH_PENDING_METADATA_REPAIRED='+str(repaired), flush=True)
 collected = job('/v1/collect', {})
 print('LAUNCH_INGESTED='+str(collected['ingested']), flush=True)
+print('LAUNCH_PUBLISHERS='+json.dumps(collected.get('publisher_counts',{}),ensure_ascii=False), flush=True)
+for result in collected.get('source_results',[]):
+    print('LAUNCH_SOURCE='+json.dumps({k:result[k] for k in ('source_id','status','count','discovered','attempted','outcomes') if k in result},ensure_ascii=False), flush=True)
 assert collected['ingested'] > 0, 'NO_ARTICLES_COLLECTED'
 now = datetime.now(timezone(timedelta(hours=9)))
 day = (now.date() if (now.hour, now.minute) >= (7,30) else (now-timedelta(days=1)).date()).isoformat()
@@ -91,7 +94,7 @@ if os.environ.get('WIND_NEWS_LAUNCH_MODE') == 'correct':
     completed = [i for i in response.json()['issues'] if i['state'] in ('COMMITTED','WEB_VERIFIED')]
     assert completed, 'NO_PUBLISHED_ISSUE_TO_CORRECT'
     prepare['issue_date'] = max(i['issue']['issue_date'] for i in completed)
-    prepare['correction_reason'] = '공개 원문 수집 전환 후 제목·도입부를 우선하는 기사 분류 기준 정정'
+    prepare['correction_reason'] = '풍력산업 전반의 검색어·기업·프로젝트 검색으로 매체 범위를 확대하고 원문 근거로 재발간'
 issue = job('/v1/issues/prepare', prepare)
 print('LAUNCH_ISSUE_STATE='+issue['state'], flush=True)
 print('LAUNCH_COUNTS='+json.dumps(issue['issue']['counts']), flush=True)

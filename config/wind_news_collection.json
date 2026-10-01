@@ -6,17 +6,29 @@
   "timeout_seconds": 15,
   "queries": [
     "풍력",
-    "해상풍력 EPC",
-    "풍력 금융약정",
-    "풍력 PF",
-    "풍력 사고",
-    "풍력 주민",
-    "풍력 MOU",
-    "풍력 터빈",
-    "풍력 해저케이블",
-    "풍력 하부구조",
-    "풍력 설치선",
-    "풍력 O&M"
+    "해상풍력",
+    "육상풍력",
+    "부유식 풍력",
+    "풍력 인허가",
+    "풍력 경쟁입찰",
+    "풍력 금융 PF",
+    "풍력 주민 보상",
+    "해상 변전소",
+    "해저케이블",
+    "모노파일",
+    "풍력 터빈 블레이드",
+    "풍력 설치선 항만",
+    "풍력 유지보수",
+    "풍황 계측",
+    "GS엔텍",
+    "SK오션플랜트",
+    "씨에스윈드 | 씨에스베어링",
+    "두산에너빌리티 풍력",
+    "LS전선 해저",
+    "한화오션 설치선",
+    "신안우이 풍력",
+    "안마해상풍력 | 낙월해상풍력",
+    "태안해상풍력 | 영광해상풍력"
   ],
   "sources": [
     {
@@ -76,8 +88,24 @@
       "discovery": "ndsoft_list",
       "list_url": "https://www.electimes.com/news/articleList.html?sc_area=A&view_type=sm&sc_word=%ED%92%8D%EB%A0%A5",
       "body_selector": "#article-view-content-div"
+    },
+    {
+      "source_id": "industry_search",
+      "name": "산업 전반 뉴스 검색",
+      "hosts": [],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-10-01_industry_search",
+      "discovery": "naver_news_search"
     }
   ],
   "max_articles_per_source": 30,
-  "request_interval_seconds": 0.4
+  "request_interval_seconds": 0.4,
+  "search_max_articles": 240,
+  "search_pages_per_query": 3
 }
