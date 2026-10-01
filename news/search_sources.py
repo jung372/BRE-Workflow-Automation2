@@ -65,7 +65,7 @@ def search_page(content):
         raise SourceError("SEARCH_PARSE_FAILED")
     if next_url:
         next_url = safe_public_url(next_url, SEARCH_HOSTS)
-        if urlsplit(next_url).path != "/p/newssearch/3/api/tab/more":
+        if not re.fullmatch(r"/p/newssearch/\d{1,3}/api/tab/more", urlsplit(next_url).path):
             raise SourceError("SEARCH_NEXT_URL_REJECTED")
     return links, next_url
 

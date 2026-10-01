@@ -19,6 +19,8 @@ class IndustrySearchTests(unittest.TestCase):
         links, next_url = search_page(text)
         self.assertEqual(links, ["https://paper.kr/news/1"])
         self.assertEqual(next_url, NEXT)
+        # Naver concurrently serves version 3 and 4 depending on response.
+        self.assertEqual(search_page(text.replace('/3/api/', '/4/api/'))[1], NEXT.replace('/3/api/', '/4/api/'))
         links, next_url = search_page(json.dumps({"collection":[{"html":'<a data-heatmap-target=".tit" href="https://other.kr/2">기사</a>'}],"url":None}))
         self.assertEqual(links,["https://other.kr/2"])
         self.assertIsNone(next_url)
