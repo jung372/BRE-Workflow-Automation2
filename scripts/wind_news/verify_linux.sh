@@ -27,6 +27,10 @@ backup=pathlib.Path(os.environ['WIND_NEWS_RUNTIME_DIR'])/'backups'/job['result']
 assert hashlib.sha256(backup.read_bytes()).hexdigest()==job['result']['sha256']
 with duckdb.connect(str(backup),read_only=True) as db:
     counts={table:db.execute('select count(*) from '+table).fetchone()[0] for table in ('articles','issues','jobs')}
+    last_batch=db.execute('SELECT created_at,source_results FROM batches ORDER BY created_at DESC LIMIT 1').fetchone()
+    if last_batch:
+        print('LAST_COLLECTION_AT='+last_batch[0])
+        print('LAST_COLLECTION_RESULTS='+last_batch[1])
 print('BACKUP_HASH_VERIFIED='+json.dumps(counts))
 env=dict(os.environ,CODEX_HOME=os.environ['WIND_NEWS_CODEX_HOME'])
 status=subprocess.run(['codex','login','status'],env=env,capture_output=True,text=True,timeout=15)
@@ -70,6 +74,9 @@ if oauth:
     assert result.get('valid'), 'CODEX_TWO_PASS_NOT_VERIFIED'
 from news.service import load_config
 config=load_config(os.environ['WIND_NEWS_CONFIG'])
+from datetime import datetime,timezone
+print('SERVER_UTC='+datetime.now(timezone.utc).isoformat())
+print('SEARCH_QUERY_COUNT='+str(len(config['collection'].get('queries',[]))))
 print('FREE_ONLY_POLICY='+str(config['policy'].get('require_free_access',False)).lower())
 print('COLLECTION_ENABLED='+str(config['collection'].get('enabled',False)).lower())
 git=subprocess.run(['git','-C','/var/lib/bre-wind/publish','ls-remote','--exit-code','origin','refs/heads/main'],capture_output=True,text=True,timeout=30)
