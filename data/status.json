@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-02 16:00:04",
+  "checked_at": "2026-10-02 17:00:04",
   "sites": [
     {
       "id": "notice",
@@ -30,8 +30,24 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 3,
       "new_items": [
+        {
+          "num": "ME20260123",
+          "title": "포항 죽장 풍력발전단지",
+          "date": "2026-09-30",
+          "comp_date": "",
+          "status": "변경협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "ME20260119",
+          "title": "삼척시 도계읍 황조리 산159번지 일원 풍력발전단지 조성사업",
+          "date": "2026-09-30",
+          "comp_date": "",
+          "status": "변경협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
         {
           "num": "JN20260032",
           "title": "곡성군 오곡면 미산리 군도2호선 확포장 조성사업",
@@ -41,7 +57,7 @@
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
-      "total": 61
+      "total": 62
     },
     {
       "id": "kepco_notice",
