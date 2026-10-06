@@ -225,6 +225,33 @@ class PipelineTests(unittest.TestCase):
         for row in self.store.call(lambda db: db.execute("SELECT evidence FROM articles").fetchall()):
             self.assertNotIn("description", json.loads(row[0]))
 
+    def test_correction_can_freeze_only_original_published_members(self):
+        self.pipeline.policy["max_summary_candidates"] = 1
+        original = self.prepare()
+        candidate = next(c for c in original["candidates"] if c["reason"] != "SUMMARY_BUDGET_EXHAUSTED")
+        approved = self.approve(original, item_ids=[candidate["item"]["event_id"]])
+        self.store.call(lambda db: db.execute("UPDATE issues SET state='COMMITTED'").fetchall(), write=True)
+        self.pipeline.policy["max_summary_candidates"] = 20
+        corrected = self.pipeline.prepare({"issue_date": original["payload"]["issue_date"], "correction_reason": "동일 사건 통합", "batch_ids": approved["batch_ids"], "article_ids": candidate["member_article_ids"]})
+        self.assertEqual(corrected["revision"], 2)
+        self.assertEqual(len(corrected["candidates"]), 1)
+        self.assertEqual(corrected["candidates"][0]["member_article_ids"], candidate["member_article_ids"])
+        self.assertEqual(corrected["batch_ids"], approved["batch_ids"])
+
+    def test_correction_selection_rejects_missing_and_duplicate_frozen_members(self):
+        original = self.approve(self.prepare())
+        self.store.call(lambda db: db.execute("UPDATE issues SET state='COMMITTED'").fetchall(), write=True)
+        article_id = original["candidates"][0]["member_article_ids"][0]
+        for ids in (["missing"], [article_id, article_id], [], "bad"):
+            with self.subTest(ids=ids), self.assertRaises(ValueError):
+                self.pipeline.prepare({"issue_date": original["payload"]["issue_date"], "correction_reason": "duplicate correction", "batch_ids": original["batch_ids"], "article_ids": ids})
+        self.assertEqual(self.store.issue(original["issue_id"])["revision"], 1)
+
+    def test_article_selection_is_restricted_to_correction_requests(self):
+        self.pipeline.ingest(self.fixture, "frozen")
+        with self.assertRaisesRegex(ValueError, "invalid_correction_article_ids"):
+            self.pipeline.prepare({"issue_date": "2026-09-30", "batch_ids": ["frozen"], "article_ids": ["arbitrary"]})
+
 
 if __name__ == "__main__":
     unittest.main()

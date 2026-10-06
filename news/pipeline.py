@@ -11,6 +11,7 @@ import polars as pl
 
 from .store import Conflict, canonical, digest, utcnow
 from .relevance import industry_relevant, editorial_order
+from .dedup import RULE_VERSION, agreement_anchor, agreement_classification, group_events
 
 KST = timezone(timedelta(hours=9))
 SUCCESS = {"success", "success_zero"}
@@ -238,6 +239,13 @@ class Pipeline:
                         published_articles.update(candidate["member_article_ids"])
             return batches, frozen_ids, articles, published_articles, published_events
         batches, frozen_ids, articles, prior_articles, prior_events = self.store.call(read)
+        selected_ids = payload.get("article_ids")
+        if selected_ids is not None:
+            if not correction or not isinstance(selected_ids, list) or not selected_ids or len(selected_ids) > 10000 or any(not isinstance(x, str) for x in selected_ids) or len(set(selected_ids)) != len(selected_ids):
+                raise ValueError("invalid_correction_article_ids")
+            selected_ids = set(selected_ids)
+            if not selected_ids <= {a["article_id"] for a in articles}:
+                raise ValueError("correction_article_not_in_frozen_batches")
         source_status = {}
         for batch in batches:
             for result in json.loads(batch[2]):
@@ -250,8 +258,10 @@ class Pipeline:
         if payload.get("batch_ids") is None and not any(instant(b[1]) >= end.astimezone(timezone.utc) for b in batches):
             required_failed = True
         coverage = {"expected_sources": len(active), "successful_sources": successes, "partial": successes < len(active), "source_results": list(source_status.values())}
-        candidates, groups, eligible = [], {}, 0
+        candidates, eligible_articles, eligible = [], [], 0
         for article in articles:
+            if selected_ids is not None and article["article_id"] not in selected_ids:
+                continue
             if self.policy.get("require_free_access", False) and not free_access(article):
                 continue
             published = instant(article["source_published_at"])
@@ -264,7 +274,8 @@ class Pipeline:
             if event_id in prior_events:
                 continue
             article.update(classification, event_id=event_id, event_key=key, late_arrival=published < start.astimezone(timezone.utc))
-            groups.setdefault(event_id, []).append(article)
+            eligible_articles.append(article)
+        groups = group_events(eligible_articles)
         summary_start = monotonic_time.monotonic()
         max_summaries = min(30, max(1, int(self.policy.get("max_summary_candidates", 20))))
         summary_deadline = min(900, max(1, int(self.policy.get("summary_deadline_seconds", 900))))
@@ -311,9 +322,10 @@ class Pipeline:
             now = utcnow()
             db.execute("INSERT INTO issues VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [issue_id, revision, day, state, content_hash, approval_hash, canonical(public), canonical(candidates), canonical(frozen_ids), None, now, now])
             for event_id, members in groups.items():
-                db.execute("INSERT INTO events VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, members[0]["event_key"], canonical({"rule_version": "conservative-v1", "stage": members[0]["contract_stage"], "representative_article_id": members[0]["article_id"]})])
+                db.execute("INSERT INTO events VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, members[0]["event_key"], canonical({"rule_version": RULE_VERSION, "stage": members[0]["contract_stage"], "representative_article_id": members[0]["article_id"]})])
                 for member in members:
-                    db.execute("INSERT INTO event_articles VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, member["article_id"], "exact_identity_and_stage"])
+                    decision = "dated_agreement_evidence" if member.get("agreement_anchor") else "exact_identity_and_stage"
+                    db.execute("INSERT INTO event_articles VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, member["article_id"], decision])
         self.store.call(write, write=True)
         return self.store.issue(issue_id)
 
@@ -406,8 +418,12 @@ class Pipeline:
             raise ValueError("article_not_found")
         article, evidence = json.loads(row[0]), json.loads(row[1])
         facts = classify({**article, **evidence})
+        anchor = agreement_anchor({**article, **evidence})
+        if anchor:
+            facts.update(agreement_classification(anchor))
         candidate["item"].update(representative_article_id=article_id, headline=article["title"], summary=clean(evidence.get("text") or evidence.get("description") or article["title"])[:280], source_name=article["source_name"], source_url=article["url"], source_published_at=article["source_published_at"], timestamp_basis=article["timestamp_basis"], evidence_scope=article["evidence_scope"], project_name=article.get("project_name"), companies=article.get("companies", []), region=article.get("region"), contract_stage=facts["contract_stage"], primary_category=facts["primary_category"], wind_type=facts["wind_type"])
         candidate.update(evidence_hash=row[2], approved=False, held=True, review_required=True)
+        candidate["item"]["tags"] = [facts["contract_stage"]] if facts["contract_stage"] != "미확인" else []
 
     def purge_expired_evidence(self):
         cutoff = datetime.now(timezone.utc) - timedelta(days=min(30, self.policy.get("raw_text_retention_days", 30)))

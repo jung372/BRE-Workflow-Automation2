@@ -19,7 +19,8 @@ print('NEWS_AUTHENTICATED_HEALTH='+health.json()['status'])
 response = s.post(base+'/v1/backup',json={},headers={'Idempotency-Key':'server-smoke-'+uuid.uuid4().hex},timeout=10)
 response.raise_for_status(); job_id=response.json()['job_id']
 for _ in range(30):
-    response=s.get(base+'/v1/jobs/'+job_id,timeout=5); response.raise_for_status(); job=response.json()
+    # Reads share the single writer queue; a backup can hold it beyond 5 seconds.
+    response=s.get(base+'/v1/jobs/'+job_id,timeout=60); response.raise_for_status(); job=response.json()
     if job['status'] not in ('QUEUED','RUNNING'): break
     time.sleep(1)
 assert job['status']=='SUCCEEDED', 'BACKUP_JOB_FAILED'

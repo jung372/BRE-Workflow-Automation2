@@ -15,8 +15,8 @@ def industry_relevant(title, text=""):
 def editorial_order(groups):
     """Prioritize direct industry subjects and spread a finite LLM budget.
 
-    Similar titles are deferred, never automatically merged: separate contracts
-    and project stages must keep their own evidence and database records.
+    Evidence grouping happens before this ordering. Remaining similar titles
+    are deferred: similarity alone cannot merge contracts or project stages.
     """
     remaining = list(groups.items())
     selected, used, titles = [], {}, []
