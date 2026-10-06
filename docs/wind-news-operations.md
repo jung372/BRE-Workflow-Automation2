@@ -131,7 +131,7 @@ python scripts/wind_news/build_workflows.py --service-url http://news-service:80
 | 01 Collect | 매시 05분, 07:30 | 수집 작업 접수·완료 조회 |
 | 02 Prepare | 07:40 | DB의 수집 결과를 고정하고 초안 준비 |
 | 03 Publish | 07:50 | 승인 확인·웹 보고서와 검색 게시·실제 반영 확인 |
-| 04 Deliver | 08:00~08:55 5분마다, 09:00 최종 확인 | 당일 웹 완료 호의 아침 브리핑 1회. 발간 지연 시에만 뒤늦게 발송 |
+| 04 Deliver | 비활성 참조용 | 실제 정기 발송은 GitHub Actions의 `news-report.yml`이 담당 |
 | 05A Errors | 연결된 자동 실행 실패 | 복구 작업 호출 |
 | 05B Reconcile | 5분마다 | 누락·중단 작업 점검. 자동 복구는 정책으로 제어 |
 | 06 Backup | 02:30 | 뉴스 DB의 일관된 백업 |
@@ -154,6 +154,12 @@ CI는 기능 브랜치와 PR에서도 검증하고 `main`에서만 기존 서버
 
 ### 오전 8시 언론기사 브리핑
 
+GitHub **Actions 메뉴의 `뉴스 브리핑 Teams 정기 보고 (매일 08:00 KST)`**가 발송 진입점이다. `.github/workflows/news-report.yml`은 독립 workflow이며, 기존 `검증 및 서버 배포`의 `news_action=briefing`은 코드·일정 배포용이다. 배포 옵션만 추가해서는 별도 Actions 항목이 생기지 않는다.
+
+예약은 UTC 23:00~23:55 5분마다(서울 08:00~08:55), UTC 00:00(서울 09:00 최종 확인)다. 발송 후 반복 확인은 날짜 단위 원장에서 차단한다. GitHub 예약은 큐 상황에 따라 지연될 수 있으므로 08:00은 시작 목표이며 정시 수신을 보장하지 않는다. `Run workflow`에서는 `mode=preview`(기본, 발송 없음) 또는 `send`(명시적 발송)를 선택하고 `issue_date`를 비우면 서울 기준 오늘을 사용한다. Actions Summary와 로그에 접수·실패·미설정·미발간을 구분해 표시한다.
+
+기존 self-hosted Windows runner → WSL → 실행 중인 뉴스 서비스의 인증 API를 호출한다. 서버 안에서만 토큰과 Teams 수신 주소를 사용하므로 GitHub에 새 비밀값을 복사하거나 서비스 포트를 외부에 공개하지 않는다. Actions용 스크립트는 매번 checkout한 코드를 사용하므로 컨테이너 재빌드 없이 반영된다. n8n Deliver는 연결 설정 여부와 관계없이 비활성으로 유지하며, 이후 `news_action=briefing` 배포도 다시 활성화하지 않는다. 수집·준비·웹 발행은 기존 n8n이 계속 담당한다.
+
 카드는 발간된 기사 전체(현재 최대 15건)의 **기사 제목 링크 · 언론사**만 표시한다. 요약·전문을 넣지 않으며, 웹 보고서의 순서와 대표 기사 원문 링크를 사용한다. 하단 `웹에서 전체 보고서 보기`는 `/#/daily/YYYY-MM-DD`로 연결한다. 정상 0건 보고서는 0건 안내와 웹 링크를 표시하고, 부분 장애는 별도로 표시한다.
 
 예약 발송은 `scheduled=true`, `message_type=daily`로 요청한다. 서버의 서울 날짜와 당일 호가 일치하고, 08:00~09:00 범위이며, `WEB_VERIFIED`인 가장 최신 revision만 대상이다. 새 DRAFT가 있어도 이미 확인된 발간판을 사용할 수 있다. 09:00까지 발간판이 없으면 `PUBLICATION_NOT_READY_BY_DEADLINE`로 운영 오류를 기록하며 전날 호를 대신 보내지 않는다. 준비가 늦으면 08:00 정시를 놓칠 수 있으며, 시각만으로 성공을 기록하지 않는다.
@@ -164,7 +170,7 @@ CI는 기능 브랜치와 PR에서도 검증하고 `main`에서만 기존 서버
 
 배포는 `workflow_dispatch`의 `news_action=briefing`이다. 전체 CI 후 서비스 API로 DB 백업·해시를 확인하고 뉴스 컨테이너를 갱신한다. 서버의 기존 Publish·Deliver 두 workflow만 개별 백업·갱신한다. 기존 URL·credential ID·연결·다른 노드는 유지하며, 새 일정과 실제 활성 상태를 확인한다. n8n CLI 게시 변경 반영을 위해 기존 n8n 컨테이너만 재시작하고 정상 상태를 확인한다(업그레이드·DB 교체 없음). 다른 workflow의 활성 ID 집합이 같아야 성공이다. 두 workflow 갱신 실패 시 이전 draft와 기존 발행 version으로 복구한다.
 
-Teams 전용 주소가 없으면 Deliver는 비활성으로 유지한다. 같은 업무 채널에 뉴스용 Teams Workflows 수신 흐름을 만들고 담당자·공동 소유자를 지정한다. 실제 주소는 운영자가 서버의 비밀 설정 `WIND_NEWS_TEAMS_WEBHOOK_URL`에 입력하며 채팅·Git·Actions 로그로 전달하지 않는다. 연결 후 `news_action=briefing`을 다시 실행하면 활성화한다. 배포 자체는 Teams 메시지를 보내지 않으며 첫 실제 수신은 별도로 확인한다. 기존 공지 정기 보고의 평일 08:30 일정·credential은 변경하지 않는다.
+Teams 전용 주소가 없으면 Actions에서 `TEAMS_NOT_CONFIGURED`와 미발송 안내를 표시한다. 같은 업무 채널에 뉴스용 Teams Workflows 수신 흐름을 만들고 담당자·공동 소유자를 지정한다. 실제 주소는 운영자가 서버의 비밀 설정 `WIND_NEWS_TEAMS_WEBHOOK_URL`에 입력하며 채팅·Git·Actions 로그로 전달하지 않는다. 서비스에 설정을 반영한 뒤 뉴스 Actions의 `preview`로 연결 여부를 확인하고 `send`로 실제 수신을 확인한다. 배포 자체는 Teams 메시지를 보내지 않으며 첫 실제 수신은 별도로 확인한다. 기존 공지 정기 보고의 평일 08:30 일정·credential은 변경하지 않는다.
 
 Teams의 2xx는 `ACCEPTED`(접수)로 기록한다. 채널 메시지 ID 등 증거가 있으면 `DELIVERED`로 확정한다. 전송 timeout·연결 단절·불명확한 서버 응답은 `UNKNOWN`으로 보관하고 무조건 재전송하지 않는다. 전송 성공 직후 프로세스가 중단된 claim도 복구 시 불명확 상태로 처리한다. 명확한 거절인 `FAILED`만 최대 3회까지 시도한다.
 

@@ -23,7 +23,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, preflight, install, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
+        options: [normal, check, preflight, install, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
         default: normal
 
 env:

@@ -1,0 +1,45 @@
+name: 뉴스 브리핑 Teams 정기 보고 (매일 08:00 KST)
+
+on:
+  schedule:
+    - cron: '0-55/5 23 * * *' # KST 08:00 시작, 발간 지연 시 08:55까지 확인
+    - cron: '0 0 * * *'       # KST 09:00 최종 확인
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preview: 발송 없는 검증 / send: 실제 발송(기존 발송은 중복 방지)'
+        type: choice
+        options: [preview, send]
+        default: preview
+      issue_date:
+        description: '보고서 날짜 YYYY-MM-DD (비우면 서울 기준 오늘)'
+        type: string
+        required: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+# 같은 서버 checkout을 사용하는 배포와 겹치지 않게 한다.
+concurrency:
+  group: bre-workflow-production
+  cancel-in-progress: false
+
+jobs:
+  news-report:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 5
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 뉴스 브리핑 확인 및 Teams 보고
+        shell: powershell
+        env:
+          NEWS_REPORT_MODE: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.mode || 'preview' }}
+          NEWS_REPORT_DATE: ${{ inputs.issue_date }}
+        run: .\scripts\wind_news\report_teams.ps1

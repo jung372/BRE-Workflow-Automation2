@@ -90,8 +90,8 @@ def main():
     try:
         command(["docker", "exec", N8N, "n8n", "import:workflow", "--input=" + remote])
         expected_active = before_active - {ids[1]}
-        if args.teams_configured == "true":
-            expected_active.add(ids[1])
+        # GitHub Actions owns the schedule. Keep n8n Deliver as an inactive
+        # reference even when Teams is configured; never enable two schedulers.
         for workflow_id in ids:
             if workflow_id in expected_active:
                 command(["docker", "exec", N8N, "n8n", "publish:workflow", "--id=" + workflow_id])
@@ -116,7 +116,7 @@ def main():
             raise RuntimeError("BRIEFING_ACTIVE_WORKFLOW_SET_MISMATCH")
         print("BRIEFING_SCHEDULES_VERIFIED publish=07:50 delivery=08:00-09:00 timezone=Asia/Seoul")
         print("OTHER_ACTIVE_WORKFLOWS_PRESERVED=" + str(len(before_active - set(ids))))
-        print("TEAMS_SCHEDULE_ACTIVE=" + args.teams_configured)
+        print("TEAMS_SCHEDULE_OWNER=github-actions N8N_DELIVER_ACTIVE=false")
     except Exception:
         # Restore both prior drafts and their exact published versions. Version
         # history survives import; leave every unrelated workflow untouched.
