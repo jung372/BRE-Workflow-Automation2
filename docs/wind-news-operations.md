@@ -130,8 +130,8 @@ python scripts/wind_news/build_workflows.py --service-url http://news-service:80
 |---|---|---|
 | 01 Collect | 매시 05분, 07:30 | 수집 작업 접수·완료 조회 |
 | 02 Prepare | 07:40 | DB의 수집 결과를 고정하고 초안 준비 |
-| 03 Publish | 08:00 | 승인 확인·웹 보고서와 검색 게시·실제 반영 확인 |
-| 04 Deliver | 08~23시 5분마다 | 당일 웹 완료 호의 알림만 처리 |
+| 03 Publish | 07:50 | 승인 확인·웹 보고서와 검색 게시·실제 반영 확인 |
+| 04 Deliver | 08:00~08:55 5분마다, 09:00 최종 확인 | 당일 웹 완료 호의 아침 브리핑 1회. 발간 지연 시에만 뒤늦게 발송 |
 | 05A Errors | 연결된 자동 실행 실패 | 복구 작업 호출 |
 | 05B Reconcile | 5분마다 | 누락·중단 작업 점검. 자동 복구는 정책으로 제어 |
 | 06 Backup | 02:30 | 뉴스 DB의 일관된 백업 |
@@ -151,6 +151,20 @@ publisher는 `data/wind-news/**`만 commit한다. 호 파일·검색 파일은 i
 CI는 기능 브랜치와 PR에서도 검증하고 `main`에서만 기존 서버 배포 조건을 평가한다. 뉴스 데이터만 변경된 commit은 Windows 코드 재배포를 일으키지 않는다. 기존 공지 JSON·키워드 계약은 유지한다.
 
 ## 6. Teams 결과와 재전송
+
+### 오전 8시 언론기사 브리핑
+
+카드는 발간된 기사 전체(현재 최대 15건)의 **기사 제목 링크 · 언론사**만 표시한다. 요약·전문을 넣지 않으며, 웹 보고서의 순서와 대표 기사 원문 링크를 사용한다. 하단 `웹에서 전체 보고서 보기`는 `/#/daily/YYYY-MM-DD`로 연결한다. 정상 0건 보고서는 0건 안내와 웹 링크를 표시하고, 부분 장애는 별도로 표시한다.
+
+예약 발송은 `scheduled=true`, `message_type=daily`로 요청한다. 서버의 서울 날짜와 당일 호가 일치하고, 08:00~09:00 범위이며, `WEB_VERIFIED`인 가장 최신 revision만 대상이다. 새 DRAFT가 있어도 이미 확인된 발간판을 사용할 수 있다. 09:00까지 발간판이 없으면 `PUBLICATION_NOT_READY_BY_DEADLINE`로 운영 오류를 기록하며 전날 호를 대신 보내지 않는다. 준비가 늦으면 08:00 정시를 놓칠 수 있으며, 시각만으로 성공을 기록하지 않는다.
+
+일반 브리핑의 중복 방지는 revision에 관계없이 **보고서 날짜 + 채널 + daily** 단위다. 기존 이력을 그대로 조회하므로 DB 재생성·이력 삭제가 필요 없다. 첫 발송 전 정정판은 최신 확인판을 사용한다. 이후 정정판은 자동 재발송하지 않으며, 별도 정정 알림은 명시적인 `message_type=correction` 요청으로만 처리한다. 실패 재시도 횟수도 날짜 단위로 유지한다.
+
+`GET /v1/deliveries/status`는 인증 후 Teams 설정 여부(값 제외), 당일 확인된 revision과 발송 상태만 제공한다. `POST /v1/deliveries/preview`는 확인된 발간판의 카드 JSON을 생성하며, Teams 호출·발송 claim을 하지 않는다. 정확한 revision 대조에는 `GET /v1/issues/{issue_id}?revision=N`을 사용한다.
+
+배포는 `workflow_dispatch`의 `news_action=briefing`이다. 전체 CI 후 서비스 API로 DB 백업·해시를 확인하고 뉴스 컨테이너를 갱신한다. 서버의 기존 Publish·Deliver 두 workflow만 개별 백업·갱신한다. 기존 URL·credential ID·연결·다른 노드는 유지하며, 새 일정과 실제 활성 상태를 확인한다. n8n CLI 게시 변경 반영을 위해 기존 n8n 컨테이너만 재시작하고 정상 상태를 확인한다(업그레이드·DB 교체 없음). 다른 workflow의 활성 ID 집합이 같아야 성공이다. 두 workflow 갱신 실패 시 이전 draft와 기존 발행 version으로 복구한다.
+
+Teams 전용 주소가 없으면 Deliver는 비활성으로 유지한다. 같은 업무 채널에 뉴스용 Teams Workflows 수신 흐름을 만들고 담당자·공동 소유자를 지정한다. 실제 주소는 운영자가 서버의 비밀 설정 `WIND_NEWS_TEAMS_WEBHOOK_URL`에 입력하며 채팅·Git·Actions 로그로 전달하지 않는다. 연결 후 `news_action=briefing`을 다시 실행하면 활성화한다. 배포 자체는 Teams 메시지를 보내지 않으며 첫 실제 수신은 별도로 확인한다. 기존 공지 정기 보고의 평일 08:30 일정·credential은 변경하지 않는다.
 
 Teams의 2xx는 `ACCEPTED`(접수)로 기록한다. 채널 메시지 ID 등 증거가 있으면 `DELIVERED`로 확정한다. 전송 timeout·연결 단절·불명확한 서버 응답은 `UNKNOWN`으로 보관하고 무조건 재전송하지 않는다. 전송 성공 직후 프로세스가 중단된 claim도 복구 시 불명확 상태로 처리한다. 명확한 거절인 `FAILED`만 최대 3회까지 시도한다.
 

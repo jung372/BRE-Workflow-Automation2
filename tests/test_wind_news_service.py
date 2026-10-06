@@ -95,6 +95,68 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(second.json["status"], "UNKNOWN")
         self.assertEqual(send.call_count, 1)
 
+    def test_preview_and_status_do_not_send_or_expose_webhook(self):
+        self.publish(self.ready())
+        self.runner.clock = lambda: datetime(2026, 9, 29, 23, 0, tzinfo=timezone.utc)
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/?sig=PRIVATE"}), patch("news.delivery.send_card") as send:
+            status = self.client.get("/v1/deliveries/status", headers=self.headers)
+            self.assertTrue(status.json["teams_configured"])
+            self.assertEqual(status.json["issue_date"], "2026-09-30")
+            self.assertNotIn("PRIVATE", status.get_data(as_text=True))
+            preview = self.client.post("/v1/deliveries/preview", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertEqual(preview.status_code, 200)
+            self.assertIn("Action.OpenUrl", str(preview.json))
+            send.assert_not_called()
+        self.assertEqual(self.client.get("/v1/deliveries/status").status_code, 401)
+        self.assertEqual(self.client.post("/v1/deliveries/preview", json={}).status_code, 401)
+
+    def test_scheduled_window_and_date_guard_before_contacting_teams(self):
+        self.publish(self.ready())
+        payload = {"issue_date": "2026-09-30", "scheduled": True}
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
+            for hour, minute in [(22, 59), (0, 1)]:
+                day = 29 if hour == 22 else 30
+                self.runner.clock = lambda h=hour, m=minute, d=day: datetime(2026, 9, d, h, m, tzinfo=timezone.utc)
+                response = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+                self.assertEqual(response.json["error_code"], "OUTSIDE_DELIVERY_WINDOW")
+            self.runner.clock = lambda: datetime(2026, 9, 29, 23, 0, tzinfo=timezone.utc)
+            wrong = self.client.post("/v1/deliveries/send", json={**payload, "issue_date": "2026-09-29"}, headers=self.headers)
+            self.assertEqual(wrong.status_code, 400)
+            send.assert_not_called()
+            first = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+            self.assertEqual(first.json["status"], "ACCEPTED")
+            self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+            self.assertEqual(send.call_count, 1)
+
+    def test_deadline_for_missing_issue_and_no_yesterday_fallback(self):
+        self.publish(self.ready())
+        self.runner.clock = lambda: datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)
+        with patch("news.delivery.send_card") as send:
+            response = self.client.post("/v1/deliveries/send", json={"scheduled": True}, headers=self.headers)
+            self.assertEqual(response.json["error_code"], "PUBLICATION_NOT_READY_BY_DEADLINE")
+            send.assert_not_called()
+
+    def test_daily_does_not_resend_after_revision_changes(self):
+        record = self.ready()
+        self.publish(record)
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
+            self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.store.call(lambda db: db.execute("INSERT INTO issues SELECT issue_id,2,issue_date,state,content_hash,approval_hash,payload,candidates,batch_ids,publish_result,created_at,updated_at FROM issues WHERE revision=1").fetchall(), write=True)
+            repeat = self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertFalse(repeat.json["claimed"])
+            self.assertEqual(send.call_count, 1)
+
+    def test_first_send_selects_verified_revision_beneath_newer_draft(self):
+        self.publish(self.ready())
+        self.store.call(lambda db: db.execute("INSERT INTO issues SELECT issue_id,2,issue_date,'DRAFT',content_hash,approval_hash,payload,candidates,batch_ids,publish_result,created_at,updated_at FROM issues WHERE revision=1").fetchall(), write=True)
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
+            response = self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertEqual(response.json["status"], "ACCEPTED")
+            self.assertEqual(send.call_args.args[0]["revision"], 1)
+        record = self.client.get("/v1/issues/wind-2026-09-30?revision=1", headers=self.headers)
+        self.assertEqual(record.json["revision"], 1)
+        self.assertEqual(self.client.get("/v1/issues/wind-2026-09-30?revision=invalid", headers=self.headers).status_code, 400)
+
     def test_publishing_blocks_concurrent_edits(self):
         record = self.ready()
         def external(issues):

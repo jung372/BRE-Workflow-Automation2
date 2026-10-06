@@ -51,6 +51,17 @@ class WorkflowsTest(unittest.TestCase):
         self.assertNotIn("/v1/deliveries", json.dumps(publish))
         self.assertNotIn("executeWorkflow", json.dumps(publish))
 
+    def test_briefing_publishes_before_eight_and_delivery_is_daily_and_bounded(self):
+        flows = {f["name"]: f for f in build()}
+        publish = flows["BRE-WIND-03-Publish"]
+        deliver = flows["BRE-WIND-04-Deliver"]
+        def crons(flow):
+            return next(n for n in flow["nodes"] if n["name"] == "Schedule")["parameters"]["rule"]["interval"]
+        self.assertEqual(crons(publish), [{"field": "cronExpression", "expression": "50 7 * * *"}])
+        self.assertEqual([c["expression"] for c in crons(deliver)], ["*/5 8 * * *", "0 9 * * *"])
+        self.assertIn("scheduled: true", json.dumps(deliver))
+        self.assertIn("message_type: 'daily'", json.dumps(deliver))
+
     def test_jobs_have_bound_and_fail_explicitly(self):
         for flow in build():
             check = next((n for n in flow["nodes"] if n["name"] == "Check outcome"), None)

@@ -1,4 +1,4 @@
-param([ValidateSet('install', 'connect', 'verify', 'launch', 'correct', 'refresh', 'dedup-correct')][string]$Action = 'install')
+param([ValidateSet('install', 'connect', 'verify', 'launch', 'correct', 'refresh', 'dedup-correct', 'briefing')][string]$Action = 'install')
 $ErrorActionPreference = 'Stop'
 if ($env:COMPUTERNAME -ne 'DESKTOP-EVU6USL') { throw 'Unexpected server' }
 $source = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path.Replace('\', '/')

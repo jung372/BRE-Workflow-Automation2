@@ -163,7 +163,7 @@ class JobRunner:
                 batch_suffix = latest_batch[0] if latest_batch else "none"
                 job = self.store.submit("prepare", "recovery-prepare-" + day + "-" + batch_suffix, {"issue_date": day, "retry_blocked": True})
                 enqueued.append(job["job_id"])
-            elif current and current["state"] in {"READY", "COMMITTED"} and now.hour >= 8 and policy.get("publisher", {}).get("enabled"):
+            elif current and current["state"] in {"READY", "COMMITTED"} and (now.hour, now.minute) >= (7, 50) and policy.get("publisher", {}).get("enabled"):
                 previous_attempts = self.store.call(lambda db: db.execute("SELECT status FROM jobs WHERE operation='publish' AND idempotency_key LIKE ? ORDER BY created_at", ["recovery-publish-" + day + "-" + str(current["revision"]) + "-%"]).fetchall())
                 if not any(row[0] in {"QUEUED", "RUNNING"} for row in previous_attempts) and len(previous_attempts) < 12:
                     job = self.store.submit("publish", "recovery-publish-" + day + "-" + str(current["revision"]) + "-" + str(len(previous_attempts) + 1), {"issue_id": current["issue_id"], "revision": current["revision"], "approval_hash": current["approval_hash"]})
@@ -281,7 +281,10 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @app.get("/v1/issues/<issue_id>")
     @authenticated
     def issue(issue_id):
-        value = store.issue(issue_id)
+        revision = request.args.get("revision", type=int)
+        if "revision" in request.args and (revision is None or revision < 1):
+            raise ValueError("invalid_revision")
+        value = store.issue(issue_id, revision)
         if value is None:
             return jsonify(error_code="ISSUE_NOT_FOUND"), 404
         return jsonify(present_issue(value))
@@ -342,19 +345,55 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
             raise ValueError("invalid_delivery_evidence")
         return jsonify(store.delivery_result(delivery_id, data.get("status"), evidence))
 
+    @app.get("/v1/deliveries/status")
+    @authenticated
+    def delivery_status():
+        now = runner.clock().astimezone(KST)
+        day = now.date().isoformat()
+        record = store.verified_issue("wind-" + day)
+        channel = request.args.get("channel_id", "wind-news")
+        prior = store.daily_delivery(day, channel)
+        return jsonify(teams_configured=bool(os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL")),
+                       issue_date=day, revision=record["revision"] if record else None,
+                       publication_state=record["state"] if record else None,
+                       delivery_status=prior["status"] if prior else None)
+
+    @app.post("/v1/deliveries/preview")
+    @authenticated
+    def delivery_preview():
+        data = body()
+        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", runner.clock().astimezone(KST).date().isoformat())
+        record = store.verified_issue(issue_id)
+        if not record:
+            return jsonify(error_code="WEB_VERIFICATION_REQUIRED"), 409
+        from .delivery import build_card
+        return jsonify(build_card(record["payload"], config["policy"].get("publisher", {}).get("pages_base_url", "")))
+
     @app.post("/v1/deliveries/send")
     @authenticated
     def send():
         data = body()
+        now = runner.clock().astimezone(KST)
+        scheduled = data.get("scheduled", False)
+        if not isinstance(scheduled, bool):
+            raise ValueError("scheduled_must_be_boolean")
+        kind = data.get("message_type", "daily")
+        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", now.date().isoformat())
+        if scheduled:
+            if issue_id != "wind-" + now.date().isoformat() or kind != "daily" or "revision" in data:
+                raise ValueError("scheduled_delivery_requires_today_latest_daily")
+            if not 480 <= now.hour * 60 + now.minute <= 540:
+                return jsonify(status="SKIPPED", error_code="OUTSIDE_DELIVERY_WINDOW")
+        record = (store.verified_issue(issue_id) if data.get("revision") is None
+                  else store.issue(issue_id, data["revision"]))
+        if not record or record["state"] != "WEB_VERIFIED":
+            code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and now.hour == 9 else "WEB_VERIFICATION_REQUIRED"
+            return jsonify(status="SKIPPED", error_code=code)
         webhook = os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL", "")
         if not webhook:
             return jsonify(status="SKIPPED", error_code="TEAMS_NOT_CONFIGURED")
-        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", datetime.now(KST).date().isoformat())
-        record = store.issue(issue_id, data.get("revision"))
-        if not record or record["state"] != "WEB_VERIFIED":
-            return jsonify(status="SKIPPED", error_code="WEB_VERIFICATION_REQUIRED")
         with delivery_lock:
-            claimed = store.claim_delivery(issue_id, record["revision"], data.get("channel_id", "wind-news"), data.get("message_type", "correction" if record["revision"] > 1 else "daily"))
+            claimed = store.claim_delivery(issue_id, record["revision"], data.get("channel_id", "wind-news"), kind)
             if not claimed["claimed"]:
                 return jsonify(status=claimed["status"], delivery_id=claimed["delivery_id"], claimed=False)
             from .delivery import send_card

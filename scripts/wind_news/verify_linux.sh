@@ -16,6 +16,24 @@ assert s.get(base+'/health/ready', timeout=5).status_code == 401
 s.headers['Authorization'] = 'Bearer '+os.environ['WIND_NEWS_API_TOKEN']
 health = s.get(base+'/health/ready', timeout=5); health.raise_for_status()
 print('NEWS_AUTHENTICATED_HEALTH='+health.json()['status'])
+status=s.get(base+'/v1/deliveries/status',timeout=60)
+if status.status_code == 200:
+    delivery=status.json()
+    print('BRIEFING_DELIVERY_STATUS='+json.dumps(delivery))
+    if delivery.get('revision'):
+        preview=s.post(base+'/v1/deliveries/preview',json={'issue_date':delivery['issue_date']},timeout=60)
+        preview.raise_for_status(); card=preview.json()['attachments'][0]['content']
+        issue=s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60)
+        issue.raise_for_status()
+        from news.delivery import build_card
+        from news.service import load_config
+        record=issue.json()['issue']
+        assert record['revision'] == delivery['revision']
+        expected=build_card(record,load_config(os.environ['WIND_NEWS_CONFIG'])['policy']['publisher']['pages_base_url'])['attachments'][0]['content']
+        assert card==expected, 'BRIEFING_CARD_MISMATCH'
+        assert len([b for b in card['body'] if '](' in b.get('text','')])==len(record['items'])
+        assert card['actions'][0]['url'].endswith('/#/daily/'+delivery['issue_date'])
+        print('BRIEFING_PREVIEW_VERIFIED articles='+str(len(record['items']))+' summaries=false')
 response = s.post(base+'/v1/backup',json={},headers={'Idempotency-Key':'server-smoke-'+uuid.uuid4().hex},timeout=10)
 response.raise_for_status(); job_id=response.json()['job_id']
 for _ in range(30):

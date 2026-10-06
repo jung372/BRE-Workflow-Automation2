@@ -90,6 +90,7 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
     else:
         nodes.append(node("Check delivery", "code", {"jsCode":
             "if (['FAILED','UNKNOWN'].includes($json.status)) throw new Error('delivery_' + $json.status.toLowerCase());\n"
+            "if ($json.error_code === 'PUBLICATION_NOT_READY_BY_DEADLINE') throw new Error('publication_not_ready_by_deadline');\n"
             "return $input.all();"}, 680, version=2))
         edge("Submit", "Check delivery")
     nodes.append(node("Setup instructions", "stickyNote", {"content":
@@ -112,10 +113,10 @@ def build(service_url="http://news-service:8090"):
         ("02", "Prepare", "'/v1/issues/prepare'", config_body, ["40 7 * * *"], {}),
         ("03", "Publish", "'/v1/issues/' + $('Configure').first().json.issue_id + '/publish'",
          "={{ JSON.stringify({revision: $json.revision, approval_hash: $json.approval_hash}) }}",
-         ["0 8 * * *"], {"publish": True}),
+         ["50 7 * * *"], {"publish": True}),
         ("04", "Deliver", "'/v1/deliveries/send'",
-         "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date, channel_id: 'wind-news'}) }}",
-         ["*/5 8-23 * * *"], {"async_job": False}),
+         "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date, channel_id: 'wind-news', message_type: 'daily', scheduled: true}) }}",
+         ["*/5 8 * * *", "0 9 * * *"], {"async_job": False}),
         ("05A", "Errors", "'/v1/reconcile'", '{"trigger":"workflow_error"}', [], {"error": True}),
         ("05B", "Reconcile", "'/v1/reconcile'", config_body, ["*/5 * * * *"], {}),
         ("06", "Backup", "'/v1/backup'", "{}", ["30 2 * * *"], {}),

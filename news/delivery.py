@@ -6,10 +6,13 @@ network result is UNKNOWN and must be reconciled rather than blindly retried.
 
 from __future__ import annotations
 
+from datetime import date
 import re
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import requests
+
+from .collector import safe_public_url
 
 
 def _public_https(url: str) -> bool:
@@ -40,6 +43,7 @@ def build_card(issue: dict, site_url: str) -> dict:
     day = issue.get("issue_date", "")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise ValueError("invalid_issue_date")
+    date.fromisoformat(day)
     if not _public_https(site_url):
         raise ValueError("invalid_site_url")
     report_url = site_url.rstrip("/") + "/#/daily/" + day
@@ -59,12 +63,19 @@ def build_card(issue: dict, site_url: str) -> dict:
         body.append({"type": "TextBlock", "text": f"일부 항목 검토 중: {int(held)}건", "wrap": True})
     if not items:
         body.append({"type": "TextBlock", "text": "오늘 새로 선정된 주요 기사가 없습니다.", "wrap": True})
-    for rank, item in enumerate(items[:5], 1):
-        body.extend([
-            {"type": "TextBlock", "text": f"{rank}. {_plain(item.get('headline'), 180)}",
-             "weight": "Bolder", "wrap": True},
-            {"type": "TextBlock", "text": _plain(item.get("summary"), 360), "wrap": True},
-        ])
+    for rank, item in enumerate(items, 1):
+        url = item.get("source_url", "")
+        if not _public_https(url) or re.search(r"[\s\x00-\x1f\x7f]", url):
+            raise ValueError("invalid_article_url")
+        url = safe_public_url(url, [urlsplit(url).hostname])
+        # Encode Markdown delimiters in URLs; preserve query strings and escapes.
+        url = quote(url, safe=":/?&=#%+;,@!$~*-._")
+        title = _plain(item.get("headline"), 180)
+        source = _plain(item.get("source_name"), 100)
+        if not title or not source:
+            raise ValueError("article_title_and_source_required")
+        body.append({"type": "TextBlock", "text": f"{rank}. [{title}]({url}) — {source}",
+                     "wrap": True})
     card = {"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
             "type": "AdaptiveCard", "version": "1.4", "body": body,
             "actions": [{"type": "Action.OpenUrl", "title": "웹에서 전체 보고서 보기", "url": report_url}]}

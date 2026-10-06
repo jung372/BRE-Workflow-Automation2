@@ -206,6 +206,21 @@ class Store:
         where = "WHERE state IN ('COMMITTED','WEB_VERIFIED')" if published else ""
         return self.call(lambda db: [self._issue(row) for row in db.execute("SELECT * FROM issues " + where + " ORDER BY issue_date,revision").fetchall()])
 
+    def verified_issue(self, issue_id):
+        return self.call(lambda db: self._issue(db.execute(
+            "SELECT * FROM issues WHERE issue_id=? AND state='WEB_VERIFIED' ORDER BY revision DESC LIMIT 1",
+            [issue_id]).fetchone()))
+
+    def daily_delivery(self, issue_date, channel_id="wind-news"):
+        return self.call(lambda db: self._daily_delivery(db, issue_date, channel_id))
+
+    @classmethod
+    def _daily_delivery(cls, db, issue_date, channel_id):
+        previous = cls._deliveries(db, "message_type='daily' AND channel_id=? AND (issue_id,revision) IN "
+            "(SELECT issue_id,revision FROM issues WHERE issue_date=?)", [channel_id, issue_date])
+        # Preserve ambiguous/accepted historical sends even if another retry failed.
+        return next((d for d in previous if d["status"] != "FAILED"), previous[-1] if previous else None)
+
     @staticmethod
     def _deliveries(db, where="1=1", params=None):
         keys = ("delivery_id", "issue_id", "revision", "channel_id", "message_type", "status", "claimed_at", "updated_at", "result")
@@ -223,12 +238,16 @@ class Store:
             issue = self._issue(db.execute("SELECT * FROM issues WHERE issue_id=? AND revision=?", [issue_id, revision]).fetchone())
             if not issue or issue["state"] != "WEB_VERIFIED":
                 raise Conflict("web_verification_required")
-            previous = self._deliveries(db, "issue_id=? AND revision=? AND channel_id=? AND message_type=?", [issue_id, revision, channel_id, message_type])
+            if message_type == "daily":
+                daily = self._daily_delivery(db, issue["issue_date"], channel_id)
+                previous = [daily] if daily else []
+            else:
+                previous = self._deliveries(db, "issue_id=? AND revision=? AND channel_id=? AND message_type=?", [issue_id, revision, channel_id, message_type])
             if previous:
                 if previous[0]["status"] == "FAILED" and (previous[0]["result"] or {}).get("attempt", 1) < 3:
                     now = utcnow()
                     attempt = (previous[0]["result"] or {}).get("attempt", 1) + 1
-                    db.execute("UPDATE deliveries SET status='CLAIMED',claimed_at=?,updated_at=?,result=? WHERE delivery_id=?", [now, now, canonical({"attempt": attempt}), previous[0]["delivery_id"]])
+                    db.execute("UPDATE deliveries SET issue_id=?,revision=?,status='CLAIMED',claimed_at=?,updated_at=?,result=? WHERE delivery_id=?", [issue_id, revision, now, now, canonical({"attempt": attempt}), previous[0]["delivery_id"]])
                     return {**self._deliveries(db, "delivery_id=?", [previous[0]["delivery_id"]])[0], "claimed": True}
                 return {**previous[0], "claimed": False}
             now, delivery_id = utcnow(), str(uuid.uuid4())
@@ -257,10 +276,12 @@ class Store:
     def pending_deliveries(self, channel_id="wind-news"):
         def work(db):
             result = []
-            for row in db.execute("SELECT * FROM issues WHERE state='WEB_VERIFIED' ORDER BY issue_date,revision").fetchall():
+            for row in db.execute("SELECT * FROM issues WHERE state='WEB_VERIFIED' QUALIFY "
+                                  "row_number() OVER (PARTITION BY issue_date ORDER BY revision DESC)=1 ORDER BY issue_date").fetchall():
                 issue = self._issue(row)
-                kind = "correction" if issue["revision"] > 1 else "daily"
-                existing = self._deliveries(db, "issue_id=? AND revision=? AND channel_id=? AND message_type=?", [issue["issue_id"], issue["revision"], channel_id, kind])
+                kind = "daily"
+                daily = self._daily_delivery(db, issue["issue_date"], channel_id)
+                existing = [daily] if daily else []
                 if not existing or existing[0]["status"] == "FAILED" and (existing[0]["result"] or {}).get("attempt", 1) < 3:
                     result.append({"issue_id": issue["issue_id"], "revision": issue["revision"], "channel_id": channel_id, "message_type": kind})
             return result

@@ -63,6 +63,32 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(result["status"], "ACCEPTED")
         self.assertFalse(self.store.claim_delivery("wind-2026-09-30", 1, "test")["claimed"])
 
+    def revision_two(self):
+        self.store.call(lambda db: db.execute("INSERT INTO issues SELECT issue_id,2,issue_date,state,content_hash,approval_hash,payload,candidates,batch_ids,publish_result,created_at,updated_at FROM issues WHERE revision=1").fetchall(), write=True)
+
+    def test_daily_blocks_later_revision_but_explicit_correction_is_separate(self):
+        self.verified()
+        claim = self.store.claim_delivery("wind-2026-09-30", 1, "test")
+        self.store.delivery_result(claim["delivery_id"], "ACCEPTED")
+        self.revision_two()
+        self.assertFalse(self.store.claim_delivery("wind-2026-09-30", 2, "test")["claimed"])
+        self.assertEqual(self.store.pending_deliveries("test"), [])
+        self.assertTrue(self.store.claim_delivery("wind-2026-09-30", 2, "test", "correction")["claimed"])
+
+    def test_first_daily_uses_latest_verified_revision_and_failed_budget_persists(self):
+        self.verified()
+        claim = self.store.claim_delivery("wind-2026-09-30", 1, "test")
+        self.store.delivery_result(claim["delivery_id"], "FAILED")
+        self.revision_two()
+        self.assertEqual(self.store.pending_deliveries("test")[0]["revision"], 2)
+        retry = self.store.claim_delivery("wind-2026-09-30", 2, "test")
+        self.assertEqual(retry["delivery_id"], claim["delivery_id"])
+        self.assertEqual(retry["revision"], 2)
+        self.assertEqual(retry["result"]["attempt"], 2)
+        self.store.delivery_result(retry["delivery_id"], "UNKNOWN")
+        self.assertFalse(self.store.claim_delivery("wind-2026-09-30", 1, "test")["claimed"])
+        self.assertEqual(self.store.pending_deliveries("test"), [])
+
     def test_consistent_backup_restores_jobs_and_publication(self):
         job = self.store.submit("collect", "backup", {})
         self.verified()

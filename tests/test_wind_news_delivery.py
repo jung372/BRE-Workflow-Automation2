@@ -9,13 +9,16 @@ from news.delivery import build_card, send_card
 class DeliveryTests(unittest.TestCase):
     def setUp(self):
         self.issue = {"issue_date": "2026-09-30", "revision": 1, "items": [
-            {"headline": "풍력 EPC", "summary": "기사 근거 요약"} for _ in range(8)]}
+            {"headline": "풍력 EPC", "summary": "기사 근거 요약", "source_name": "시험일보",
+             "source_url": f"https://example.kr/news?id={i}"} for i in range(8)]}
         self.site = "https://jung372.github.io/BRE-Workflow-Automation2/"
         self.webhook = "https://example.logic.azure.com/workflows/test?sig=SECRET"
 
-    def test_card_has_five_headlines_and_dated_web_link(self):
+    def test_card_has_all_linked_titles_and_publishers_without_summaries(self):
         card = build_card(self.issue, self.site)["attachments"][0]["content"]
-        self.assertEqual(len(card["body"]), 12)
+        self.assertEqual(len(card["body"]), 10)
+        self.assertIn("[풍력 EPC](https://example.kr/news?id=7) — 시험일보", card["body"][-1]["text"])
+        self.assertNotIn("기사 근거 요약", str(card))
         self.assertTrue(card["actions"][0]["url"].endswith("/#/daily/2026-09-30"))
 
     def test_http_accepted_is_not_delivery(self):
@@ -55,12 +58,27 @@ class DeliveryTests(unittest.TestCase):
                 client.post.assert_not_called()
 
     def test_text_markdown_and_invalid_dates(self):
-        self.issue["items"] = [{"headline": "[click](https://evil.example)", "summary": "<script>"}]
+        self.issue["items"][0]["headline"] = "[click](https://evil.example)"
+        self.issue["items"][0]["source_url"] = "https://example.kr/(story)?a=1&b=2"
         card = build_card(self.issue, self.site)["attachments"][0]["content"]
         self.assertIn("\\[click\\]", card["body"][2]["text"])
+        self.assertIn("https://example.kr/%28story%29?a=1&b=2", card["body"][2]["text"])
         self.issue["issue_date"] = "../../secrets"
         with self.assertRaises(ValueError):
             build_card(self.issue, self.site)
+
+    def test_no_news_and_partial_reports_still_have_web_link(self):
+        self.issue.update(items=[], content_status="partial")
+        card = build_card(self.issue, self.site)["attachments"][0]["content"]
+        self.assertIn("일부 수집", str(card))
+        self.assertIn("주요 기사가 없습니다", str(card))
+        self.assertEqual(len(card["actions"]), 1)
+
+    def test_invalid_article_link_never_contacts_teams(self):
+        self.issue["items"][0]["source_url"] = "javascript:alert(1)"
+        client = Mock()
+        self.assertEqual(send_card(self.issue, self.webhook, self.site, client)["status"], "FAILED")
+        client.post.assert_not_called()
 
 
 if __name__ == "__main__":
