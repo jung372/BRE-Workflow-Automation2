@@ -22,3 +22,19 @@ if command -v docker >/dev/null; then
 fi
 printf 'Home project directory names:\n'
 find "$HOME" -maxdepth 2 -type d -name '*n8n*' -print 2>/dev/null
+printf 'News settings file metadata (contents are never read):\n'
+python3 - <<'PY'
+from datetime import datetime, timezone
+from pathlib import Path
+import json
+settings = Path.home() / 'bre-wind-news' / 'settings'
+print('NEWS_SETTINGS_DIRECTORY=' + str(settings))
+for name in ('compose.env', 'compose.env.txt', 'copose.env', 'copose.env.txt', '.env'):
+    path = settings / name
+    item = {'name': name, 'exists': path.is_file()}
+    if item['exists']:
+        stat = path.stat()
+        item.update(bytes=stat.st_size, modified_utc=datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat())
+    print('NEWS_SETTINGS_FILE=' + json.dumps(item))
+PY
+docker inspect bre-wind-news-news-service-1 --format 'NEWS_COMPOSE_FILES={{index .Config.Labels "com.docker.compose.project.config_files"}} NEWS_COMPOSE_DIRECTORY={{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || true
