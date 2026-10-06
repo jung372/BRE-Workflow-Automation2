@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-06 20:00:05",
+  "checked_at": "2026-10-07 06:00:05",
   "sites": [
     {
       "id": "notice",
@@ -30,33 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 3,
-      "new_items": [
-        {
-          "num": "ME20260123",
-          "title": "포항 죽장 풍력발전단지",
-          "date": "2026-09-30",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "GW20260149",
-          "title": "고성 평화풍력 발전사업",
-          "date": "2026-10-02",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260119",
-          "title": "삼척시 도계읍 황조리 산159번지 일원 풍력발전단지 조성사업",
-          "date": "2026-09-30",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 63
     },
     {
@@ -88,7 +63,7 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
         {
           "uid": "DCTB9616C8C34E995D4DC17E964D50F3510",
@@ -101,21 +76,9 @@
           "doc_no": "도로안전운영과-4411",
           "keyword": "왕신풍력",
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
-        },
-        {
-          "uid": "DCT731DACE4C6189580F40CFD3137E2D0D4",
-          "title": "개발행위허가신청에 따른 협의 및 의견조회(강동면 왕신리 산217번지 외 9필지 일원, 경주왕신풍력발전소)",
-          "dept": "지역개발과",
-          "dept_full": "경상북도 경주시 안강읍 지역개발과",
-          "instt": "경상북도 경주시",
-          "date": "2026-10-02",
-          "prod_date": "2026-10-01",
-          "doc_no": "지역개발과-12604",
-          "keyword": "왕신풍력",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
         }
       ],
-      "total": 47,
+      "total": 46,
       "keywords": [
         "시루풍력",
         "왕신풍력",
