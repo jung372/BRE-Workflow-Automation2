@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-07 20:00:04",
+  "checked_at": "2026-10-08 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -63,21 +63,8 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "uid": "DCTB9616C8C34E995D4DC17E964D50F3510",
-          "title": "[이송]개발행위허가신청에 따른 협의 및 의견조회(경주왕신풍력발전소)",
-          "dept": "도로안전운영과",
-          "dept_full": "국토교통부 부산지방국토관리청 포항국토관리사무소 도로안전운영과",
-          "instt": "국토교통부",
-          "date": "2026-10-03",
-          "prod_date": "2026-10-02",
-          "doc_no": "도로안전운영과-4411",
-          "keyword": "왕신풍력",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 46,
       "keywords": [
         "시루풍력",
