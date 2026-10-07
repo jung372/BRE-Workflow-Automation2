@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-08 06:00:04",
+  "checked_at": "2026-10-08 07:00:03",
   "sites": [
     {
       "id": "notice",
@@ -63,9 +63,22 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 46,
+      "new_count": 1,
+      "new_items": [
+        {
+          "uid": "DCT1B548E5D4988BA5197981FC8C7E3DB70",
+          "title": "소규모환경영향평가 협의내용 반영 결과 통보(강동면 왕신리 산217번지 일원, 경주왕신풍력발전소)",
+          "dept": "지역개발과",
+          "dept_full": "경상북도 경주시 안강읍 지역개발과",
+          "instt": "경상북도 경주시",
+          "date": "2026-10-08",
+          "prod_date": "2026-10-07",
+          "doc_no": "지역개발과-12836",
+          "keyword": "왕신풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%99%95%EC%8B%A0%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 47,
       "keywords": [
         "시루풍력",
         "왕신풍력",
