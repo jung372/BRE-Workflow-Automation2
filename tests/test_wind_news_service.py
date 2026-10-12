@@ -114,9 +114,8 @@ class ServiceTests(unittest.TestCase):
         self.publish(self.ready())
         payload = {"issue_date": "2026-09-30", "scheduled": True}
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
-            for hour, minute in [(22, 59), (0, 1)]:
-                day = 29 if hour == 22 else 30
-                self.runner.clock = lambda h=hour, m=minute, d=day: datetime(2026, 9, d, h, m, tzinfo=timezone.utc)
+            for hour, minute in [(15, 0), (22, 59)]:
+                self.runner.clock = lambda h=hour, m=minute: datetime(2026, 9, 29, h, m, tzinfo=timezone.utc)
                 response = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
                 self.assertEqual(response.json["error_code"], "OUTSIDE_DELIVERY_WINDOW")
             self.runner.clock = lambda: datetime(2026, 9, 29, 23, 0, tzinfo=timezone.utc)
@@ -128,12 +127,61 @@ class ServiceTests(unittest.TestCase):
             self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
             self.assertEqual(send.call_count, 1)
 
+    def assert_delayed_scheduled_send(self, hour, minute, outcome="ACCEPTED"):
+        self.publish(self.ready())
+        self.runner.clock = lambda: datetime(2026, 9, 30, hour, minute, tzinfo=timezone.utc)
+        payload = {"issue_date": "2026-09-30", "scheduled": True}
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": outcome}) as send:
+            first = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+            self.assertEqual(first.json["status"], outcome)
+            self.assertEqual(send.call_args.args[0]["issue_date"], "2026-09-30")
+            self.runner.clock = lambda: datetime(2026, 9, 30, 14, 59, tzinfo=timezone.utc)
+            repeat = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+            self.assertEqual(repeat.json["status"], outcome)
+            self.assertFalse(repeat.json["claimed"])
+            self.assertEqual(send.call_count, 1)
+
+    def test_scheduled_send_after_0900_is_allowed(self):
+        self.assert_delayed_scheduled_send(0, 1)
+
+    def test_scheduled_send_at_1550_is_allowed(self):
+        self.assert_delayed_scheduled_send(6, 50)
+
+    def test_scheduled_send_at_2359_is_allowed(self):
+        self.assert_delayed_scheduled_send(14, 59)
+
+    def test_delayed_scheduled_unknown_is_not_retried(self):
+        self.assert_delayed_scheduled_send(6, 50, "UNKNOWN")
+
+    def test_delayed_scheduled_date_and_revision_guards(self):
+        self.publish(self.ready())
+        self.runner.clock = lambda: datetime(2026, 9, 30, 6, 50, tzinfo=timezone.utc)
+        payload = {"issue_date": "2026-09-30", "scheduled": True}
+        with patch("news.delivery.send_card") as send:
+            for invalid in ({"issue_date": "2026-09-29"}, {"issue_date": "2026-10-01"},
+                            {"revision": 1}, {"message_type": "correction"}):
+                with self.subTest(invalid=invalid):
+                    response = self.client.post("/v1/deliveries/send", json={**payload, **invalid}, headers=self.headers)
+                    self.assertEqual(response.status_code, 400)
+            self.runner.clock = lambda: datetime(2026, 9, 30, 15, 0, tzinfo=timezone.utc)
+            yesterday = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
+            self.assertEqual(yesterday.status_code, 400)
+            send.assert_not_called()
+
     def test_deadline_for_missing_issue_and_no_yesterday_fallback(self):
         self.publish(self.ready())
-        self.runner.clock = lambda: datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)
         with patch("news.delivery.send_card") as send:
-            response = self.client.post("/v1/deliveries/send", json={"scheduled": True}, headers=self.headers)
-            self.assertEqual(response.json["error_code"], "PUBLICATION_NOT_READY_BY_DEADLINE")
+            for hour, minute, expected in [(23, 59, "WEB_VERIFICATION_REQUIRED"),
+                                          (0, 0, "PUBLICATION_NOT_READY_BY_DEADLINE"),
+                                          (0, 1, "PUBLICATION_NOT_READY_BY_DEADLINE"),
+                                          (6, 50, "PUBLICATION_NOT_READY_BY_DEADLINE"),
+                                          (14, 59, "PUBLICATION_NOT_READY_BY_DEADLINE")]:
+                day, month = (30, 9) if hour == 23 else (1, 10)
+                self.runner.clock = lambda h=hour, m=minute, d=day, mo=month: datetime(2026, mo, d, h, m, tzinfo=timezone.utc)
+                with self.subTest(hour=hour, minute=minute):
+                    response = self.client.post("/v1/deliveries/send", json={"scheduled": True}, headers=self.headers)
+                    self.assertEqual(response.json["status"], "SKIPPED")
+                    self.assertEqual(response.json["error_code"], expected)
             send.assert_not_called()
 
     def test_daily_does_not_resend_after_revision_changes(self):

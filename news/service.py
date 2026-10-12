@@ -382,12 +382,15 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         if scheduled:
             if issue_id != "wind-" + now.date().isoformat() or kind != "daily" or "revision" in data:
                 raise ValueError("scheduled_delivery_requires_today_latest_daily")
-            if not 480 <= now.hour * 60 + now.minute <= 540:
+            # Actions schedules can arrive hours late. Allow today's verified
+            # issue after 08:00; the date guard above and daily claim prevent
+            # yesterday's issue or a repeated daily send.
+            if now.hour < 8:
                 return jsonify(status="SKIPPED", error_code="OUTSIDE_DELIVERY_WINDOW")
         record = (store.verified_issue(issue_id) if data.get("revision") is None
                   else store.issue(issue_id, data["revision"]))
         if not record or record["state"] != "WEB_VERIFIED":
-            code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and now.hour == 9 else "WEB_VERIFICATION_REQUIRED"
+            code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and now.hour >= 9 else "WEB_VERIFICATION_REQUIRED"
             return jsonify(status="SKIPPED", error_code=code)
         webhook = os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL", "")
         if not webhook:
