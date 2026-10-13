@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-13 17:00:03",
+  "checked_at": "2026-10-13 18:00:03",
   "sites": [
     {
       "id": "notice",
@@ -8,8 +8,15 @@
       "color": "#3b82f6",
       "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제328차 전기위원회 회의록",
+          "date": "2026-10-13",
+          "url": "https://www.korec.go.kr/notice/selectNoticeList.do"
+        }
+      ],
       "total": 15
     },
     {
@@ -19,8 +26,15 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제329차 전기위원회 개최 결과",
+          "date": "2026-10-13",
+          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
+        }
+      ],
       "total": 11
     },
     {
