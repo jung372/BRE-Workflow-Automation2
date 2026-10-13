@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-13 20:00:03",
+  "checked_at": "2026-10-14 06:00:03",
   "sites": [
     {
       "id": "notice",
@@ -77,45 +77,8 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 3,
-      "new_items": [
-        {
-          "uid": "DCT86E52C54D72CB052F95DAF6FA768D9D9",
-          "title": "문무바람 부유식 해상풍력 발전사업 지원 요청에 대한 회신",
-          "dept": "에너지산업과",
-          "dept_full": "울산광역시 AI혁신산업실 에너지산업과",
-          "instt": "울산광역시",
-          "date": "2026-10-09",
-          "prod_date": "2026-10-08",
-          "doc_no": "에너지산업과-5068",
-          "keyword": "문무바람",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
-        },
-        {
-          "uid": "DCT90C602BBB97EFC2E801B46BFD6954086",
-          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 심의 관련 의견 회신",
-          "dept": "축수산과",
-          "dept_full": "울산광역시 울주군 경제산업국 축수산과",
-          "instt": "울산광역시 울주군",
-          "date": "2026-10-09",
-          "prod_date": "2026-10-08",
-          "doc_no": "축수산과-43024",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        },
-        {
-          "uid": "DCTAA249B3AC3B5B5FEA2BF74EAFC2826E1",
-          "title": "울산 '이스트블루파워 해상풍력발전사업' 변경허가 심의 의견 회신",
-          "dept": "에너지산업과",
-          "dept_full": "울산광역시 AI혁신산업실 에너지산업과",
-          "instt": "울산광역시",
-          "date": "2026-10-09",
-          "prod_date": "2026-10-08",
-          "doc_no": "에너지산업과-5067",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 50,
       "keywords": [
         "시루풍력",
