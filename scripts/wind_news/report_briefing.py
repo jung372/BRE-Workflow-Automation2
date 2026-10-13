@@ -42,6 +42,13 @@ def report(session, mode, issue_date="", *, clock=None):
     if not isinstance(code, str) or code and not re.fullmatch(r"[A-Za-z0-9_]{1,100}", code):
         code = "DELIVERY_ERROR"
     result = {"status": state, "issue_date": day, "teams_configured": configured, "error_code": code}
+    if isinstance(value.get("http_status"), int) and 100 <= value["http_status"] <= 599:
+        result["http_status"] = value["http_status"]
+    for field in ("response_class", "receiver_error_code"):
+        if isinstance(value.get(field), str) and re.fullmatch(r"[A-Za-z0-9_]{1,100}", value[field]):
+            result[field] = value[field]
+    if state == "UNKNOWN":
+        result["operator_action"] = "CHECK_TEAMS_WORKFLOW_HISTORY_NO_RESEND"
     return result, int(state in {"FAILED", "UNKNOWN"} or code == "PUBLICATION_NOT_READY_BY_DEADLINE")
 
 

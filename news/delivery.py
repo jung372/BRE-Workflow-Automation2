@@ -101,7 +101,18 @@ def send_card(issue: dict, webhook_url: str, site_url: str, session=None) -> dic
             return {"status": "ACCEPTED", "http_status": code}
         if 400 <= code < 500 or 300 <= code < 400:
             return {"status": "FAILED", "error_code": "teams_rejected", "http_status": code}
-        return {"status": "UNKNOWN", "error_code": "teams_ambiguous_response", "http_status": code}
+        outcome = {"status": "UNKNOWN", "error_code": "teams_ambiguous_response", "http_status": code,
+                   "response_class": "receiver_server_error" if 500 <= code < 600 else "unexpected_http_status"}
+        # Only known, fixed receiver codes leave this boundary. Never log body,
+        # headers, request IDs, signed URLs or arbitrary upstream messages.
+        try:
+            receiver_code = response.json().get("error", {}).get("code")
+            if receiver_code in {"WorkflowTriggerIsNotEnabled", "WorkflowNotFound", "WorkflowRunActionFailure",
+                                 "TriggerRequestMethodNotValid", "InternalServerError", "BadGateway", "ServiceUnavailable"}:
+                outcome["receiver_error_code"] = receiver_code
+        except (ValueError, AttributeError, TypeError):
+            pass
+        return outcome
     except requests.RequestException:
         # Even a connection reset may happen after the receiver accepted the card.
         return {"status": "UNKNOWN", "error_code": "teams_transport_ambiguous"}

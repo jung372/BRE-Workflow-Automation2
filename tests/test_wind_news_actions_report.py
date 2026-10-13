@@ -55,13 +55,20 @@ class ActionsReportTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertNotIn("SECRET", str(result))
 
+    def test_unknown_displays_receiver_status_and_no_resend_instruction(self):
+        self.session.post.return_value.json.return_value = {"status": "UNKNOWN", "error_code": "teams_ambiguous_response",
+            "http_status": 502, "response_class": "receiver_server_error", "receiver_error_code": "BadGateway"}
+        result, code = report(self.session, "send", "2026-10-13")
+        self.assertEqual(code, 1)
+        self.assertEqual(result["http_status"], 502)
+        self.assertEqual(result["operator_action"], "CHECK_TEAMS_WORKFLOW_HISTORY_NO_RESEND")
+
     def test_workflow_is_separate_dispatchable_and_has_seoul_schedule(self):
         path = Path(__file__).resolve().parents[1] / ".github/workflows/news-report.yml"
         text = path.read_text(encoding="utf-8")
-        self.assertIn("name: 뉴스 브리핑 Teams 정기 보고", text)
+        self.assertIn("name: 뉴스 브리핑 Teams 수동 확인", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertIn("default: preview", text)
-        self.assertIn("'0-55/5 23 * * *'", text)
-        self.assertIn("'0 0 * * *'", text)
+        self.assertNotIn("  schedule:", text)
         self.assertIn("scripts\\wind_news\\report_teams.ps1", text)
         self.assertNotIn("${{ inputs.issue_date }}", text.split("run:")[-1])

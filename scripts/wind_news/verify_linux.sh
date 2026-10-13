@@ -20,6 +20,22 @@ status=s.get(base+'/v1/deliveries/status',timeout=60)
 if status.status_code == 200:
     delivery=status.json()
     print('BRIEFING_DELIVERY_STATUS='+json.dumps(delivery))
+    assert delivery.get('first_check')=='08:30' and delivery.get('last_check')=='23:30'
+    assert delivery.get('interval_minutes')==60 and delivery.get('schedule_owner')=='n8n'
+    print('BRIEFING_HOURLY_CONTRACT_VERIFIED')
+    if delivery.get('briefing_stopped'):
+        before=s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60).json()
+        response=s.post(base+'/v1/briefings/check',json={'issue_date':delivery['issue_date']},timeout=60)
+        response.raise_for_status(); job_id=response.json()['job_id']
+        for _ in range(60):
+            response=s.get(base+'/v1/jobs/'+job_id,timeout=60); response.raise_for_status(); job=response.json()
+            if job['status'] not in ('QUEUED','RUNNING'): break
+            time.sleep(1)
+        assert job['status']=='SUCCEEDED' and job['result'].get('claimed') is False
+        after=s.get(base+'/v1/deliveries/status',timeout=60).json()
+        assert after==delivery, 'BRIEFING_STOP_STATE_CHANGED'
+        assert s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60).json()==before
+        print('BRIEFING_STOPPED_NO_RESEND_VERIFIED')
     if delivery.get('revision'):
         preview=s.post(base+'/v1/deliveries/preview',json={'issue_date':delivery['issue_date']},timeout=60)
         preview.raise_for_status(); card=preview.json()['attachments'][0]['content']

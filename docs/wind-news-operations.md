@@ -131,7 +131,7 @@ python scripts/wind_news/build_workflows.py --service-url http://news-service:80
 | 01 Collect | 매시 05분, 07:30 | 수집 작업 접수·완료 조회 |
 | 02 Prepare | 07:40 | DB의 수집 결과를 고정하고 초안 준비 |
 | 03 Publish | 07:50 | 승인 확인·웹 보고서와 검색 게시·실제 반영 확인 |
-| 04 Deliver | 비활성 참조용 | 실제 정기 발송은 GitHub Actions의 `news-report.yml`이 담당 |
+| 04 Deliver | 08:30~23:30 매시간 | 당일 브리핑 준비·게시·발송, 발송 완료 후 종료 |
 | 05A Errors | 연결된 자동 실행 실패 | 복구 작업 호출 |
 | 05B Reconcile | 5분마다 | 누락·중단 작업 점검. 자동 복구는 정책으로 제어 |
 | 06 Backup | 02:30 | 뉴스 DB의 일관된 백업 |
@@ -152,29 +152,27 @@ CI는 기능 브랜치와 PR에서도 검증하고 `main`에서만 기존 서버
 
 ## 6. Teams 결과와 재전송
 
-### 오전 8시 언론기사 브리핑
+### 오전 08:30 브리핑과 매시간 재확인 — 2026-10-13
 
-GitHub **Actions 메뉴의 `뉴스 브리핑 Teams 정기 보고 (매일 08:00 KST)`**가 발송 진입점이다. `.github/workflows/news-report.yml`은 독립 workflow이며, 기존 `검증 및 서버 배포`의 `news_action=briefing`은 코드·일정 배포용이다. 배포 옵션만 추가해서는 별도 Actions 항목이 생기지 않는다.
+정기 실행의 단일 담당은 기존 서버 n8n `BRE-WIND-04-Deliver`다. `Asia/Seoul` 기준 `30 8-23 * * *`으로 08:30에 시작하고 09:30부터 23:30까지 매시간 확인한다. `.github/workflows/news-report.yml`의 예약은 제거하고 `뉴스 브리핑 Teams 수동 확인·발송`의 `preview` / `send`만 유지한다. GitHub Actions의 예약 지연으로 정시 발송을 놓치던 경로를 정기 실행에서 제외한다.
 
-예약은 UTC 23:00~23:55 5분마다(서울 08:00~08:55), UTC 00:00(서울 09:00 최종 확인)다. 발송 후 반복 확인은 날짜 단위 원장에서 차단한다. GitHub 예약은 큐 상황에 따라 지연될 수 있으므로 08:00은 시작 목표이며 정시 수신을 보장하지 않는다. `Run workflow`에서는 `mode=preview`(기본, 발송 없음) 또는 `send`(명시적 발송)를 선택하고 `issue_date`를 비우면 서울 기준 오늘을 사용한다. Actions Summary와 로그에 접수·실패·미설정·미발간을 구분해 표시한다.
+07:30 집계 마감·07:40 준비·07:50 웹 발간은 유지한다. 08:30 전의 기존 Reconcile은 준비·게시 복구를 담당한다. 08:30 이후에는 5분 주기 Reconcile이 새로운 브리핑 준비·발간을 접수하지 않으며, 시간 단위 작업이 필요한 단계만 순서대로 재개한다. 기사 DB 수집·검색·백업과 기존 공고 수집은 계속 유지한다.
 
-기존 self-hosted Windows runner → WSL → 실행 중인 뉴스 서비스의 인증 API를 호출한다. 서버 안에서만 토큰과 Teams 수신 주소를 사용하므로 GitHub에 새 비밀값을 복사하거나 서비스 포트를 외부에 공개하지 않는다. Actions용 스크립트는 매번 checkout한 코드를 사용하므로 컨테이너 재빌드 없이 반영된다. n8n Deliver는 연결 설정 여부와 관계없이 비활성으로 유지하며, 이후 `news_action=briefing` 배포도 다시 활성화하지 않는다. 수집·준비·웹 발행은 기존 n8n이 계속 담당한다.
+시간 단위 흐름은 인증된 `GET /v1/deliveries/status`에서 `briefing_stopped`를 먼저 조회하고, 종료되지 않았으면 `POST /v1/briefings/check`를 호출한다. 서버가 서울 날짜와 08:30 이후 여부를 검증하고, 날짜+시간 슬롯으로 작업을 영속 접수한다. 같은 슬롯의 재실행·재시작은 동일 작업을 조회한다. 작업은 기존 확인판을 우선 사용하고, 없으면 미작성·BLOCKED 호만 준비하고 READY/COMMITTED 호의 게시·웹 검증을 재개한 뒤 Teams에 발송한다. 단순 재확인으로 수집·요약 전체를 반복하지 않는다.
 
-카드는 발간된 기사 전체(현재 최대 15건)의 **기사 제목 링크 · 언론사**만 표시한다. 요약·전문을 넣지 않으며, 웹 보고서의 순서와 대표 기사 원문 링크를 사용한다. 하단 `웹에서 전체 보고서 보기`는 `/#/daily/YYYY-MM-DD`로 연결한다. 정상 0건 보고서는 0건 안내와 웹 링크를 표시하고, 부분 장애는 별도로 표시한다.
+일반 브리핑의 중복 방지는 revision과 관계없이 **서울 날짜 + wind-news 채널 + daily** 단위다. `ACCEPTED` / `DELIVERED`이면 당일 자동 브리핑을 종료한다. `UNKNOWN` / `CLAIMED`는 확인 전 추가 작업·발송을 차단한다. 당일의 새 자동 준비·재발간과 별도 정정 발송도 차단하며 기존 발간판과 이력을 보존한다. 명확한 `FAILED`만 기존 날짜 단위 최대 3회 재시도를 유지한다. 상태 확인 자체는 반복되어도 LLM 호출·게시·Teams 재발송을 하지 않는다.
 
-예약 발송은 `scheduled=true`, `message_type=daily`로 요청한다. 서버의 서울 날짜와 당일 호가 일치하고, 08:00~23:59 범위이며, `WEB_VERIFIED`인 가장 최신 revision만 대상이다. 예약 시각은 08:00~09:00으로 유지하지만 GitHub Actions 실행이 늦어지면 당일 안에 지연 발송을 허용한다. 새 DRAFT가 있어도 이미 확인된 발간판을 사용할 수 있다. 09:00 이후에도 발간판이 없으면 `PUBLICATION_NOT_READY_BY_DEADLINE`로 운영 오류를 기록하며 전날 호를 대신 보내지 않는다. 날짜가 바뀌면 전날 호의 예약 발송은 거절한다. 이미 접수되거나 결과가 불명확한 당일 발송은 날짜 단위 원장에서 반복을 차단한다. 준비가 늦으면 08:00 정시를 놓칠 수 있으며, 시각만으로 성공을 기록하지 않는다.
+준비 완료는 필수 출처 수집 조건, 요약 근거 검증, `WEB_VERIFIED`로 판단한다. 정상 수집 0건은 `no_news` 안내로 한 번 발간하고, 실제 수집 실패·검증 보류와 구분한다. 미발간이면 다음 시간까지 대기하며 23:30 최종 확인에서도 미발간이면 `PUBLICATION_NOT_READY_BY_DEADLINE`로 기록한다. 작업 대기 중 날짜가 바뀌면 `BRIEFING_DATE_EXPIRED`로 종료하고 전날 호를 다음 날 대신 보내지 않는다.
 
-일반 브리핑의 중복 방지는 revision에 관계없이 **보고서 날짜 + 채널 + daily** 단위다. 기존 이력을 그대로 조회하므로 DB 재생성·이력 삭제가 필요 없다. 첫 발송 전 정정판은 최신 확인판을 사용한다. 이후 정정판은 자동 재발송하지 않으며, 별도 정정 알림은 명시적인 `message_type=correction` 요청으로만 처리한다. 실패 재시도 횟수도 날짜 단위로 유지한다.
+카드는 최대 15개 항목의 **기사 제목 링크 · 언론사**와 날짜별 웹 링크만 포함한다. 상태·preview는 발송하지 않는다. Teams 2xx는 `ACCEPTED`(endpoint 접수)이며 실제 채널 수신 증거가 있어야 `DELIVERED`로 확정한다.
 
-`GET /v1/deliveries/status`는 인증 후 Teams 설정 여부(값 제외), 당일 확인된 revision과 발송 상태만 제공한다. `POST /v1/deliveries/preview`는 확인된 발간판의 카드 JSON을 생성하며, Teams 호출·발송 claim을 하지 않는다. 정확한 revision 대조에는 `GET /v1/issues/{issue_id}?revision=N`을 사용한다.
+### Teams UNKNOWN 진단
 
-배포는 `workflow_dispatch`의 `news_action=briefing`이다. 전체 CI 후 서비스 API로 DB 백업·해시를 확인하고 뉴스 컨테이너를 갱신한다. 서버의 기존 Publish·Deliver 두 workflow만 개별 백업·갱신한다. 기존 URL·credential ID·연결·다른 노드는 유지하며, 새 일정과 실제 활성 상태를 확인한다. n8n CLI 게시 변경 반영을 위해 기존 n8n 컨테이너만 재시작하고 정상 상태를 확인한다(업그레이드·DB 교체 없음). 다른 workflow의 활성 ID 집합이 같아야 성공이다. 두 workflow 갱신 실패 시 이전 draft와 기존 발행 version으로 복구한다.
+2026-10-13 09:41 수동 실행의 `teams_ambiguous_response`는 HTTP 응답이 접수/명확한 거절로 분류되지 않았다는 뜻이다. 기존 코드가 HTTP 상태 숫자를 결과·원장에서 누락하여 정확한 응답 숫자와 수신 측 세부 원인은 당시 기록만으로 복원할 수 없다. 이후 전송은 `http_status`, 고정 분류 `response_class`, 허용 목록에 있는 `receiver_error_code`만 보존한다. 원문 응답·헤더·서명 URL·인증값은 출력하거나 저장하지 않는다. 수동 Actions 결과에도 HTTP 상태와 `CHECK_TEAMS_WORKFLOW_HISTORY_NO_RESEND` 안내를 표시한다. 기존 UNKNOWN을 임의로 성공으로 바꾸거나 다시 전송하지 않는다. 수신 Workflows 실행 기록과 채널 표시를 대조해야 한다.
 
-Teams 전용 주소가 없으면 Actions에서 `TEAMS_NOT_CONFIGURED`와 미발송 안내를 표시한다. 같은 업무 채널에 뉴스용 Teams Workflows 수신 흐름을 만들고 담당자·공동 소유자를 지정한다. 실제 주소는 운영자가 서버의 비밀 설정 `WIND_NEWS_TEAMS_WEBHOOK_URL`에 입력하며 채팅·Git·Actions 로그로 전달하지 않는다. 서비스에 설정을 반영한 뒤 뉴스 Actions의 `preview`로 연결 여부를 확인하고 `send`로 실제 수신을 확인한다. 배포 자체는 Teams 메시지를 보내지 않으며 첫 실제 수신은 별도로 확인한다. 기존 공지 정기 보고의 평일 08:30 일정·credential은 변경하지 않는다.
+배포는 `ci-deploy.yml`의 `news_action=briefing`이다. 전체 CI 후 서비스 API 백업·해시 검증 → 뉴스 컨테이너 갱신 → Publish/Deliver 두 workflow의 개별 백업·업데이트·게시 → n8n 재시작·healthy 및 일정/활성 상태 대조 → 발송 없는 preview 순서다. 기존 Configure의 서비스 URL·HTTP credential ID를 보존하며 Deliver의 내부 연결은 상태 조회·비동기 작업 조회 흐름으로 변경한다. 다른 workflow의 활성 ID 집합이 달라지면 실패한다. 갱신 실패 시 이전 draft·게시 version을 복원한다.
 
-Teams의 2xx는 `ACCEPTED`(접수)로 기록한다. 채널 메시지 ID 등 증거가 있으면 `DELIVERED`로 확정한다. 전송 timeout·연결 단절·불명확한 서버 응답은 `UNKNOWN`으로 보관하고 무조건 재전송하지 않는다. 전송 성공 직후 프로세스가 중단된 claim도 복구 시 불명확 상태로 처리한다. 명확한 거절인 `FAILED`만 최대 3회까지 시도한다.
-
-뉴스용 Teams Workflows가 준비되지 않으면 전달만 `SKIPPED`가 되고 DB·웹 발간은 유지한다. 지원 webhook 호스트는 Microsoft의 `*.logic.azure.com`, `*.api.powerplatform.com`이다. 다른 테넌트 인증 방식은 별도 adapter 검증이 필요하다. 업무 채널과 테스트 채널을 구분하고 소유자·공동 소유자를 지정한다.
+기존 공지 정기 보고의 평일 08:30 일정과 credential은 유지한다. 뉴스 Teams 주소가 미설정이면 수동 보고와 n8n에서 `TEAMS_NOT_CONFIGURED`를 표시한다. 실제 주소는 운영자 보호 설정에만 두고 Git·Actions·채팅에 넣지 않는다.
 
 ## 7. 백업·복구와 무인 운영
 

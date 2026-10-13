@@ -21,6 +21,9 @@ if ($jsonLine -and $env:GITHUB_STEP_SUMMARY) {
         "- 결과: $($report.status)",
         "- Teams 연결 설정: $($report.teams_configured)",
         "- 사유: $($report.error_code)",
+        "- HTTP 상태: $($report.http_status)",
+        "- 수신 측 오류: $($report.receiver_error_code)",
+        "- 후속 조치: $($report.operator_action)",
         '',
         "[웹에서 해당 날짜 브리핑 보기](https://jung372.github.io/BRE-Workflow-Automation2/#/daily/$($report.issue_date))"
     )

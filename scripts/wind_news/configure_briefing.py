@@ -1,4 +1,4 @@
-"""Update only the two existing news schedules using n8n's CLI.
+"""Update the existing news publication and hourly delivery using n8n's CLI.
 
 Run on the Linux server as its Docker operator. Credential objects are never
 exported. Existing workflow backups stay private on the server, not in Git.
@@ -47,6 +47,31 @@ def updated(old, template):
         raise ValueError("BRIEFING_WORKFLOW_NAME_MISMATCH")
     flow = {k: copy.deepcopy(old[k]) for k in ("id", "name", "nodes", "connections", "settings", "tags") if k in old}
     flow["active"] = False
+    if old["name"] == NAMES[1]:
+        previous_nodes = {n["name"]: n for n in old["nodes"]}
+        if not {"Configure", "Submit", "Schedule", "Check delivery"} <= previous_nodes.keys():
+            raise ValueError("BRIEFING_WORKFLOW_NODES_MISSING")
+        submit = previous_nodes["Submit"]
+        url = submit["parameters"]["url"]
+        if "/v1/deliveries/send" not in url and "/v1/briefings/check" not in url:
+            raise ValueError("BRIEFING_WORKFLOW_ENDPOINT_MISMATCH")
+        flow["nodes"] = copy.deepcopy(template["nodes"])
+        for node in flow["nodes"]:
+            prior = previous_nodes.get(node["name"])
+            if prior:
+                node["id"] = prior["id"]
+            if node["name"] == "Configure":
+                node["parameters"] = copy.deepcopy(previous_nodes["Configure"]["parameters"])
+            if node["type"].endswith("httpRequest"):
+                node["credentials"] = copy.deepcopy(submit["credentials"])
+            if node["name"] == "Submit":
+                node["parameters"]["url"] = url.replace("/v1/deliveries/send", "/v1/briefings/check")
+        flow["connections"] = copy.deepcopy(template["connections"])
+        for name in ("Manual test", "Schedule"):
+            if name in old["connections"]:
+                flow["connections"][name] = copy.deepcopy(old["connections"][name])
+        flow.setdefault("settings", {})["timezone"] = "Asia/Seoul"
+        return flow
     replacements = {"Schedule"} if old["name"] == NAMES[0] else {"Schedule", "Submit", "Check delivery"}
     parameters = {n["name"]: n["parameters"] for n in template["nodes"]}
     found = set()
@@ -89,9 +114,8 @@ def main():
     command(["docker", "exec", "--user", "root", N8N, "chown", "node:node", remote])
     try:
         command(["docker", "exec", N8N, "n8n", "import:workflow", "--input=" + remote])
-        expected_active = before_active - {ids[1]}
-        # GitHub Actions owns the schedule. Keep n8n Deliver as an inactive
-        # reference even when Teams is configured; never enable two schedulers.
+        expected_active = before_active | {ids[1]}
+        # GitHub news-report is manual-only; n8n is the sole periodic owner.
         for workflow_id in ids:
             if workflow_id in expected_active:
                 command(["docker", "exec", N8N, "n8n", "publish:workflow", "--id=" + workflow_id])
@@ -114,9 +138,9 @@ def main():
                 raise RuntimeError("BRIEFING_PUBLICATION_STATE_MISMATCH")
         if active_ids() != expected_active:
             raise RuntimeError("BRIEFING_ACTIVE_WORKFLOW_SET_MISMATCH")
-        print("BRIEFING_SCHEDULES_VERIFIED publish=07:50 delivery=08:00-09:00 timezone=Asia/Seoul")
+        print("BRIEFING_SCHEDULES_VERIFIED publish=07:50 delivery=08:30-23:30 hourly timezone=Asia/Seoul")
         print("OTHER_ACTIVE_WORKFLOWS_PRESERVED=" + str(len(before_active - set(ids))))
-        print("TEAMS_SCHEDULE_OWNER=github-actions N8N_DELIVER_ACTIVE=false")
+        print("TEAMS_SCHEDULE_OWNER=n8n N8N_DELIVER_ACTIVE=true")
     except Exception:
         # Restore both prior drafts and their exact published versions. Version
         # history survives import; leave every unrelated workflow untouched.

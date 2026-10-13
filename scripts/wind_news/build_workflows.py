@@ -69,6 +69,17 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
     else:
         edge("Configure", "Submit")
     nodes.append(http("Submit", "POST", endpoint, body, key=async_job, x=880 if publish else 440))
+    if number == "04":
+        nodes.append(http("Read daily status", "GET", "'/v1/deliveries/status'", x=440,))
+        nodes.append(node("Already finished?", "if", {"conditions": {"options": {
+            "caseSensitive": True, "leftValue": "", "typeValidation": "strict", "version": 2},
+            "conditions": [{"id": "briefing-stopped", "leftValue": "={{ $json.briefing_stopped }}",
+                            "rightValue": True, "operator": {"type": "boolean", "operation": "true", "singleValue": True}}],
+            "combinator": "and"}, "options": {}}, 660, version=2.2))
+        connections["Configure"] = {"main": []}
+        edge("Configure", "Read daily status")
+        edge("Read daily status", "Already finished?")
+        edge("Already finished?", "Submit", 1)
     if async_job:
         nodes.append(node("Wait for job", "wait", {"resume": "timeInterval", "amount": 5, "unit": "seconds"}, 1080, version=1.1))
         edge("Submit", "Wait for job")
@@ -87,6 +98,13 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
             "options": {}}, 1700, version=2.2))
         edge("Check outcome", "Completed?")
         edge("Completed?", "Wait for job", 1)
+        if number == "04":
+            nodes.append(node("Check delivery", "code", {"jsCode":
+                "const r = $json.result || {};\n"
+                "if (['FAILED','UNKNOWN'].includes(r.status)) throw new Error('delivery_' + r.status.toLowerCase());\n"
+                "if (r.error_code === 'TEAMS_NOT_CONFIGURED') throw new Error('teams_not_configured');\n"
+                "return $input.all();"}, 1900, version=2))
+            edge("Completed?", "Check delivery")
     else:
         nodes.append(node("Check delivery", "code", {"jsCode":
             "if (['FAILED','UNKNOWN'].includes($json.status)) throw new Error('delivery_' + $json.status.toLowerCase());\n"
@@ -114,9 +132,8 @@ def build(service_url="http://news-service:8090"):
         ("03", "Publish", "'/v1/issues/' + $('Configure').first().json.issue_id + '/publish'",
          "={{ JSON.stringify({revision: $json.revision, approval_hash: $json.approval_hash}) }}",
          ["50 7 * * *"], {"publish": True}),
-        ("04", "Deliver", "'/v1/deliveries/send'",
-         "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date, channel_id: 'wind-news', message_type: 'daily', scheduled: true}) }}",
-         ["*/5 8 * * *", "0 9 * * *"], {"async_job": False}),
+        ("04", "Deliver", "'/v1/briefings/check'", config_body,
+         ["30 8-23 * * *"], {}),
         ("05A", "Errors", "'/v1/reconcile'", '{"trigger":"workflow_error"}', [], {"error": True}),
         ("05B", "Reconcile", "'/v1/reconcile'", config_body, ["*/5 * * * *"], {}),
         ("06", "Backup", "'/v1/backup'", "{}", ["30 2 * * *"], {}),

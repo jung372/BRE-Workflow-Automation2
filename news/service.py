@@ -42,6 +42,12 @@ class JobRunner:
         self._stop = threading.Event()
         self._wake = threading.Event()
         self._thread = None
+        self.delivery_lock = threading.Lock()
+
+    def briefing_stopped(self, day):
+        delivery = self.store.daily_delivery(day)
+        return delivery if delivery and (delivery["status"] in {"CLAIMED", "ACCEPTED", "DELIVERED", "UNKNOWN"}
+            or delivery["status"] == "FAILED" and (delivery.get("result") or {}).get("attempt", 1) >= 3) else None
 
     def start(self):
         self.store.recover()
@@ -87,7 +93,11 @@ class JobRunner:
             batch = collector.collect(since=since, until=until)
             return self.pipeline.ingest(batch, job["job_id"])
         if operation == "prepare":
+            if self.briefing_stopped(payload["issue_date"]) and not payload.get("correction_reason"):
+                return present_issue(self.store.verified_issue("wind-" + payload["issue_date"]))
             return present_issue(self.pipeline.prepare(payload))
+        if operation == "briefing":
+            return self.check_briefing(payload)
         if operation == "publish":
             return self.publish(payload)
         if operation == "backup":
@@ -112,6 +122,8 @@ class JobRunner:
             raise Conflict("approved_content_changed")
         if record["state"] == "WEB_VERIFIED":
             return present_issue(record)
+        if self.briefing_stopped(record["issue_date"]):
+            raise Conflict("daily_briefing_already_finished")
         if record["state"] not in {"READY", "COMMITTED"}:
             raise Conflict("issue_not_ready")
         if not self.config["policy"].get("publisher", {}).get("enabled"):
@@ -155,7 +167,9 @@ class JobRunner:
         policy = self.config["policy"]
         now = self.clock().astimezone(KST)
         enqueued = []
-        if policy.get("auto_recover", False) and self.config["collection"].get("enabled", False):
+        # After 08:30 the hourly briefing job owns recovery and delivery.
+        if (policy.get("auto_recover", False) and self.config["collection"].get("enabled", False)
+                and (now.hour, now.minute) < (8, 30) and not self.briefing_stopped(now.date().isoformat())):
             day = now.date().isoformat()
             current = self.store.issue("wind-" + day)
             if (not current or current["state"] == "BLOCKED") and (now.hour, now.minute) >= (7, 40):
@@ -169,6 +183,78 @@ class JobRunner:
                     job = self.store.submit("publish", "recovery-publish-" + day + "-" + str(current["revision"]) + "-" + str(len(previous_attempts) + 1), {"issue_id": current["issue_id"], "revision": current["revision"], "approval_hash": current["approval_hash"]})
                     enqueued.append(job["job_id"])
         return {"enqueued_jobs": enqueued, "pending_deliveries": self.store.pending_deliveries(), "pending_web_verifications": [{"issue_id": i["issue_id"], "revision": i["revision"]} for i in self.store.list_issues() if i["state"] == "COMMITTED"], "unknown_deliveries": self.store.call(lambda db: self.store._deliveries(db, "status='UNKNOWN'")), "expired_evidence_cleaned": self.pipeline.purge_expired_evidence()}
+
+    def check_briefing(self, payload):
+        day = payload["issue_date"]
+        now = self.clock().astimezone(KST)
+        if day != now.date().isoformat():
+            return {"status": "SKIPPED", "error_code": "BRIEFING_DATE_EXPIRED"}
+        if (now.hour, now.minute) < (8, 30):
+            return {"status": "SKIPPED", "error_code": "OUTSIDE_DELIVERY_WINDOW"}
+        stopped = self.briefing_stopped(day)
+        if stopped:
+            return {"status": stopped["status"], "claimed": False}
+        issue_id = "wind-" + day
+        record = self.store.verified_issue(issue_id)
+        if not record:
+            record = self.store.issue(issue_id)
+            if not record or record["state"] == "BLOCKED":
+                if not self.config["collection"].get("enabled", False):
+                    return {"status": "SKIPPED", "error_code": "COLLECTION_DISABLED"}
+                record = self.pipeline.prepare({"issue_date": day, "retry_blocked": True})
+            if self.clock().astimezone(KST).date().isoformat() != day:
+                return {"status": "SKIPPED", "error_code": "BRIEFING_DATE_EXPIRED"}
+            if record["state"] in {"READY", "COMMITTED"}:
+                record = self.publish({"issue_id": issue_id, "revision": record["revision"],
+                                       "approval_hash": record["approval_hash"]})
+        # Recheck the date after potentially long preparation/publication.
+        if self.clock().astimezone(KST).date().isoformat() != day:
+            return {"status": "SKIPPED", "error_code": "BRIEFING_DATE_EXPIRED"}
+        outcome = self.send_delivery({"issue_date": day, "scheduled": True, "message_type": "daily"})
+        if outcome["status"] in {"FAILED", "UNKNOWN"} or outcome.get("error_code") == "PUBLICATION_NOT_READY_BY_DEADLINE":
+            raise ValueError(outcome.get("error_code") or "BRIEFING_DELIVERY_FAILED")
+        return outcome
+
+    def send_delivery(self, data):
+        now = self.clock().astimezone(KST)
+        scheduled = data.get("scheduled", False)
+        if not isinstance(scheduled, bool):
+            raise ValueError("scheduled_must_be_boolean")
+        kind = data.get("message_type", "daily")
+        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", now.date().isoformat())
+        if kind == "correction" and self.briefing_stopped(issue_id.removeprefix("wind-")):
+            raise Conflict("daily_briefing_already_finished")
+        if scheduled:
+            if issue_id != "wind-" + now.date().isoformat() or kind != "daily" or "revision" in data:
+                raise ValueError("scheduled_delivery_requires_today_latest_daily")
+            if (now.hour, now.minute) < (8, 30):
+                return {"status": "SKIPPED", "error_code": "OUTSIDE_DELIVERY_WINDOW"}
+        record = (self.store.verified_issue(issue_id) if data.get("revision") is None
+                  else self.store.issue(issue_id, data["revision"]))
+        if not record or record["state"] != "WEB_VERIFIED":
+            code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and (now.hour, now.minute) >= (23, 30) else "WEB_VERIFICATION_REQUIRED"
+            return {"status": "SKIPPED", "error_code": code}
+        webhook = os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL", "")
+        if not webhook:
+            return {"status": "SKIPPED", "error_code": "TEAMS_NOT_CONFIGURED"}
+        with self.delivery_lock:
+            claimed = self.store.claim_delivery(issue_id, record["revision"], data.get("channel_id", "wind-news"), kind)
+            if not claimed["claimed"]:
+                evidence = claimed.get("result") or {}
+                return {"status": claimed["status"], "delivery_id": claimed["delivery_id"], "claimed": False,
+                        **{k: evidence[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in evidence}}
+            from .delivery import send_card
+            try:
+                outcome = send_card(record["payload"], webhook, self.config["policy"].get("publisher", {}).get("pages_base_url", ""))
+                state = outcome.get("status", "UNKNOWN")
+                if state == "SKIPPED":
+                    state = "FAILED"
+                self.store.delivery_result(claimed["delivery_id"], state,
+                    {k: outcome[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in outcome})
+            except Exception:
+                self.store.delivery_result(claimed["delivery_id"], "UNKNOWN", {"error_code": "SEND_RESULT_UNKNOWN"})
+                outcome = {"status": "UNKNOWN", "error_code": "SEND_RESULT_UNKNOWN"}
+            return {**outcome, "delivery_id": claimed["delivery_id"]}
 
 
 def create_app(config=None, *, store=None, runtime=None, token=None, start_worker=True, collector=None, publisher=None, summarizer=None, clock=None):
@@ -194,7 +280,6 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     pipeline = Pipeline(store, config["collection"], config["policy"], summarizer)
     runner = JobRunner(store, pipeline, config, runtime, collector, publisher, clock)
     app.extensions.update(wind_news_store=store, wind_news_pipeline=pipeline, wind_news_runner=runner)
-    delivery_lock = threading.Lock()
 
     def authenticated(fn):
         @wraps(fn)
@@ -356,7 +441,10 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         return jsonify(teams_configured=bool(os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL")),
                        issue_date=day, revision=record["revision"] if record else None,
                        publication_state=record["state"] if record else None,
-                       delivery_status=prior["status"] if prior else None)
+                       delivery_status=prior["status"] if prior else None,
+                       delivery_evidence={k: (prior.get("result") or {})[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in (prior.get("result") or {})} if prior else {},
+                       briefing_stopped=bool(runner.briefing_stopped(day)) if channel == "wind-news" else False,
+                       schedule_owner="n8n", first_check="08:30", last_check="23:30", interval_minutes=60)
 
     @app.post("/v1/deliveries/preview")
     @authenticated
@@ -372,44 +460,23 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @app.post("/v1/deliveries/send")
     @authenticated
     def send():
+        return jsonify(runner.send_delivery(body()))
+
+    @app.post("/v1/briefings/check")
+    @authenticated
+    def briefing_check():
         data = body()
         now = runner.clock().astimezone(KST)
-        scheduled = data.get("scheduled", False)
-        if not isinstance(scheduled, bool):
-            raise ValueError("scheduled_must_be_boolean")
-        kind = data.get("message_type", "daily")
-        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", now.date().isoformat())
-        if scheduled:
-            if issue_id != "wind-" + now.date().isoformat() or kind != "daily" or "revision" in data:
-                raise ValueError("scheduled_delivery_requires_today_latest_daily")
-            # Actions schedules can arrive hours late. Allow today's verified
-            # issue after 08:00; the date guard above and daily claim prevent
-            # yesterday's issue or a repeated daily send.
-            if now.hour < 8:
-                return jsonify(status="SKIPPED", error_code="OUTSIDE_DELIVERY_WINDOW")
-        record = (store.verified_issue(issue_id) if data.get("revision") is None
-                  else store.issue(issue_id, data["revision"]))
-        if not record or record["state"] != "WEB_VERIFIED":
-            code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and now.hour >= 9 else "WEB_VERIFICATION_REQUIRED"
-            return jsonify(status="SKIPPED", error_code=code)
-        webhook = os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL", "")
-        if not webhook:
-            return jsonify(status="SKIPPED", error_code="TEAMS_NOT_CONFIGURED")
-        with delivery_lock:
-            claimed = store.claim_delivery(issue_id, record["revision"], data.get("channel_id", "wind-news"), kind)
-            if not claimed["claimed"]:
-                return jsonify(status=claimed["status"], delivery_id=claimed["delivery_id"], claimed=False)
-            from .delivery import send_card
-            try:
-                outcome = send_card(record["payload"], webhook, config["policy"].get("publisher", {}).get("pages_base_url", ""))
-                state = outcome.get("status", "UNKNOWN")
-                if state == "SKIPPED":
-                    state = "FAILED"
-                store.delivery_result(claimed["delivery_id"], state, {"error_code": outcome.get("error_code", "")})
-            except Exception:
-                store.delivery_result(claimed["delivery_id"], "UNKNOWN", {"error_code": "SEND_RESULT_UNKNOWN"})
-                outcome = {"status": "UNKNOWN", "error_code": "SEND_RESULT_UNKNOWN"}
-            return jsonify(**outcome, delivery_id=claimed["delivery_id"])
+        day = now.date().isoformat()
+        if set(data) - {"issue_date"} or data.get("issue_date", day) != day:
+            raise ValueError("briefing_check_requires_today")
+        if (now.hour, now.minute) < (8, 30):
+            raise ValueError("OUTSIDE_DELIVERY_WINDOW")
+        # Slot identity survives n8n retries/restarts and duplicate triggers.
+        slot = (now - timedelta(minutes=30)).strftime("%Y-%m-%d-%H")
+        job = store.submit("briefing", "hourly-briefing-" + slot, {"issue_date": day})
+        runner._wake.set()
+        return jsonify(job_id=job["job_id"], status=job["status"]), 202
 
     @app.get("/review")
     def review_ui():

@@ -43,7 +43,7 @@ class WorkflowsTest(unittest.TestCase):
                     self.assertEqual(p["genericAuthType"], "httpHeaderAuth")
                     self.assertNotIn("id", n["credentials"]["httpHeaderAuth"])
                     self.assertFalse(p["options"]["redirect"]["redirect"]["followRedirects"])
-                    if n["name"] == "Submit" and "04-Deliver" not in flow["name"]:
+                    if n["name"] == "Submit" :
                         self.assertEqual(p["headerParameters"]["parameters"][0]["name"], "Idempotency-Key")
 
     def test_publish_does_not_depend_on_teams(self):
@@ -58,9 +58,9 @@ class WorkflowsTest(unittest.TestCase):
         def crons(flow):
             return next(n for n in flow["nodes"] if n["name"] == "Schedule")["parameters"]["rule"]["interval"]
         self.assertEqual(crons(publish), [{"field": "cronExpression", "expression": "50 7 * * *"}])
-        self.assertEqual([c["expression"] for c in crons(deliver)], ["*/5 8 * * *", "0 9 * * *"])
-        self.assertIn("scheduled: true", json.dumps(deliver))
-        self.assertIn("message_type: 'daily'", json.dumps(deliver))
+        self.assertEqual([c["expression"] for c in crons(deliver)], ["30 8-23 * * *"])
+        self.assertIn("/v1/briefings/check", json.dumps(deliver))
+        self.assertIn("$json.briefing_stopped", json.dumps(deliver))
 
     def test_jobs_have_bound_and_fail_explicitly(self):
         for flow in build():

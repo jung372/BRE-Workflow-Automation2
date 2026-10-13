@@ -1,9 +1,7 @@
-name: 뉴스 브리핑 Teams 정기 보고 (매일 08:00 KST)
+name: 뉴스 브리핑 Teams 수동 확인·발송 (정기 발송은 n8n 08:30)
 
 on:
-  schedule:
-    - cron: '0-55/5 23 * * *' # KST 08:00 시작, 발간 지연 시 08:55까지 확인
-    - cron: '0 0 * * *'       # KST 09:00 최종 확인
+  # The server n8n owns 08:30 and hourly retries. No second periodic sender.
   workflow_dispatch:
     inputs:
       mode:
@@ -40,6 +38,6 @@ jobs:
       - name: 뉴스 브리핑 확인 및 Teams 보고
         shell: powershell
         env:
-          NEWS_REPORT_MODE: ${{ github.event_name == 'schedule' && 'scheduled' || inputs.mode || 'preview' }}
+          NEWS_REPORT_MODE: ${{ inputs.mode || 'preview' }}
           NEWS_REPORT_DATE: ${{ inputs.issue_date }}
         run: .\scripts\wind_news\report_teams.ps1

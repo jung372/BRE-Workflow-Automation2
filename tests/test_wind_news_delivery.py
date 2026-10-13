@@ -39,6 +39,18 @@ class DeliveryTests(unittest.TestCase):
         client.post.return_value.status_code = 500
         self.assertEqual(send_card(self.issue, self.webhook, self.site, client)["status"], "UNKNOWN")
 
+    def test_receiver_diagnostics_keep_status_and_only_fixed_codes(self):
+        client = Mock()
+        client.post.return_value.status_code = 502
+        client.post.return_value.json.return_value = {"error": {"code": "BadGateway", "message": self.webhook}}
+        result = send_card(self.issue, self.webhook, self.site, client)
+        self.assertEqual(result["http_status"], 502)
+        self.assertEqual(result["response_class"], "receiver_server_error")
+        self.assertEqual(result["receiver_error_code"], "BadGateway")
+        self.assertNotIn("SECRET", str(result))
+        client.post.return_value.json.return_value = {"error": {"code": self.webhook}}
+        self.assertNotIn("receiver_error_code", send_card(self.issue, self.webhook, self.site, client))
+
     def test_explicit_rejection_is_failed(self):
         client = Mock()
         client.post.return_value.status_code = 429

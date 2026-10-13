@@ -114,11 +114,11 @@ class ServiceTests(unittest.TestCase):
         self.publish(self.ready())
         payload = {"issue_date": "2026-09-30", "scheduled": True}
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
-            for hour, minute in [(15, 0), (22, 59)]:
+            for hour, minute in [(15, 0), (22, 59), (23, 0), (23, 29)]:
                 self.runner.clock = lambda h=hour, m=minute: datetime(2026, 9, 29, h, m, tzinfo=timezone.utc)
                 response = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
                 self.assertEqual(response.json["error_code"], "OUTSIDE_DELIVERY_WINDOW")
-            self.runner.clock = lambda: datetime(2026, 9, 29, 23, 0, tzinfo=timezone.utc)
+            self.runner.clock = lambda: datetime(2026, 9, 29, 23, 30, tzinfo=timezone.utc)
             wrong = self.client.post("/v1/deliveries/send", json={**payload, "issue_date": "2026-09-29"}, headers=self.headers)
             self.assertEqual(wrong.status_code, 400)
             send.assert_not_called()
@@ -172,9 +172,11 @@ class ServiceTests(unittest.TestCase):
         self.publish(self.ready())
         with patch("news.delivery.send_card") as send:
             for hour, minute, expected in [(23, 59, "WEB_VERIFICATION_REQUIRED"),
-                                          (0, 0, "PUBLICATION_NOT_READY_BY_DEADLINE"),
-                                          (0, 1, "PUBLICATION_NOT_READY_BY_DEADLINE"),
-                                          (6, 50, "PUBLICATION_NOT_READY_BY_DEADLINE"),
+                                          (0, 0, "WEB_VERIFICATION_REQUIRED"),
+                                          (0, 1, "WEB_VERIFICATION_REQUIRED"),
+                                          (6, 50, "WEB_VERIFICATION_REQUIRED"),
+                                          (14, 29, "WEB_VERIFICATION_REQUIRED"),
+                                          (14, 30, "PUBLICATION_NOT_READY_BY_DEADLINE"),
                                           (14, 59, "PUBLICATION_NOT_READY_BY_DEADLINE")]:
                 day, month = (30, 9) if hour == 23 else (1, 10)
                 self.runner.clock = lambda h=hour, m=minute, d=day, mo=month: datetime(2026, mo, d, h, m, tzinfo=timezone.utc)
@@ -249,7 +251,7 @@ class ServiceTests(unittest.TestCase):
         self.publish(self.ready())
         self.config["policy"]["auto_recover"] = True
         self.config["collection"]["enabled"] = True
-        self.runner.clock = lambda: datetime(2026, 9, 30, 0, 5, tzinfo=timezone.utc)
+        self.runner.clock = lambda: datetime(2026, 9, 29, 23, 5, tzinfo=timezone.utc)
         first = self.runner.reconcile()
         self.assertEqual(len(first["enqueued_jobs"]), 1)
         self.runner.run_once()
@@ -264,6 +266,103 @@ class ServiceTests(unittest.TestCase):
         job = self.store.job(job_id)
         self.assertEqual(job["status"], "SUCCEEDED")
         self.assertTrue((Path(self.temp.name) / "backups" / job["result"]["filename"]).exists())
+
+    def hourly(self, hour=23, minute=30, day=29):
+        self.runner.clock = lambda: datetime(2026, 9, day, hour, minute, tzinfo=timezone.utc)
+        return self.enqueue("/v1/briefings/check", {"issue_date": "2026-09-30"}, "ignored-hourly-key")
+
+    def ingest_hourly_source(self, status, key, minute):
+        self.pipeline.ingest({"articles": [], "source_results": [{"source_id": "fixture", "status": status, "count": 0}]}, key)
+        self.store.call(lambda db: db.execute("UPDATE batches SET created_at=? WHERE batch_id=?",
+            [f"2026-09-29T23:{minute:02d}:00+00:00", key]).fetchall(), write=True)
+
+    def test_hourly_guard_auth_and_persistent_slot_idempotency(self):
+        self.runner.clock = lambda: datetime(2026, 9, 29, 23, 29, tzinfo=timezone.utc)
+        self.assertEqual(self.client.post("/v1/briefings/check", json={}, headers=self.headers).status_code, 400)
+        self.assertEqual(self.client.post("/v1/briefings/check", json={}).status_code, 401)
+        first = self.hourly()
+        self.assertEqual(self.hourly(hour=0, minute=29, day=30), first)
+        self.assertNotEqual(self.hourly(hour=0, minute=30, day=30), first)
+        for data in ({"issue_date": "2026-09-29"}, {"revision": 1}, {"message_type": "correction"}):
+            self.assertEqual(self.client.post("/v1/briefings/check", json=data, headers=self.headers).status_code, 400)
+
+    def test_hourly_publishes_ready_then_sends_once_and_stops_followup_jobs(self):
+        record = self.ready()
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED", "http_status": 202}) as send:
+            first = self.hourly()
+            self.runner.run_once()
+            self.assertEqual(self.store.job(first)["result"]["status"], "ACCEPTED")
+            with patch.object(self.pipeline, "prepare", side_effect=AssertionError("must not summarize again")):
+                second = self.hourly(0, 30, 30)
+                self.runner.run_once()
+                self.assertFalse(self.store.job(second)["result"]["claimed"])
+                queued = self.enqueue("/v1/issues/prepare", {"issue_date": record["issue_date"]}, "late-prepare")
+                self.runner.run_once()
+                self.assertEqual(self.store.job(queued)["result"]["revision"], 1)
+            self.assertEqual(send.call_count, 1)
+            self.assertEqual(len(self.publisher.calls), 1)
+            status = self.client.get("/v1/deliveries/status", headers=self.headers).json
+            self.assertTrue(status["briefing_stopped"])
+            self.assertEqual(status["delivery_evidence"]["http_status"], 202)
+            self.assertEqual(self.runner.reconcile()["enqueued_jobs"], [])
+
+    def test_hourly_blocked_recovery_uses_new_collection_and_no_news_is_final(self):
+        self.config["collection"]["enabled"] = True
+        self.config["policy"].update(automatic_publication=True, review_mode="codex_oauth")
+        self.ingest_hourly_source("request_error", "failed-source", 0)
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
+            first = self.hourly()
+            self.runner.run_once()
+            self.assertEqual(self.store.job(first)["result"]["error_code"], "WEB_VERIFICATION_REQUIRED")
+            send.assert_not_called()
+            self.ingest_hourly_source("success_zero", "healthy-source", 31)
+            second = self.hourly(0, 30, 30)
+            self.runner.run_once()
+            self.assertEqual(self.store.job(second)["result"]["status"], "ACCEPTED")
+            self.assertEqual(send.call_args.args[0]["content_status"], "no_news")
+            self.assertEqual(send.call_count, 1)
+
+    def test_unknown_preserves_diagnostics_and_never_resends_after_restart(self):
+        self.publish(self.ready())
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "UNKNOWN", "error_code": "teams_ambiguous_response", "http_status": 502, "response_class": "receiver_server_error"}) as send:
+            first = self.hourly()
+            self.runner.run_once()
+            self.assertEqual(self.store.job(first)["status"], "FAILED")
+            self.store.recover()
+            second = self.hourly(0, 30, 30)
+            self.runner.run_once()
+            response = self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers).json
+            self.assertEqual(response["http_status"], 502)
+            self.assertEqual(response["error_code"], "teams_ambiguous_response")
+            self.assertFalse(response["claimed"])
+            self.assertEqual(send.call_count, 1)
+
+    def test_hourly_queued_job_does_not_publish_or_send_previous_day(self):
+        self.ready()
+        job = self.hourly()
+        self.runner.clock = lambda: datetime(2026, 9, 30, 15, 0, tzinfo=timezone.utc)
+        with patch("news.delivery.send_card") as send:
+            self.runner.run_once()
+            self.assertEqual(self.store.job(job)["result"]["error_code"], "BRIEFING_DATE_EXPIRED")
+            self.assertEqual(self.publisher.calls, [])
+            send.assert_not_called()
+
+    def test_final_hour_missing_publication_is_failure_and_day_before_is_waiting(self):
+        self.config["collection"]["enabled"] = True
+        self.ingest_hourly_source("request_error", "failed-source", 0)
+        early = self.hourly(13, 30, 30)
+        self.runner.run_once()
+        self.assertEqual(self.store.job(early)["status"], "SUCCEEDED")
+        final = self.hourly(14, 30, 30)
+        self.runner.run_once()
+        self.assertEqual(self.store.job(final)["error_code"], "PUBLICATION_NOT_READY_BY_DEADLINE")
+
+    def test_reconcile_leaves_after_0830_recovery_to_hourly_job(self):
+        self.ready()
+        self.config["collection"]["enabled"] = True
+        self.config["policy"]["auto_recover"] = True
+        self.runner.clock = lambda: datetime(2026, 9, 29, 23, 30, tzinfo=timezone.utc)
+        self.assertEqual(self.runner.reconcile()["enqueued_jobs"], [])
 
 
 if __name__ == "__main__":
