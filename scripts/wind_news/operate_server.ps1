@@ -13,3 +13,6 @@ if ($Action -eq 'refresh' -or $Action -eq 'dedup-correct') {
 $scriptAction = if ($Action -eq 'correct') { 'launch' } else { $Action }
 & wsl -d Ubuntu-24.04 --exec bash "$linuxSource/scripts/wind_news/${scriptAction}_linux.sh" $linuxSource $sha $Action
 if ($LASTEXITCODE -ne 0) { throw 'News installation failed; inspect sanitized step output' }
+if ($Action -eq 'briefing') {
+    & (Join-Path $PSScriptRoot 'install_morning_guard.ps1')
+}

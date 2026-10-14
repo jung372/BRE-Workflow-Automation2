@@ -20,35 +20,44 @@ status=s.get(base+'/v1/deliveries/status',timeout=60)
 if status.status_code == 200:
     delivery=status.json()
     print('BRIEFING_DELIVERY_STATUS='+json.dumps(delivery))
-    assert delivery.get('first_check')=='08:30' and delivery.get('last_check')=='23:30'
-    assert delivery.get('interval_minutes')==60 and delivery.get('schedule_owner')=='n8n'
-    print('BRIEFING_HOURLY_CONTRACT_VERIFIED')
+    assert delivery.get('first_check')=='08:30' and delivery.get('last_check')=='09:25'
+    assert delivery.get('deadline')=='09:30'
+    assert delivery.get('interval_minutes')==5 and delivery.get('schedule_owner')=='n8n'
+    print('BRIEFING_MORNING_CONTRACT_VERIFIED')
     if delivery.get('briefing_stopped'):
         before=s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60).json()
         response=s.post(base+'/v1/briefings/check',json={'issue_date':delivery['issue_date']},timeout=60)
-        response.raise_for_status(); job_id=response.json()['job_id']
-        for _ in range(60):
-            response=s.get(base+'/v1/jobs/'+job_id,timeout=60); response.raise_for_status(); job=response.json()
-            if job['status'] not in ('QUEUED','RUNNING'): break
-            time.sleep(1)
-        assert job['status']=='SUCCEEDED' and job['result'].get('claimed') is False
+        if response.status_code == 400:
+            assert response.json()['error_code'] in ('OUTSIDE_DELIVERY_WINDOW', 'BRIEFING_DELIVERY_DEADLINE_MISSED')
+        else:
+            response.raise_for_status(); job_id=response.json()['job_id']
+            for _ in range(60):
+                response=s.get(base+'/v1/jobs/'+job_id,timeout=60); response.raise_for_status(); job=response.json()
+                if job['status'] not in ('QUEUED','RUNNING'): break
+                time.sleep(1)
+            assert job['status']=='SUCCEEDED' and job['result'].get('claimed') is False
         after=s.get(base+'/v1/deliveries/status',timeout=60).json()
         assert after==delivery, 'BRIEFING_STOP_STATE_CHANGED'
         assert s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60).json()==before
         print('BRIEFING_STOPPED_NO_RESEND_VERIFIED')
     if delivery.get('revision'):
         preview=s.post(base+'/v1/deliveries/preview',json={'issue_date':delivery['issue_date']},timeout=60)
-        preview.raise_for_status(); card=preview.json()['attachments'][0]['content']
+        preview.raise_for_status(); payload=preview.json()
         issue=s.get(base+'/v1/issues/wind-'+delivery['issue_date'],params={'revision':delivery['revision']},timeout=60)
         issue.raise_for_status()
         from news.delivery import build_card
         from news.service import load_config
         record=issue.json()['issue']
         assert record['revision'] == delivery['revision']
-        expected=build_card(record,load_config(os.environ['WIND_NEWS_CONFIG'])['policy']['publisher']['pages_base_url'])['attachments'][0]['content']
-        assert card==expected, 'BRIEFING_CARD_MISMATCH'
-        assert len([b for b in card['body'] if '](' in b.get('text','')])==len(record['items'])
-        assert card['actions'][0]['url'].endswith('/#/daily/'+delivery['issue_date'])
+        expected=build_card(record,load_config(os.environ['WIND_NEWS_CONFIG'])['policy']['publisher']['pages_base_url'],
+                            os.environ.get('WIND_NEWS_TEAMS_CARD_FORMAT', 'adaptive'))
+        assert payload==expected, 'BRIEFING_CARD_MISMATCH'
+        if payload.get('@type') == 'MessageCard':
+            assert sum('](' in fact.get('value','') for fact in payload['sections'][0]['facts'])==len(record['items'])
+        else:
+            card=payload['attachments'][0]['content']
+            assert len([b for b in card['body'] if '](' in b.get('text','')])==len(record['items'])
+            assert card['actions'][0]['url'].endswith('/#/daily/'+delivery['issue_date'])
         print('BRIEFING_PREVIEW_VERIFIED articles='+str(len(record['items']))+' summaries=false')
 response = s.post(base+'/v1/backup',json={},headers={'Idempotency-Key':'server-smoke-'+uuid.uuid4().hex},timeout=10)
 response.raise_for_status(); job_id=response.json()['job_id']
