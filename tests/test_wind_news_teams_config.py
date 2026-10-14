@@ -6,9 +6,24 @@ import unittest
 from unittest.mock import patch
 
 from scripts.wind_news.configure_teams import main, update_settings
+from news.delivery import _webhook_allowed
 
 
 class SharedTeamsConfigTests(unittest.TestCase):
+    def test_official_receiver_hosts_match_configuration_and_delivery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "compose.env"
+            path.write_text("WIND_NEWS_RELEASE=fixture\n", encoding="utf-8")
+            for url in ("https://fixture.logic.azure.com/test", "https://fixture.api.powerplatform.com/test",
+                        "https://fixture.webhook.office.com/webhookb2/test", "https://outlook.office.com/webhook/test"):
+                self.assertTrue(_webhook_allowed(url))
+                self.assertEqual(update_settings(path, url)[0], url)
+            for url in ("https://evil-webhook.office.com/test", "https://fixture.webhook.office.com.evil.example/test",
+                        "https://outlook.office.com/mail/test", "https://webhook.office.com/test"):
+                self.assertFalse(_webhook_allowed(url))
+                with self.assertRaises(ValueError):
+                    update_settings(path, url)
+
     def test_diagnostic_reports_fixed_stage_without_exception_secret(self):
         output = io.StringIO()
         with patch("scripts.wind_news.configure_teams.Path.read_text", side_effect=RuntimeError("private-secret")):

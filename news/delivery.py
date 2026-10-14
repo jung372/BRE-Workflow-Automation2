@@ -28,9 +28,11 @@ def _public_https(url: str) -> bool:
 def _webhook_allowed(url: str) -> bool:
     if not _public_https(url):
         return False
-    host = urlsplit(url).hostname.lower()
-    return any(host.endswith("." + suffix) for suffix in
-               ("logic.azure.com", "api.powerplatform.com"))
+    parsed = urlsplit(url)
+    host = parsed.hostname.lower()
+    return (any(host.endswith("." + suffix) for suffix in
+                ("logic.azure.com", "api.powerplatform.com", "webhook.office.com"))
+            or host == "outlook.office.com" and parsed.path.startswith("/webhook/"))
 
 
 def _plain(value: object, limit: int) -> str:

@@ -13,10 +13,12 @@ def update_settings(path, webhook):
     parsed = urlsplit(webhook)
     if (not webhook or len(webhook) > 8192 or any(c.isspace() or c in "'\\\"" for c in webhook)
             or parsed.scheme != "https" or parsed.username or parsed.password
-            or parsed.port not in (None, 443) or not parsed.hostname
-            or not any(parsed.hostname.endswith("." + suffix)
-                       for suffix in ("logic.azure.com", "api.powerplatform.com"))):
+            or parsed.port not in (None, 443) or not parsed.hostname):
         raise ValueError("INVALID_SHARED_TEAMS_WEBHOOK")
+    if not (any(parsed.hostname.endswith("." + suffix) for suffix in
+                ("logic.azure.com", "api.powerplatform.com", "webhook.office.com"))
+            or parsed.hostname == "outlook.office.com" and parsed.path.startswith("/webhook/")):
+        raise ValueError("UNSUPPORTED_SHARED_TEAMS_HOST")
     original = path.read_text(encoding="utf-8")
     keys = {"WIND_NEWS_TEAMS_WEBHOOK_URL", "WIND_NEWS_TEAMS_CARD_FORMAT"}
     lines = [line for line in original.splitlines() if line.split("=", 1)[0].strip() not in keys]
@@ -76,7 +78,7 @@ def main():
         return 0
     except Exception as error:
         # Fixed labels only: exceptions and command output can contain secrets.
-        known = {"INVALID_SHARED_TEAMS_WEBHOOK", "NEWS_SERVICE_UPGRADE_REQUIRED",
+        known = {"INVALID_SHARED_TEAMS_WEBHOOK", "UNSUPPORTED_SHARED_TEAMS_HOST", "NEWS_SERVICE_UPGRADE_REQUIRED",
                  "TEAMS_CONFIGURATION_COMMAND_FAILED", "NEWS_HEALTH_FAILED"}
         code = str(error) if str(error) in known else type(error).__name__
         if code not in known | {"FileNotFoundError", "PermissionError", "TimeoutExpired", "ValueError"}:
