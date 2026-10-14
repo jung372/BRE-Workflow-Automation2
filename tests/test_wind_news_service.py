@@ -1,5 +1,5 @@
 import copy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import os
@@ -152,7 +152,7 @@ class ServiceTests(unittest.TestCase):
             first = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
             self.assertEqual(first.json["status"], outcome)
             self.assertEqual(send.call_args.args[0]["issue_date"], "2026-09-30")
-            self.runner.clock = lambda: datetime(2026, 9, 30, 14, 59, tzinfo=timezone.utc)
+            self.runner.clock = lambda: datetime(2026, 9, 30, 0, 25, tzinfo=timezone.utc)
             repeat = self.client.post("/v1/deliveries/send", json=payload, headers=self.headers)
             self.assertEqual(repeat.json["status"], outcome)
             self.assertFalse(repeat.json["claimed"])
@@ -161,14 +161,20 @@ class ServiceTests(unittest.TestCase):
     def test_scheduled_send_after_0900_is_allowed(self):
         self.assert_delayed_scheduled_send(0, 1)
 
-    def test_scheduled_send_at_1550_is_allowed(self):
-        self.assert_delayed_scheduled_send(6, 50)
+    def test_scheduled_send_at_0925_is_allowed(self):
+        self.assert_delayed_scheduled_send(0, 25)
 
-    def test_scheduled_send_at_2359_is_allowed(self):
-        self.assert_delayed_scheduled_send(14, 59)
+    def test_scheduled_send_at_or_after_0930_never_sends_even_if_ready(self):
+        self.publish(self.ready())
+        with patch("news.delivery.send_card") as send:
+            for hour, minute in [(0, 30), (6, 30), (14, 59)]:
+                self.runner.clock = lambda h=hour, m=minute: datetime(2026, 9, 30, h, m, tzinfo=timezone.utc)
+                response = self.client.post("/v1/deliveries/send", json={"scheduled": True}, headers=self.headers)
+                self.assertEqual(response.json["error_code"], "BRIEFING_DELIVERY_DEADLINE_MISSED")
+            send.assert_not_called()
 
     def test_delayed_scheduled_unknown_is_not_retried(self):
-        self.assert_delayed_scheduled_send(6, 50, "UNKNOWN")
+        self.assert_delayed_scheduled_send(0, 20, "UNKNOWN")
 
     def test_delayed_scheduled_date_and_revision_guards(self):
         self.publish(self.ready())
@@ -191,10 +197,10 @@ class ServiceTests(unittest.TestCase):
             for hour, minute, expected in [(23, 59, "WEB_VERIFICATION_REQUIRED"),
                                           (0, 0, "WEB_VERIFICATION_REQUIRED"),
                                           (0, 1, "WEB_VERIFICATION_REQUIRED"),
-                                          (6, 50, "WEB_VERIFICATION_REQUIRED"),
-                                          (14, 29, "WEB_VERIFICATION_REQUIRED"),
-                                          (14, 30, "PUBLICATION_NOT_READY_BY_DEADLINE"),
-                                          (14, 59, "PUBLICATION_NOT_READY_BY_DEADLINE")]:
+                                          (0, 24, "WEB_VERIFICATION_REQUIRED"),
+                                          (0, 25, "PUBLICATION_NOT_READY_BY_DEADLINE"),
+                                          (0, 30, "BRIEFING_DELIVERY_DEADLINE_MISSED"),
+                                          (6, 30, "BRIEFING_DELIVERY_DEADLINE_MISSED")]:
                 day, month = (30, 9) if hour == 23 else (1, 10)
                 self.runner.clock = lambda h=hour, m=minute, d=day, mo=month: datetime(2026, mo, d, h, m, tzinfo=timezone.utc)
                 with self.subTest(hour=hour, minute=minute):
@@ -284,33 +290,35 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(job["status"], "SUCCEEDED")
         self.assertTrue((Path(self.temp.name) / "backups" / job["result"]["filename"]).exists())
 
-    def hourly(self, hour=23, minute=30, day=29):
+    def morning(self, hour=23, minute=30, day=29):
         self.runner.clock = lambda: datetime(2026, 9, day, hour, minute, tzinfo=timezone.utc)
-        return self.enqueue("/v1/briefings/check", {"issue_date": "2026-09-30"}, "ignored-hourly-key")
+        return self.enqueue("/v1/briefings/check", {"issue_date": "2026-09-30"}, "ignored-morning-key")
 
-    def ingest_hourly_source(self, status, key, minute):
+    def ingest_morning_source(self, status, key, minute):
         self.pipeline.ingest({"articles": [], "source_results": [{"source_id": "fixture", "status": status, "count": 0}]}, key)
         self.store.call(lambda db: db.execute("UPDATE batches SET created_at=? WHERE batch_id=?",
             [f"2026-09-29T23:{minute:02d}:00+00:00", key]).fetchall(), write=True)
 
-    def test_hourly_guard_auth_and_persistent_slot_idempotency(self):
+    def test_morning_guard_auth_and_persistent_slot_idempotency(self):
         self.runner.clock = lambda: datetime(2026, 9, 29, 23, 29, tzinfo=timezone.utc)
         self.assertEqual(self.client.post("/v1/briefings/check", json={}, headers=self.headers).status_code, 400)
         self.assertEqual(self.client.post("/v1/briefings/check", json={}).status_code, 401)
-        first = self.hourly()
-        self.assertEqual(self.hourly(hour=0, minute=29, day=30), first)
-        self.assertNotEqual(self.hourly(hour=0, minute=30, day=30), first)
+        first = self.morning()
+        self.assertEqual(self.morning(hour=23, minute=34), first)
+        self.assertNotEqual(self.morning(hour=23, minute=35), first)
+        self.runner.clock = lambda: datetime(2026, 9, 30, 0, 30, tzinfo=timezone.utc)
+        self.assertEqual(self.client.post("/v1/briefings/check", json={}, headers=self.headers).status_code, 400)
         for data in ({"issue_date": "2026-09-29"}, {"revision": 1}, {"message_type": "correction"}):
             self.assertEqual(self.client.post("/v1/briefings/check", json=data, headers=self.headers).status_code, 400)
 
-    def test_hourly_publishes_ready_then_sends_once_and_stops_followup_jobs(self):
+    def test_morning_publishes_ready_then_sends_once_and_stops_followup_jobs(self):
         record = self.ready()
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED", "http_status": 202}) as send:
-            first = self.hourly()
+            first = self.morning()
             self.runner.run_once()
             self.assertEqual(self.store.job(first)["result"]["status"], "ACCEPTED")
             with patch.object(self.pipeline, "prepare", side_effect=AssertionError("must not summarize again")):
-                second = self.hourly(0, 30, 30)
+                second = self.morning(0, 25, 30)
                 self.runner.run_once()
                 self.assertFalse(self.store.job(second)["result"]["claimed"])
                 queued = self.enqueue("/v1/issues/prepare", {"issue_date": record["issue_date"]}, "late-prepare")
@@ -323,17 +331,17 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(status["delivery_evidence"]["http_status"], 202)
             self.assertEqual(self.runner.reconcile()["enqueued_jobs"], [])
 
-    def test_hourly_blocked_recovery_uses_new_collection_and_no_news_is_final(self):
+    def test_morning_blocked_recovery_uses_new_collection_and_no_news_is_final(self):
         self.config["collection"]["enabled"] = True
         self.config["policy"].update(automatic_publication=True, review_mode="codex_oauth")
-        self.ingest_hourly_source("request_error", "failed-source", 0)
+        self.ingest_morning_source("request_error", "failed-source", 0)
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
-            first = self.hourly()
+            first = self.morning()
             self.runner.run_once()
             self.assertEqual(self.store.job(first)["result"]["error_code"], "WEB_VERIFICATION_REQUIRED")
             send.assert_not_called()
-            self.ingest_hourly_source("success_zero", "healthy-source", 31)
-            second = self.hourly(0, 30, 30)
+            self.ingest_morning_source("success_zero", "healthy-source", 31)
+            second = self.morning(0, 25, 30)
             self.runner.run_once()
             self.assertEqual(self.store.job(second)["result"]["status"], "ACCEPTED")
             self.assertEqual(send.call_args.args[0]["content_status"], "no_news")
@@ -342,11 +350,11 @@ class ServiceTests(unittest.TestCase):
     def test_unknown_preserves_diagnostics_and_never_resends_after_restart(self):
         self.publish(self.ready())
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "UNKNOWN", "error_code": "teams_ambiguous_response", "http_status": 502, "response_class": "receiver_server_error"}) as send:
-            first = self.hourly()
+            first = self.morning()
             self.runner.run_once()
             self.assertEqual(self.store.job(first)["status"], "FAILED")
             self.store.recover()
-            second = self.hourly(0, 30, 30)
+            second = self.morning(0, 25, 30)
             self.runner.run_once()
             response = self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers).json
             self.assertEqual(response["http_status"], 502)
@@ -354,9 +362,9 @@ class ServiceTests(unittest.TestCase):
             self.assertFalse(response["claimed"])
             self.assertEqual(send.call_count, 1)
 
-    def test_hourly_queued_job_does_not_publish_or_send_previous_day(self):
+    def test_morning_queued_job_does_not_publish_or_send_previous_day(self):
         self.ready()
-        job = self.hourly()
+        job = self.morning()
         self.runner.clock = lambda: datetime(2026, 9, 30, 15, 0, tzinfo=timezone.utc)
         with patch("news.delivery.send_card") as send:
             self.runner.run_once()
@@ -364,22 +372,75 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(self.publisher.calls, [])
             send.assert_not_called()
 
-    def test_final_hour_missing_publication_is_failure_and_day_before_is_waiting(self):
+    def test_final_morning_slot_missing_publication_is_failure(self):
         self.config["collection"]["enabled"] = True
-        self.ingest_hourly_source("request_error", "failed-source", 0)
-        early = self.hourly(13, 30, 30)
+        self.ingest_morning_source("request_error", "failed-source", 0)
+        early = self.morning(0, 20, 30)
         self.runner.run_once()
         self.assertEqual(self.store.job(early)["status"], "SUCCEEDED")
-        final = self.hourly(14, 30, 30)
+        final = self.morning(0, 25, 30)
         self.runner.run_once()
         self.assertEqual(self.store.job(final)["error_code"], "PUBLICATION_NOT_READY_BY_DEADLINE")
 
-    def test_reconcile_leaves_after_0830_recovery_to_hourly_job(self):
+    def test_reconcile_leaves_after_0830_recovery_to_morning_job(self):
         self.ready()
         self.config["collection"]["enabled"] = True
         self.config["policy"]["auto_recover"] = True
         self.runner.clock = lambda: datetime(2026, 9, 29, 23, 30, tzinfo=timezone.utc)
         self.assertEqual(self.runner.reconcile()["enqueued_jobs"], [])
+
+    def test_queued_morning_job_expires_without_publish_or_send_after_0930(self):
+        self.ready()
+        job = self.morning(0, 25, 30)
+        self.runner.clock = lambda: datetime(2026, 9, 30, 0, 30, tzinfo=timezone.utc)
+        with patch("news.delivery.send_card") as send:
+            self.runner.run_once()
+            self.assertEqual(self.store.job(job)["error_code"], "BRIEFING_DELIVERY_DEADLINE_MISSED")
+            self.assertEqual(self.publisher.calls, [])
+            send.assert_not_called()
+
+    def test_explicit_failures_can_retry_all_twelve_slots_and_succeed_at_0925(self):
+        self.publish(self.ready())
+        outcomes = [{"status": "FAILED", "http_status": 429, "error_code": "teams_rejected"}] * 11 + [{"status": "ACCEPTED", "http_status": 202}]
+        with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch(
+                "news.delivery.send_card", side_effect=outcomes) as send:
+            start = datetime(2026, 9, 29, 23, 30, tzinfo=timezone.utc)
+            for slot in range(12):
+                self.runner.clock = lambda n=slot: start + timedelta(minutes=5*n)
+                job = self.enqueue("/v1/briefings/check", {"issue_date": "2026-09-30"}, "slot")
+                self.runner.run_once()
+                if slot < 11:
+                    self.assertEqual(self.store.job(job)["status"], "FAILED")
+                    self.assertFalse(self.runner.briefing_stopped("2026-09-30"))
+            self.assertEqual(send.call_count, 12)
+            self.assertEqual(self.store.daily_delivery("2026-09-30")["status"], "ACCEPTED")
+            self.assertTrue(self.runner.briefing_stopped("2026-09-30"))
+
+    def test_publication_crossing_deadline_cannot_send_late(self):
+        self.ready()
+        job = self.morning(0, 25, 30)
+        def publish(issues):
+            self.runner.clock = lambda: datetime(2026, 9, 30, 0, 30, tzinfo=timezone.utc)
+            return {"state": "WEB_VERIFIED"}
+        self.publisher.publish = publish
+        with patch("news.delivery.send_card") as send:
+            self.runner.run_once()
+            self.assertEqual(self.store.job(job)["error_code"], "BRIEFING_DELIVERY_DEADLINE_MISSED")
+            send.assert_not_called()
+
+    def test_preparation_crossing_deadline_cannot_publish_or_send(self):
+        record = self.ready()
+        self.store.call(lambda db: db.execute("DELETE FROM issues").fetchall(), write=True)
+        self.config["collection"]["enabled"] = True
+        job = self.morning(0, 25, 30)
+        def prepare(payload):
+            self.runner.clock = lambda: datetime(2026, 9, 30, 0, 30, tzinfo=timezone.utc)
+            return record
+        with patch.object(self.pipeline, "prepare", side_effect=prepare), patch("news.delivery.send_card") as send:
+            self.runner.run_once()
+            self.assertEqual(self.store.job(job)["error_code"], "BRIEFING_DELIVERY_DEADLINE_MISSED")
+            self.assertEqual(self.publisher.calls, [])
+            send.assert_not_called()
 
 
 if __name__ == "__main__":

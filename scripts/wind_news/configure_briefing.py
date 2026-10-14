@@ -1,4 +1,4 @@
-"""Update the existing news publication and hourly delivery using n8n's CLI.
+"""Update the existing news publication and morning delivery using n8n's CLI.
 
 Run on the Linux server as its Docker operator. Credential objects are never
 exported. Existing workflow backups stay private on the server, not in Git.
@@ -138,7 +138,7 @@ def main():
                 raise RuntimeError("BRIEFING_PUBLICATION_STATE_MISMATCH")
         if active_ids() != expected_active:
             raise RuntimeError("BRIEFING_ACTIVE_WORKFLOW_SET_MISMATCH")
-        print("BRIEFING_SCHEDULES_VERIFIED publish=07:50 delivery=08:30-23:30 hourly timezone=Asia/Seoul")
+        print("BRIEFING_SCHEDULES_VERIFIED publish=07:50 delivery=08:30-09:25 interval=5m deadline=09:30 timezone=Asia/Seoul")
         print("OTHER_ACTIVE_WORKFLOWS_PRESERVED=" + str(len(before_active - set(ids))))
         print("TEAMS_SCHEDULE_OWNER=n8n N8N_DELIVER_ACTIVE=true")
     except Exception:

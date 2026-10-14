@@ -60,7 +60,8 @@ def report(session, mode, issue_date="", *, clock=None):
             result[field] = value[field]
     if state == "UNKNOWN":
         result["operator_action"] = "CHECK_TEAMS_WORKFLOW_HISTORY_NO_RESEND"
-    return result, int(state in {"FAILED", "UNKNOWN"} or code in {"PUBLICATION_NOT_READY_BY_DEADLINE", "TEAMS_NOT_CONFIGURED"})
+    return result, int(state in {"FAILED", "UNKNOWN"} or code in {
+        "PUBLICATION_NOT_READY_BY_DEADLINE", "BRIEFING_DELIVERY_DEADLINE_MISSED", "TEAMS_NOT_CONFIGURED"})
 
 
 def main():

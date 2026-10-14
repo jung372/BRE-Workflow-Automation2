@@ -133,7 +133,7 @@ def build(service_url="http://news-service:8090"):
          "={{ JSON.stringify({revision: $json.revision, approval_hash: $json.approval_hash}) }}",
          ["50 7 * * *"], {"publish": True}),
         ("04", "Deliver", "'/v1/briefings/check'", config_body,
-         ["30 8-23 * * *"], {}),
+         ["30-59/5 8 * * *", "0-25/5 9 * * *"], {}),
         ("05A", "Errors", "'/v1/reconcile'", '{"trigger":"workflow_error"}', [], {"error": True}),
         ("05B", "Reconcile", "'/v1/reconcile'", config_body, ["*/5 * * * *"], {}),
         ("06", "Backup", "'/v1/backup'", "{}", ["30 2 * * *"], {}),

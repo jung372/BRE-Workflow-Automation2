@@ -50,19 +50,18 @@ def build_card(issue: dict, site_url: str, card_format: str = "adaptive") -> dic
         raise ValueError("invalid_site_url")
     report_url = site_url.rstrip("/") + "/#/daily/" + day
     items = issue.get("items", [])
+    held = int(issue.get("counts", {}).get("held", 0))
+    overview = f"주요 사건 {len(items)}건 · 집계 마감 07:30 KST"
+    if held:
+        overview += f" · 검토 중 {held}건"
     body = [
         {"type": "TextBlock", "text": f"[풍력 일간 시황] {day}",
          "weight": "Bolder", "size": "Large", "wrap": True},
-        {"type": "TextBlock", "text": f"주요 사건 {len(items)}건 · 집계 마감 07:30 KST",
+        {"type": "TextBlock", "text": overview,
          "wrap": True, "isSubtle": True},
     ]
     if issue.get("revision", 1) > 1:
         body.append({"type": "TextBlock", "text": "정정된 보고서입니다.", "wrap": True})
-    if issue.get("content_status") == "partial":
-        body.append({"type": "TextBlock", "text": "일부 수집·검증 제한", "wrap": True})
-    held = issue.get("counts", {}).get("held", 0)
-    if held:
-        body.append({"type": "TextBlock", "text": f"일부 항목 검토 중: {int(held)}건", "wrap": True})
     if not items:
         body.append({"type": "TextBlock", "text": "오늘 새로 선정된 주요 기사가 없습니다.", "wrap": True})
     for rank, item in enumerate(items, 1):

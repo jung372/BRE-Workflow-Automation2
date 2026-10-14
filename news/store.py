@@ -231,7 +231,9 @@ class Store:
             result.append(item)
         return result
 
-    def claim_delivery(self, issue_id, revision, channel_id, message_type="daily"):
+    def claim_delivery(self, issue_id, revision, channel_id, message_type="daily", *, max_attempts=3):
+        if not isinstance(max_attempts, int) or not 1 <= max_attempts <= 12:
+            raise ValueError("invalid_delivery_attempt_limit")
         if not channel_id or len(channel_id) > 100 or message_type not in {"daily", "correction"}:
             raise ValueError("invalid_delivery_key")
         def work(db):
@@ -244,7 +246,7 @@ class Store:
             else:
                 previous = self._deliveries(db, "issue_id=? AND revision=? AND channel_id=? AND message_type=?", [issue_id, revision, channel_id, message_type])
             if previous:
-                if previous[0]["status"] == "FAILED" and (previous[0]["result"] or {}).get("attempt", 1) < 3:
+                if previous[0]["status"] == "FAILED" and (previous[0]["result"] or {}).get("attempt", 1) < max_attempts:
                     now = utcnow()
                     attempt = (previous[0]["result"] or {}).get("attempt", 1) + 1
                     db.execute("UPDATE deliveries SET issue_id=?,revision=?,status='CLAIMED',claimed_at=?,updated_at=?,result=? WHERE delivery_id=?", [issue_id, revision, now, now, canonical({"attempt": attempt}), previous[0]["delivery_id"]])
@@ -273,7 +275,7 @@ class Store:
             return self._deliveries(db, "delivery_id=?", [delivery_id])[0]
         return self.call(work, write=True)
 
-    def pending_deliveries(self, channel_id="wind-news"):
+    def pending_deliveries(self, channel_id="wind-news", *, max_attempts=3):
         def work(db):
             result = []
             for row in db.execute("SELECT * FROM issues WHERE state='WEB_VERIFIED' QUALIFY "
@@ -282,7 +284,7 @@ class Store:
                 kind = "daily"
                 daily = self._daily_delivery(db, issue["issue_date"], channel_id)
                 existing = [daily] if daily else []
-                if not existing or existing[0]["status"] == "FAILED" and (existing[0]["result"] or {}).get("attempt", 1) < 3:
+                if not existing or existing[0]["status"] == "FAILED" and (existing[0]["result"] or {}).get("attempt", 1) < max_attempts:
                     result.append({"issue_id": issue["issue_id"], "revision": issue["revision"], "channel_id": channel_id, "message_type": kind})
             return result
         return self.call(work)

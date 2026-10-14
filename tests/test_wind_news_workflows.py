@@ -58,7 +58,7 @@ class WorkflowsTest(unittest.TestCase):
         def crons(flow):
             return next(n for n in flow["nodes"] if n["name"] == "Schedule")["parameters"]["rule"]["interval"]
         self.assertEqual(crons(publish), [{"field": "cronExpression", "expression": "50 7 * * *"}])
-        self.assertEqual([c["expression"] for c in crons(deliver)], ["30 8-23 * * *"])
+        self.assertEqual([c["expression"] for c in crons(deliver)], ["30-59/5 8 * * *", "0-25/5 9 * * *"])
         self.assertIn("/v1/briefings/check", json.dumps(deliver))
         self.assertIn("$json.briefing_stopped", json.dumps(deliver))
 

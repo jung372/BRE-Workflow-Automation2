@@ -13,7 +13,8 @@ if ($mode -eq 'diagnose') {
     Get-ScheduledTask | Where-Object { $_.TaskName -match 'n8n|WSL|Docker|BRE' } | ForEach-Object {
         $info = $_ | Get-ScheduledTaskInfo
         Write-Output ('SERVER_TASK=' + (@{name=$_.TaskName; state=[string]$_.State; logon_type=[string]$_.Principal.LogonType;
-            wake=$_.Settings.WakeToRun; last_run=$info.LastRunTime.ToUniversalTime().ToString('o'); result=$info.LastTaskResult;
+            wake=$_.Settings.WakeToRun; execution_limit=$_.Settings.ExecutionTimeLimit; restart_count=$_.Settings.RestartCount;
+            last_run=$info.LastRunTime.ToUniversalTime().ToString('o'); result=$info.LastTaskResult;
             triggers=@($_.Triggers | ForEach-Object { @{type=$_.CimClass.CimClassName; start=$_.StartBoundary; interval=$_.Repetition.Interval} })} | ConvertTo-Json -Compress -Depth 5))
     }
     foreach ($provider in @('Microsoft-Windows-Kernel-Power', 'Microsoft-Windows-Power-Troubleshooter', 'Microsoft-Windows-Kernel-General')) {

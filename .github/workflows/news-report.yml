@@ -1,7 +1,7 @@
 name: 뉴스 브리핑 Teams 수동 확인·발송 (정기 발송은 n8n 08:30)
 
 on:
-  # The server n8n owns 08:30 and hourly retries. No second periodic sender.
+  # n8n sends at 08:30 and retries every 5 minutes through 09:25.
   workflow_dispatch:
     inputs:
       mode:

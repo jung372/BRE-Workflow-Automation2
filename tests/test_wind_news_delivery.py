@@ -101,9 +101,19 @@ class DeliveryTests(unittest.TestCase):
     def test_no_news_and_partial_reports_still_have_web_link(self):
         self.issue.update(items=[], content_status="partial")
         card = build_card(self.issue, self.site)["attachments"][0]["content"]
-        self.assertIn("일부 수집", str(card))
+        self.assertNotIn("일부 수집", str(card))
         self.assertIn("주요 기사가 없습니다", str(card))
         self.assertEqual(len(card["actions"]), 1)
+
+    def test_pending_count_shares_overview_line_in_both_formats(self):
+        self.issue.update(content_status="partial", counts={"held": 1})
+        card = build_card(self.issue, self.site)["attachments"][0]["content"]
+        self.assertEqual(card["body"][1]["text"], "주요 사건 8건 · 집계 마감 07:30 KST · 검토 중 1건")
+        self.assertEqual(len(card["body"]), 10)
+        messagecard = build_card(self.issue, self.site, "messagecard")
+        self.assertEqual(messagecard["sections"][0]["facts"][0]["value"], card["body"][1]["text"])
+        self.issue["counts"]["held"] = 0
+        self.assertNotIn("검토 중", str(build_card(self.issue, self.site)))
 
     def test_invalid_article_link_never_contacts_teams(self):
         self.issue["items"][0]["source_url"] = "javascript:alert(1)"
