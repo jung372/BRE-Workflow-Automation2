@@ -9,7 +9,9 @@ from urllib.parse import urlsplit
 
 
 def update_settings(path, webhook):
-    webhook = webhook.strip()
+    # Windows PowerShell's redirected stdin can prepend a UTF-8 BOM on the
+    # server. Remove that transport marker before validating the URL itself.
+    webhook = webhook.removeprefix("\ufeff").strip()
     parsed = urlsplit(webhook)
     checks = {
         "EMPTY": not webhook,

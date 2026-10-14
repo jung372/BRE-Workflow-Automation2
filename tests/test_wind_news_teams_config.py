@@ -10,6 +10,15 @@ from news.delivery import _webhook_allowed
 
 
 class SharedTeamsConfigTests(unittest.TestCase):
+    def test_windows_stdin_bom_is_removed_without_changing_signed_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "compose.env"
+            path.write_text("WIND_NEWS_RELEASE=fixture\n", encoding="utf-8")
+            url = "https://fixture.logic.azure.com/test?sig=fixture%2B$literal&sp=%2Frun"
+            self.assertEqual(update_settings(path, "\ufeff" + url + "\r\n")[0], url)
+            self.assertNotIn("\ufeff", path.read_text(encoding="utf-8"))
+            self.assertFalse(update_settings(path, url)[1])
+
     def test_official_receiver_hosts_match_configuration_and_delivery(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "compose.env"
