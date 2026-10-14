@@ -11,10 +11,19 @@ from urllib.parse import urlsplit
 def update_settings(path, webhook):
     webhook = webhook.strip()
     parsed = urlsplit(webhook)
-    if (not webhook or len(webhook) > 8192 or any(c.isspace() or c in "'\\\"" for c in webhook)
-            or parsed.scheme != "https" or parsed.username or parsed.password
-            or parsed.port not in (None, 443) or not parsed.hostname):
-        raise ValueError("INVALID_SHARED_TEAMS_WEBHOOK")
+    checks = {
+        "EMPTY": not webhook,
+        "LENGTH": len(webhook) > 8192,
+        "BOM": webhook.startswith("\ufeff"),
+        "WHITESPACE": any(c.isspace() for c in webhook),
+        "QUOTES": any(c in "'\\\"" for c in webhook),
+        "SCHEME": parsed.scheme != "https",
+        "AUTHORITY": bool(parsed.username or parsed.password) or not parsed.hostname,
+        "PORT": parsed.port not in (None, 443),
+    }
+    for reason, failed in checks.items():
+        if failed:
+            raise ValueError("INVALID_SHARED_TEAMS_" + reason)
     if not (any(parsed.hostname.endswith("." + suffix) for suffix in
                 ("logic.azure.com", "api.powerplatform.com", "webhook.office.com"))
             or parsed.hostname == "outlook.office.com" and parsed.path.startswith("/webhook/")):
@@ -80,6 +89,8 @@ def main():
         # Fixed labels only: exceptions and command output can contain secrets.
         known = {"INVALID_SHARED_TEAMS_WEBHOOK", "UNSUPPORTED_SHARED_TEAMS_HOST", "NEWS_SERVICE_UPGRADE_REQUIRED",
                  "TEAMS_CONFIGURATION_COMMAND_FAILED", "NEWS_HEALTH_FAILED"}
+        known.update("INVALID_SHARED_TEAMS_" + reason for reason in
+                     ("EMPTY", "LENGTH", "BOM", "WHITESPACE", "QUOTES", "SCHEME", "AUTHORITY", "PORT"))
         code = str(error) if str(error) in known else type(error).__name__
         if code not in known | {"FileNotFoundError", "PermissionError", "TimeoutExpired", "ValueError"}:
             code = "UNEXPECTED_ERROR"
