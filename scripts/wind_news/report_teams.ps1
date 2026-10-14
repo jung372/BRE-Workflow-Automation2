@@ -10,6 +10,12 @@ if ($LASTEXITCODE -ne 0 -or -not $linuxSource) { throw 'WSL path conversion fail
 if ($mode -eq 'diagnose') {
     $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
     Write-Output ('SERVER_LAST_BOOT=' + $boot.ToUniversalTime().ToString('o'))
+    Get-ScheduledTask | Where-Object { $_.TaskName -match 'n8n|WSL|Docker|BRE' } | ForEach-Object {
+        $info = $_ | Get-ScheduledTaskInfo
+        Write-Output ('SERVER_TASK=' + (@{name=$_.TaskName; state=[string]$_.State; logon_type=[string]$_.Principal.LogonType;
+            wake=$_.Settings.WakeToRun; last_run=$info.LastRunTime.ToUniversalTime().ToString('o'); result=$info.LastTaskResult;
+            triggers=@($_.Triggers | ForEach-Object { @{type=$_.CimClass.CimClassName; start=$_.StartBoundary; interval=$_.Repetition.Interval} })} | ConvertTo-Json -Compress -Depth 5))
+    }
     foreach ($provider in @('Microsoft-Windows-Kernel-Power', 'Microsoft-Windows-Power-Troubleshooter', 'Microsoft-Windows-Kernel-General')) {
         Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName=$provider; StartTime=(Get-Date).AddDays(-2)} -ErrorAction SilentlyContinue |
             Where-Object { $_.Id -in @(1, 12, 13, 42, 107, 506, 507) } | Select-Object -First 20 |
@@ -17,6 +23,7 @@ if ($mode -eq 'diagnose') {
     }
     & wsl -d Ubuntu-24.04 --exec docker inspect --format 'NEWS_CONTAINER_STARTED={{.State.StartedAt}} RESTARTS={{.RestartCount}}' bre-wind-news-news-service-1
     & wsl -d Ubuntu-24.04 --exec docker inspect --format 'N8N_CONTAINER_STARTED={{.State.StartedAt}} RESTARTS={{.RestartCount}}' n8n-personal-n8n-1
+    & wsl -d Ubuntu-24.04 --exec docker ps -a --format '{{.Names}}: {{.State}}'
 }
 # Feed the shared GitHub Secret through stdin, never argv, logs or checkout files.
 if ($mode -ne 'diagnose') {
