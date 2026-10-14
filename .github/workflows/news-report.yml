@@ -7,7 +7,7 @@ on:
       mode:
         description: 'preview: 발송 없는 검증 / send: 실제 발송(기존 발송은 중복 방지)'
         type: choice
-        options: [preview, send]
+        options: [preview, send, diagnose]
         default: preview
       issue_date:
         description: '보고서 날짜 YYYY-MM-DD (비우면 서울 기준 오늘)'
@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   news-report:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || inputs.mode == 'diagnose'
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 5
     steps:
@@ -38,6 +38,7 @@ jobs:
       - name: 뉴스 브리핑 확인 및 Teams 보고
         shell: powershell
         env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           NEWS_REPORT_MODE: ${{ inputs.mode || 'preview' }}
           NEWS_REPORT_DATE: ${{ inputs.issue_date }}
         run: .\scripts\wind_news\report_teams.ps1

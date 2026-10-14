@@ -17,9 +17,10 @@ def report(session, mode, issue_date="", *, clock=None):
     if date.fromisoformat(day).isoformat() != day or mode == "scheduled" and day != today:
         raise ValueError("INVALID_REPORT_DATE")
     base = "http://127.0.0.1:8090"
-    response = session.get(base + "/v1/deliveries/status", timeout=60)
+    response = session.get(base + "/v1/deliveries/status", params={"issue_date": day}, timeout=60)
     response.raise_for_status()
-    configured = bool(response.json()["teams_configured"])
+    service_status = response.json()
+    configured = bool(service_status["teams_configured"])
     payload = {"issue_date": day}
     if mode == "preview":
         response = session.post(base + "/v1/deliveries/preview", json=payload, timeout=60)
@@ -27,10 +28,20 @@ def report(session, mode, issue_date="", *, clock=None):
             return {"status": "SKIPPED", "issue_date": day, "teams_configured": configured,
                     "error_code": "WEB_VERIFICATION_REQUIRED"}, 0
         response.raise_for_status()
-        card = response.json()["attachments"][0]["content"]
-        count = sum("](" in item.get("text", "") for item in card["body"])
+        payload_card = response.json()
+        if payload_card.get("@type") == "MessageCard":
+            count = sum("](" in item.get("value", "") for item in payload_card["sections"][0]["facts"])
+            card_format = "messagecard"
+        else:
+            card = payload_card["attachments"][0]["content"]
+            count = sum("](" in item.get("text", "") for item in card["body"])
+            card_format = "adaptive"
+        prior = service_status.get("delivery_status")
+        if prior not in {None, "CLAIMED", "ACCEPTED", "DELIVERED", "FAILED", "UNKNOWN"}:
+            raise ValueError("INVALID_DELIVERY_STATUS")
         return {"status": "PREVIEWED", "issue_date": day, "teams_configured": configured,
-                "article_count": count, "error_code": ""}, 0
+                "article_count": count, "card_format": card_format, "delivery_status": prior,
+                "error_code": ""}, 0
     payload.update(channel_id="wind-news", message_type="daily", scheduled=mode == "scheduled")
     response = session.post(base + "/v1/deliveries/send", json=payload, timeout=90)
     response.raise_for_status()
@@ -49,7 +60,7 @@ def report(session, mode, issue_date="", *, clock=None):
             result[field] = value[field]
     if state == "UNKNOWN":
         result["operator_action"] = "CHECK_TEAMS_WORKFLOW_HISTORY_NO_RESEND"
-    return result, int(state in {"FAILED", "UNKNOWN"} or code == "PUBLICATION_NOT_READY_BY_DEADLINE")
+    return result, int(state in {"FAILED", "UNKNOWN"} or code in {"PUBLICATION_NOT_READY_BY_DEADLINE", "TEAMS_NOT_CONFIGURED"})
 
 
 def main():

@@ -110,6 +110,23 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.client.get("/v1/deliveries/status").status_code, 401)
         self.assertEqual(self.client.post("/v1/deliveries/preview", json={}).status_code, 401)
 
+    def test_shared_receiver_format_used_for_preview_and_send_and_historical_status(self):
+        self.publish(self.ready())
+        self.runner.clock = lambda: datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc)
+        settings = {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example",
+                    "WIND_NEWS_TEAMS_CARD_FORMAT": "messagecard"}
+        with patch.dict(os.environ, settings), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
+            preview = self.client.post("/v1/deliveries/preview", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertEqual(preview.json["@type"], "MessageCard")
+            self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertEqual(send.call_args.kwargs["card_format"], "messagecard")
+            status = self.client.get("/v1/deliveries/status?issue_date=2026-09-30", headers=self.headers)
+            self.assertEqual(status.json["delivery_status"], "ACCEPTED")
+            self.assertEqual(status.json["card_format"], "messagecard")
+            self.assertEqual(status.json["issue_date"], "2026-09-30")
+            bad = self.client.get("/v1/deliveries/status?issue_date=2026-02-30", headers=self.headers)
+            self.assertEqual(bad.status_code, 400)
+
     def test_scheduled_window_and_date_guard_before_contacting_teams(self):
         self.publish(self.ready())
         payload = {"issue_date": "2026-09-30", "scheduled": True}

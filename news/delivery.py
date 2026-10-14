@@ -39,7 +39,9 @@ def _plain(value: object, limit: int) -> str:
     return re.sub(r"([\\`*_{}\[\]()#+!<>])", r"\\\1", text)
 
 
-def build_card(issue: dict, site_url: str) -> dict:
+def build_card(issue: dict, site_url: str, card_format: str = "adaptive") -> dict:
+    if card_format not in {"adaptive", "messagecard"}:
+        raise ValueError("invalid_card_format")
     day = issue.get("issue_date", "")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise ValueError("invalid_issue_date")
@@ -76,6 +78,14 @@ def build_card(issue: dict, site_url: str) -> dict:
             raise ValueError("article_title_and_source_required")
         body.append({"type": "TextBlock", "text": f"{rank}. [{title}]({url}) — {source}",
                      "wrap": True})
+    if card_format == "messagecard":
+        # The existing report.yml receiver consumes MessageCard sections/facts.
+        return {"@type": "MessageCard", "@context": "https://schema.org/extensions",
+                "themeColor": "8FC31F", "summary": body[0]["text"], "title": body[0]["text"],
+                "sections": [{"facts": [{"name": "", "value": block["text"]} for block in body[1:]]},
+                             {"facts": [{"name": "", "value": f"[웹에서 전체 보고서 보기]({report_url})"}]}],
+                "potentialAction": [{"@type": "OpenUri", "name": "웹에서 전체 보고서 보기",
+                                     "targets": [{"os": "default", "uri": report_url}]}]}
     card = {"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
             "type": "AdaptiveCard", "version": "1.4", "body": body,
             "actions": [{"type": "Action.OpenUrl", "title": "웹에서 전체 보고서 보기", "url": report_url}]}
@@ -83,14 +93,14 @@ def build_card(issue: dict, site_url: str) -> dict:
         {"contentType": "application/vnd.microsoft.card.adaptive", "contentUrl": None, "content": card}]}
 
 
-def send_card(issue: dict, webhook_url: str, site_url: str, session=None) -> dict:
+def send_card(issue: dict, webhook_url: str, site_url: str, session=None, *, card_format="adaptive") -> dict:
     """Return an outcome safe for logs. Do not infer channel delivery from 2xx."""
     if not webhook_url:
         return {"status": "SKIPPED", "error_code": "teams_not_configured"}
     if not _webhook_allowed(webhook_url):
         return {"status": "FAILED", "error_code": "teams_url_not_allowed"}
     try:
-        payload = build_card(issue, site_url)
+        payload = build_card(issue, site_url, card_format)
     except (ValueError, TypeError, KeyError):
         return {"status": "FAILED", "error_code": "invalid_card_input"}
     client = session or requests.Session()

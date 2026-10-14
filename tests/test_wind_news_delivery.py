@@ -27,6 +27,25 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(send_card(self.issue, self.webhook, self.site, client)["status"], "ACCEPTED")
         self.assertFalse(client.post.call_args.kwargs["allow_redirects"])
 
+    def test_messagecard_matches_existing_receiver_contract_and_keeps_all_articles(self):
+        client = Mock()
+        client.post.return_value.status_code = 202
+        outcome = send_card(self.issue, self.webhook, self.site, client, card_format="messagecard")
+        card = client.post.call_args.kwargs["json"]
+        self.assertEqual(outcome["status"], "ACCEPTED")
+        self.assertEqual(card["@type"], "MessageCard")
+        self.assertEqual(len(card["sections"][0]["facts"]), 9)
+        for i in range(8):
+            self.assertIn(f"https://example.kr/news?id={i}", str(card))
+        self.assertNotIn("기사 근거 요약", str(card))
+        self.assertTrue(card["potentialAction"][0]["targets"][0]["uri"].endswith("/#/daily/2026-09-30"))
+        self.assertNotIn("attachments", card)
+
+    def test_invalid_card_format_never_sends(self):
+        client = Mock()
+        self.assertEqual(send_card(self.issue, self.webhook, self.site, client, card_format="invalid")["status"], "FAILED")
+        client.post.assert_not_called()
+
     def test_timeout_is_unknown_and_redacted(self):
         client = Mock()
         client.post.side_effect = requests.Timeout(self.webhook)

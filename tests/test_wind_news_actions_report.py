@@ -33,7 +33,7 @@ class ActionsReportTests(unittest.TestCase):
 
     def test_missing_teams_is_visible_skip_and_deadline_is_failure(self):
         for response, expected in [
-            ({"status": "SKIPPED", "error_code": "TEAMS_NOT_CONFIGURED"}, 0),
+            ({"status": "SKIPPED", "error_code": "TEAMS_NOT_CONFIGURED"}, 1),
             ({"status": "SKIPPED", "error_code": "PUBLICATION_NOT_READY_BY_DEADLINE"}, 1),
             ({"status": "UNKNOWN", "error_code": "TIMEOUT"}, 1),
         ]:
@@ -48,6 +48,19 @@ class ActionsReportTests(unittest.TestCase):
                 report(self.session, mode, day)
         self.session.get.assert_not_called()
         self.session.post.assert_not_called()
+
+    def test_messagecard_preview_counts_articles_and_reports_prior_unknown(self):
+        self.session.get.return_value.json.return_value = {"teams_configured": True, "delivery_status": "UNKNOWN"}
+        self.session.post.return_value.json.return_value = {"@type": "MessageCard", "sections": [
+            {"facts": [{"value": "2 articles"}, {"value": "[one](https://example.kr/1)"},
+                       {"value": "[two](https://example.kr/2)"}]},
+            {"facts": [{"value": "[report](https://example.kr/)"}]}]}
+        result, code = report(self.session, "preview", "2026-10-14")
+        self.assertEqual(code, 0)
+        self.assertEqual(result["article_count"], 2)
+        self.assertEqual(result["delivery_status"], "UNKNOWN")
+        self.assertEqual(result["card_format"], "messagecard")
+        self.assertEqual(self.session.get.call_args.kwargs["params"], {"issue_date": "2026-10-14"})
 
     def test_arbitrary_service_errors_never_enter_action_output(self):
         self.session.post.return_value.json.return_value = {"status": "FAILED", "error_code": "https://fixture/?sig=SECRET"}
@@ -69,6 +82,7 @@ class ActionsReportTests(unittest.TestCase):
         self.assertIn("name: 뉴스 브리핑 Teams 수동 확인", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertIn("default: preview", text)
+        self.assertIn("TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}", text)
         self.assertNotIn("  schedule:", text)
         self.assertIn("scripts\\wind_news\\report_teams.ps1", text)
         self.assertNotIn("${{ inputs.issue_date }}", text.split("run:")[-1])

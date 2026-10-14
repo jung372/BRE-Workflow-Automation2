@@ -1,5 +1,5 @@
 """Authenticated internal API. Persistent jobs precede 202 responses."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 import hmac
 import json
@@ -245,7 +245,8 @@ class JobRunner:
                         **{k: evidence[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in evidence}}
             from .delivery import send_card
             try:
-                outcome = send_card(record["payload"], webhook, self.config["policy"].get("publisher", {}).get("pages_base_url", ""))
+                outcome = send_card(record["payload"], webhook, self.config["policy"].get("publisher", {}).get("pages_base_url", ""),
+                                    card_format=os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive"))
                 state = outcome.get("status", "UNKNOWN")
                 if state == "SKIPPED":
                     state = "FAILED"
@@ -434,14 +435,18 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @authenticated
     def delivery_status():
         now = runner.clock().astimezone(KST)
-        day = now.date().isoformat()
+        day = request.args.get("issue_date") or now.date().isoformat()
+        if date.fromisoformat(day).isoformat() != day:
+            raise ValueError("invalid_issue_date")
         record = store.verified_issue("wind-" + day)
         channel = request.args.get("channel_id", "wind-news")
         prior = store.daily_delivery(day, channel)
         return jsonify(teams_configured=bool(os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL")),
+                       card_format=os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive"),
                        issue_date=day, revision=record["revision"] if record else None,
                        publication_state=record["state"] if record else None,
                        delivery_status=prior["status"] if prior else None,
+                       delivery_id=prior["delivery_id"] if prior else None,
                        delivery_evidence={k: (prior.get("result") or {})[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in (prior.get("result") or {})} if prior else {},
                        briefing_stopped=bool(runner.briefing_stopped(day)) if channel == "wind-news" else False,
                        schedule_owner="n8n", first_check="08:30", last_check="23:30", interval_minutes=60)
@@ -455,7 +460,8 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         if not record:
             return jsonify(error_code="WEB_VERIFICATION_REQUIRED"), 409
         from .delivery import build_card
-        return jsonify(build_card(record["payload"], config["policy"].get("publisher", {}).get("pages_base_url", "")))
+        return jsonify(build_card(record["payload"], config["policy"].get("publisher", {}).get("pages_base_url", ""),
+                                  os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive")))
 
     @app.post("/v1/deliveries/send")
     @authenticated
