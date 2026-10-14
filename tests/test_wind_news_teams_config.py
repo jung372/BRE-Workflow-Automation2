@@ -1,11 +1,21 @@
 from pathlib import Path
+import contextlib
+import io
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from scripts.wind_news.configure_teams import update_settings
+from scripts.wind_news.configure_teams import main, update_settings
 
 
 class SharedTeamsConfigTests(unittest.TestCase):
+    def test_diagnostic_reports_fixed_stage_without_exception_secret(self):
+        output = io.StringIO()
+        with patch("scripts.wind_news.configure_teams.Path.read_text", side_effect=RuntimeError("private-secret")):
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(main(), 1)
+        self.assertEqual(output.getvalue(), "SHARED_TEAMS_CONFIG_FAILED stage=SERVICE_VERSION code=UNEXPECTED_ERROR\n")
+
     def test_updates_only_teams_keys_preserving_unrelated_settings_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "compose.env"

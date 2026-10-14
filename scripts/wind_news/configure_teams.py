@@ -46,30 +46,42 @@ def run(args, **kwargs):
 
 
 def main():
+    stage = "SERVICE_VERSION"
     try:
         root = Path.home() / "bre-wind-news"
         compose_file = root / "current" / "infra" / "wind-news" / "compose.yaml"
         if "WIND_NEWS_TEAMS_CARD_FORMAT" not in compose_file.read_text(encoding="utf-8"):
             raise RuntimeError("NEWS_SERVICE_UPGRADE_REQUIRED")
+        stage = "SETTINGS_UPDATE"
         webhook, changed = update_settings(root / "settings" / "compose.env", sys.stdin.read(8193))
         compose = ["docker", "compose", "--project-name", "bre-wind-news", "--env-file",
                    str(root / "settings" / "compose.env"), "-f", str(compose_file)]
+        stage = "COMPOSE_VALIDATE"
         run(compose + ["config", "--quiet"])
+        stage = "CONTAINER_APPLY"
         run(compose + ["up", "-d", "--no-deps", "news-service"])
         container = "bre-wind-news-news-service-1"
+        stage = "HEALTH_CHECK"
         for _ in range(30):
             if run(["docker", "inspect", "--format", "{{.State.Health.Status}}", container]) == "healthy":
                 break
             time.sleep(2)
         else:
             raise RuntimeError("NEWS_HEALTH_FAILED")
+        stage = "CONFIG_EQUALITY"
         run(["docker", "exec", "-i", container, "python", "-c",
              "import os,sys; sys.exit(0 if os.environ.get('WIND_NEWS_TEAMS_WEBHOOK_URL') == sys.stdin.read() "
              "and os.environ.get('WIND_NEWS_TEAMS_CARD_FORMAT') == 'messagecard' else 1)"], input=webhook)
         print("SHARED_TEAMS_CONFIG_VERIFIED changed=" + str(changed).lower() + " card_format=messagecard")
         return 0
-    except Exception:
-        print("SHARED_TEAMS_CONFIG_FAILED; check service upgrade and GitHub Secret configuration")
+    except Exception as error:
+        # Fixed labels only: exceptions and command output can contain secrets.
+        known = {"INVALID_SHARED_TEAMS_WEBHOOK", "NEWS_SERVICE_UPGRADE_REQUIRED",
+                 "TEAMS_CONFIGURATION_COMMAND_FAILED", "NEWS_HEALTH_FAILED"}
+        code = str(error) if str(error) in known else type(error).__name__
+        if code not in known | {"FileNotFoundError", "PermissionError", "TimeoutExpired", "ValueError"}:
+            code = "UNEXPECTED_ERROR"
+        print("SHARED_TEAMS_CONFIG_FAILED stage=" + stage + " code=" + code)
         return 1
 
 
