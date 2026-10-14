@@ -7,6 +7,17 @@ if ($day -and $day -notmatch '^\d{4}-\d{2}-\d{2}$') { throw 'Invalid issue date'
 $source = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path.Replace('\', '/')
 $linuxSource = (& wsl -d Ubuntu-24.04 --exec wslpath -a $source).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $linuxSource) { throw 'WSL path conversion failed' }
+if ($mode -eq 'diagnose') {
+    $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+    Write-Output ('SERVER_LAST_BOOT=' + $boot.ToUniversalTime().ToString('o'))
+    foreach ($provider in @('Microsoft-Windows-Kernel-Power', 'Microsoft-Windows-Power-Troubleshooter', 'Microsoft-Windows-Kernel-General')) {
+        Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName=$provider; StartTime=(Get-Date).AddDays(-2)} -ErrorAction SilentlyContinue |
+            Where-Object { $_.Id -in @(1, 12, 13, 42, 107, 506, 507) } | Select-Object -First 20 |
+            ForEach-Object { Write-Output ('SERVER_POWER_EVENT=' + (@{at=$_.TimeCreated.ToUniversalTime().ToString('o'); provider=$_.ProviderName; id=$_.Id} | ConvertTo-Json -Compress)) }
+    }
+    & wsl -d Ubuntu-24.04 --exec docker inspect --format 'NEWS_CONTAINER_STARTED={{.State.StartedAt}} RESTARTS={{.RestartCount}}' bre-wind-news-news-service-1
+    & wsl -d Ubuntu-24.04 --exec docker inspect --format 'N8N_CONTAINER_STARTED={{.State.StartedAt}} RESTARTS={{.RestartCount}}' n8n-personal-n8n-1
+}
 # Feed the shared GitHub Secret through stdin, never argv, logs or checkout files.
 if ($mode -ne 'diagnose') {
 if (-not $env:TEAMS_WEBHOOK_URL) { throw 'TEAMS_WEBHOOK_URL GitHub Secret is required' }
