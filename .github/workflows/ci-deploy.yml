@@ -24,7 +24,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, check, preflight, install, solar-install, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
+        options: [normal, check, preflight, install, solar-install, solar-share-login, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
         default: normal
 
 env:
@@ -40,7 +40,7 @@ concurrency:
 jobs:
   solar-install:
     needs: test
-    if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'solar-install' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'solar-install' || inputs.news_action == 'solar-share-login') && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 20
     environment: production
@@ -50,7 +50,9 @@ jobs:
           persist-credentials: false
       - name: Install isolated solar service and verify health
         shell: powershell
-        run: .\scripts\solar_news\install_server.ps1
+        env:
+          NEWS_ACTION: ${{ inputs.news_action }}
+        run: .\scripts\solar_news\install_server.ps1 -ShareWindLogin:($env:NEWS_ACTION -eq 'solar-share-login')
 
   news-oauth:
     if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'oauth'

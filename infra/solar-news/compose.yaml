@@ -37,7 +37,7 @@ services:
       - ${SOLAR_NEWS_RUNTIME_ROOT:?Set private runtime outside repository}:/var/lib/bre-solar/runtime
       - ${SOLAR_NEWS_PUBLISH_ROOT:?Set dedicated publish clone}:/var/lib/bre-solar/publish
       - ${SOLAR_NEWS_CONFIG_FILE:?Set non-secret policy file}:/etc/bre-solar/config.json:ro
-      - ${SOLAR_NEWS_CODEX_AUTH_ROOT:?Set private dedicated Codex login directory}:/var/lib/bre-solar/codex-auth
+      - ${SOLAR_NEWS_CODEX_AUTH_ROOT:?Set private Codex login directory}:/var/lib/bre-solar/codex-auth
     networks:
       - existing-n8n
     healthcheck:

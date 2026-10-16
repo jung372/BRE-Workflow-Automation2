@@ -21,7 +21,9 @@
 
 기존 Codex CLI의 ChatGPT OAuth 경로를 사용한다. 별도 API 키나 고비용 모델로 자동 전환하지 않는다. 호출 불가·사용량 한도·근거 검증 실패 시 보류하고, 계정에서 해당 모델을 사용할 수 있는지는 운영 시 확인한다. 요약 후보는 최대 15건, 하루 모델 호출은 최대 40회이며 한 기사에 요약·검토 두 번을 사용한다. 동일 근거·모델·추론 설정은 검증된 캐시를 재사용한다. 산업과 프롬프트 버전도 캐시 키에 포함한다.
 
-태양광은 별도 인증 디렉터리를 기본으로 둔다. 동일 로그인 디렉터리를 사용하는 프로세스가 있을 때도 OS 파일 잠금으로 모델 호출과 인증 갱신을 직렬화한다. 기존 풍력 모델 설정은 별도 정책 파일에서 관리한다.
+태양광은 풍력의 기존 Codex 로그인을 공유할 수 있다. `검증 및 서버 배포` workflow의 `news_action=solar-share-login`을 실행하면 풍력의 현재 인증 mount와 ChatGPT 로그인 상태를 확인하고, 두 서비스를 공통 OS 잠금 지원 버전으로 갱신한 뒤 태양광의 `SOLAR_NEWS_CODEX_AUTH_ROOT`를 풍력 인증 디렉터리에 연결한다. 인증 파일을 복사하거나 내용을 읽어 출력하지 않는다. 디렉터리 전체를 공유하므로 CLI의 토큰 갱신도 양쪽에 반영된다. 이는 [공식 인증 안내](https://learn.chatgpt.com/docs/auth)의 `CODEX_HOME` 로그인 캐시와 CLI 자동 갱신 경로를 사용한다.
+
+공유 후에는 두 컨테이너의 로그인 상태, 실제 컨테이너 간 잠금 경합, `gpt-6.1-sol`의 태양광 생성·검토 2단계 호출을 가상 문장으로 검증한다. 기사 DB·캐시·호출 한도·Teams 설정은 산업별로 유지한다. 동일 계정의 서비스 이용 한도는 함께 사용한다. 풍력 모델 설정도 별도 정책 파일에서 관리한다.
 
 ## 서버 준비
 
@@ -32,7 +34,7 @@
 | `SOLAR_NEWS_RUNTIME_ROOT` | 태양광 DB·백업·로그 디렉터리 |
 | `SOLAR_NEWS_PUBLISH_ROOT` | 태양광 전용 게시 clone |
 | `SOLAR_NEWS_CONFIG_FILE` | collection과 policy를 포함한 비밀값 없는 JSON |
-| `SOLAR_NEWS_CODEX_AUTH_ROOT` | 태양광 Codex CLI 로그인 디렉터리 |
+| `SOLAR_NEWS_CODEX_AUTH_ROOT` | Codex CLI 로그인 디렉터리. 기존 풍력 인증 경로 공유 가능 |
 | `SOLAR_NEWS_DOCKER_NETWORK` | 현재 n8n이 사용하는 Docker network |
 | `SOLAR_NEWS_API_TOKEN` | 태양광 서비스 전용 인증 토큰, 최소 32자 |
 | `SOLAR_NEWS_RELEASE` | 배포한 코드 버전 |
@@ -87,7 +89,7 @@ GitHub Action 외에는 `scripts/solar_news/configure_teams.py --settings <priva
 
 태양광 일정은 매시 5분·07:30 수집, 07:40 준비, 07:50 게시, 08:30~09:25 5분마다 브리핑 확인, 09:30 발송 차단, 02:30 백업이다. 모든 템플릿의 시간대는 `Asia/Seoul`이다. 시범 운영에서는 수집·웹 게시를 먼저 확인하고 시험 수신 후 Deliver를 활성화한다. 서버 기동·로그인·Docker·n8n 가용성은 기존 운영 경로에서 점검한다.
 
-최초 서비스 배포는 `검증 및 서버 배포` workflow의 `news_action=solar-install`로 실행한다. `scripts/solar_news/install_server.ps1`과 `install_linux.sh`가 기존 WSL/n8n network에 독립 컨테이너를 설치하며, 새 전용 API 토큰을 서버 안에서 생성한다. 첫 설치의 수집·게시 설정과 모든 일정은 비활성이다. 풍력 자격증명을 복사하지 않으므로 태양광 Codex 로그인, 게시 clone과 Git 인증, 전용 Teams 웹훅, n8n credential 연결이 별도로 필요하다. 설치 결과는 값 노출 없이 연결 여부와 모델·health를 보고한다.
+최초 서비스 배포는 `검증 및 서버 배포` workflow의 `news_action=solar-install`로 실행한다. `scripts/solar_news/install_server.ps1`과 `install_linux.sh`가 기존 WSL/n8n network에 독립 컨테이너를 설치하며, 새 전용 API 토큰을 서버 안에서 생성한다. 첫 설치의 수집·게시 설정과 모든 일정은 비활성이다. Codex 로그인은 `solar-share-login`으로 기존 풍력 로그인을 연결할 수 있다. 게시 clone과 Git 인증, 전용 Teams 웹훅, n8n credential은 별도로 연결한다. 이후 재설치와 Teams 설정 변경에서도 공유 로그인 경로를 보존한다. 설치 결과는 값 노출 없이 연결 여부와 모델·health를 보고한다.
 
 수집·게시 활성화는 비밀값 없는 운영 JSON의 `collection.enabled`, `policy.publisher.enabled`로 제어하고 서버 재기동 후 실제 적용을 확인한다. 재해 복구용 자동 준비·게시가 필요하면 `policy.auto_recover`도 설정한다. 하루 모델 호출 한도와 발행 소요시간을 확인해 풍력 업무가 밀리지 않게 한다.
 
