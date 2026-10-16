@@ -11,7 +11,7 @@ WORKDIR /app
 COPY news/requirements.txt /app/news/requirements.txt
 RUN pip install --no-cache-dir -r news/requirements.txt
 COPY news/ /app/news/
-COPY config/wind_news_collection.json config/wind_news_policy.json /app/config/
+COPY config/*_news_collection.json config/*_news_policy.json /app/config/
 COPY schemas/ /app/schemas/
 COPY --from=codex-cli /usr/local/bin/node /usr/local/bin/node
 COPY --from=codex-cli /usr/local/lib/node_modules /usr/local/lib/node_modules

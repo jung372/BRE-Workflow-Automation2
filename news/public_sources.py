@@ -108,7 +108,7 @@ def parse_article(content, source, url):
         raise SourceError("ARTICLE_BODY_INCOMPLETE")
     if not headline:
         raise SourceError("ARTICLE_PARSE_FAILED")
-    if not industry_relevant(headline, text):
+    if not industry_relevant(headline, text, source.get("industry", "wind")):
         return None
     # Personnel notices mentioning a wind division are not industry news.
     if re.match(r"[\[(]?(인사|부고|동정)[\])]?", headline):
@@ -229,6 +229,7 @@ class PublicCollector:
         start = _instant(since) if since else end - timedelta(hours=72)
         articles, results = [], []
         for source in self.config.get("sources", []):
+            source = {**source, "industry": self.config.get("industry", "wind")}
             if not source.get("enabled", True):
                 continue
             if source.get("discovery") == "naver_news_search":

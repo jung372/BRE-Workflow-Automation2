@@ -1,0 +1,52 @@
+name: 태양광 브리핑 설정 및 수동 확인
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'configure 설정 적용 / preview 무발송 검증 / test 연결 시험 / send 실제 브리핑 / diagnose 상태 조회'
+        type: choice
+        options: [preview, diagnose, configure, test, send]
+        default: preview
+      issue_date:
+        description: '보고서 날짜 YYYY-MM-DD (비우면 서울 기준 오늘)'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bre-workflow-production
+  cancel-in-progress: false
+
+jobs:
+  solar-report:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 태양광 전용 수신 설정 적용
+        if: inputs.mode == 'configure'
+        shell: powershell
+        env:
+          SOLAR_NEWS_REPORT_MODE: configure
+          SOLAR_NEWS_TEAMS_WEBHOOK_URL: ${{ secrets.SOLAR_NEWS_TEAMS_WEBHOOK_URL }}
+          SOLAR_NEWS_TEAMS_CARD_FORMAT: ${{ vars.SOLAR_NEWS_TEAMS_CARD_FORMAT }}
+          SOLAR_NEWS_WSL_DISTRO: ${{ vars.SOLAR_NEWS_WSL_DISTRO }}
+          SOLAR_NEWS_WSL_USER: ${{ vars.SOLAR_NEWS_WSL_USER }}
+          SOLAR_NEWS_RELEASE_ROOT: ${{ vars.SOLAR_NEWS_RELEASE_ROOT }}
+          SOLAR_NEWS_SETTINGS_FILE: ${{ vars.SOLAR_NEWS_SETTINGS_FILE }}
+        run: .\scripts\solar_news\report_teams.ps1
+      - name: 태양광 브리핑 확인 또는 발송
+        if: inputs.mode != 'configure'
+        shell: powershell
+        env:
+          SOLAR_NEWS_REPORT_MODE: ${{ inputs.mode }}
+          SOLAR_NEWS_REPORT_DATE: ${{ inputs.issue_date }}
+          SOLAR_NEWS_API_TOKEN: ${{ secrets.SOLAR_NEWS_API_TOKEN }}
+          SOLAR_NEWS_SERVICE_URL: ${{ vars.SOLAR_NEWS_SERVICE_URL || 'http://127.0.0.1:8091' }}
+        run: .\scripts\solar_news\report_teams.ps1

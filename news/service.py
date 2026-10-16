@@ -10,11 +10,13 @@ import threading
 
 from flask import Flask, jsonify, render_template, request
 
+from .profiles import profile_for, bind_config
 from .pipeline import KST, Pipeline, approval_digest, window
 from .store import Conflict, Store, canonical, utcnow
 
 
-def load_config(path=None):
+def load_config(path=None, industry="wind"):
+    profile_for(industry)
     if path:
         with Path(path).open(encoding="utf-8") as stream:
             config = json.load(stream)
@@ -22,7 +24,7 @@ def load_config(path=None):
             raise ValueError("config_requires_collection_and_policy")
         return config
     root = Path(__file__).resolve().parents[1] / "config"
-    return {"collection": json.loads((root / "wind_news_collection.json").read_text(encoding="utf-8")), "policy": json.loads((root / "wind_news_policy.json").read_text(encoding="utf-8"))}
+    return {"collection": json.loads((root / f"{industry}_news_collection.json").read_text(encoding="utf-8")), "policy": json.loads((root / f"{industry}_news_policy.json").read_text(encoding="utf-8"))}
 
 
 def present_issue(record):
@@ -36,6 +38,7 @@ def present_issue(record):
 class JobRunner:
     def __init__(self, store, pipeline, config, runtime, collector=None, publisher=None, clock=None):
         self.store, self.pipeline, self.config = store, pipeline, config
+        self.profile = profile_for(config.get("industry", "wind"))
         self.runtime = Path(runtime)
         self.collector, self.publisher = collector, publisher
         self.clock = clock or (lambda: datetime.now(timezone.utc))
@@ -45,7 +48,7 @@ class JobRunner:
         self.delivery_lock = threading.Lock()
 
     def briefing_stopped(self, day):
-        delivery = self.store.daily_delivery(day)
+        delivery = self.store.daily_delivery(day, self.profile.channel)
         return delivery if delivery and (delivery["status"] in {"CLAIMED", "ACCEPTED", "DELIVERED", "UNKNOWN"}
             or delivery["status"] == "FAILED" and (delivery.get("result") or {}).get("attempt", 1) >= 12) else None
 
@@ -94,7 +97,7 @@ class JobRunner:
             return self.pipeline.ingest(batch, job["job_id"])
         if operation == "prepare":
             if self.briefing_stopped(payload["issue_date"]) and not payload.get("correction_reason"):
-                return present_issue(self.store.verified_issue("wind-" + payload["issue_date"]))
+                return present_issue(self.store.verified_issue(self.profile.industry + "-" + payload["issue_date"]))
             return present_issue(self.pipeline.prepare(payload))
         if operation == "briefing":
             return self.check_briefing(payload)
@@ -102,7 +105,7 @@ class JobRunner:
             return self.publish(payload)
         if operation == "backup":
             self.pipeline.purge_expired_evidence()
-            destination = self.runtime / "backups" / ("wind-news-" + job["job_id"] + ".duckdb")
+            destination = self.runtime / "backups" / (self.profile.industry + "-news-" + job["job_id"] + ".duckdb")
             if destination.exists():
                 import hashlib
                 return {"filename": destination.name, "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
@@ -138,7 +141,7 @@ class JobRunner:
             if public["published_at"] is None:
                 public["published_at"] = utcnow()
             from jsonschema import Draft202012Validator, FormatChecker
-            schema = json.loads((Path(__file__).resolve().parents[1] / "schemas" / "wind-news-issue.json").read_text(encoding="utf-8"))
+            schema = json.loads((Path(__file__).resolve().parents[1] / "schemas" / f"{self.profile.industry}-news-issue.json").read_text(encoding="utf-8"))
             export = {**public, "coverage": {k: v for k, v in public["coverage"].items() if k in {"expected_sources", "successful_sources", "partial"}}}
             if list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(export)):
                 raise ValueError("public_issue_schema_invalid")
@@ -171,7 +174,7 @@ class JobRunner:
         if (policy.get("auto_recover", False) and self.config["collection"].get("enabled", False)
                 and (now.hour, now.minute) < (8, 30) and not self.briefing_stopped(now.date().isoformat())):
             day = now.date().isoformat()
-            current = self.store.issue("wind-" + day)
+            current = self.store.issue(self.profile.industry + "-" + day)
             if (not current or current["state"] == "BLOCKED") and (now.hour, now.minute) >= (7, 40):
                 latest_batch = self.store.call(lambda db: db.execute("SELECT batch_id FROM batches ORDER BY created_at DESC,batch_id DESC LIMIT 1").fetchone())
                 batch_suffix = latest_batch[0] if latest_batch else "none"
@@ -182,7 +185,7 @@ class JobRunner:
                 if not any(row[0] in {"QUEUED", "RUNNING"} for row in previous_attempts) and len(previous_attempts) < 12:
                     job = self.store.submit("publish", "recovery-publish-" + day + "-" + str(current["revision"]) + "-" + str(len(previous_attempts) + 1), {"issue_id": current["issue_id"], "revision": current["revision"], "approval_hash": current["approval_hash"]})
                     enqueued.append(job["job_id"])
-        return {"enqueued_jobs": enqueued, "pending_deliveries": self.store.pending_deliveries(max_attempts=12), "pending_web_verifications": [{"issue_id": i["issue_id"], "revision": i["revision"]} for i in self.store.list_issues() if i["state"] == "COMMITTED"], "unknown_deliveries": self.store.call(lambda db: self.store._deliveries(db, "status='UNKNOWN'")), "expired_evidence_cleaned": self.pipeline.purge_expired_evidence()}
+        return {"enqueued_jobs": enqueued, "pending_deliveries": self.store.pending_deliveries(self.profile.channel, max_attempts=12), "pending_web_verifications": [{"issue_id": i["issue_id"], "revision": i["revision"]} for i in self.store.list_issues() if i["state"] == "COMMITTED"], "unknown_deliveries": self.store.call(lambda db: self.store._deliveries(db, "status='UNKNOWN'")), "expired_evidence_cleaned": self.pipeline.purge_expired_evidence()}
 
     def check_briefing(self, payload):
         day = payload["issue_date"]
@@ -196,7 +199,7 @@ class JobRunner:
             return {"status": stopped["status"], "claimed": False}
         if (now.hour, now.minute) >= (9, 30):
             raise ValueError("BRIEFING_DELIVERY_DEADLINE_MISSED")
-        issue_id = "wind-" + day
+        issue_id = self.profile.industry + "-" + day
         record = self.store.verified_issue(issue_id)
         if not record:
             record = self.store.issue(issue_id)
@@ -227,11 +230,15 @@ class JobRunner:
         if not isinstance(scheduled, bool):
             raise ValueError("scheduled_must_be_boolean")
         kind = data.get("message_type", "daily")
-        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", now.date().isoformat())
-        if kind == "correction" and self.briefing_stopped(issue_id.removeprefix("wind-")):
+        if data.get("channel_id", self.profile.channel) != self.profile.channel:
+            raise ValueError("delivery_channel_mismatch")
+        issue_id = data.get("issue_id") or self.profile.industry + "-" + data.get("issue_date", now.date().isoformat())
+        if not issue_id.startswith(self.profile.industry + "-"):
+            raise ValueError("issue_industry_mismatch")
+        if kind == "correction" and self.briefing_stopped(issue_id.removeprefix(self.profile.industry + "-")):
             raise Conflict("daily_briefing_already_finished")
         if scheduled:
-            if issue_id != "wind-" + now.date().isoformat() or kind != "daily" or "revision" in data:
+            if issue_id != self.profile.industry + "-" + now.date().isoformat() or kind != "daily" or "revision" in data:
                 raise ValueError("scheduled_delivery_requires_today_latest_daily")
             if (now.hour, now.minute) < (8, 30):
                 return {"status": "SKIPPED", "error_code": "OUTSIDE_DELIVERY_WINDOW"}
@@ -242,7 +249,7 @@ class JobRunner:
         if not record or record["state"] != "WEB_VERIFIED":
             code = "PUBLICATION_NOT_READY_BY_DEADLINE" if scheduled and (now.hour, now.minute) >= (9, 25) else "WEB_VERIFICATION_REQUIRED"
             return {"status": "SKIPPED", "error_code": code}
-        webhook = os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL", "")
+        webhook = self.profile.env("TEAMS_WEBHOOK_URL")
         if not webhook:
             return {"status": "SKIPPED", "error_code": "TEAMS_NOT_CONFIGURED"}
         with self.delivery_lock:
@@ -251,7 +258,7 @@ class JobRunner:
             if scheduled and (dispatch_time.date().isoformat() != now.date().isoformat()
                               or (dispatch_time.hour, dispatch_time.minute) >= (9, 30)):
                 return {"status": "SKIPPED", "error_code": "BRIEFING_DELIVERY_DEADLINE_MISSED"}
-            claimed = self.store.claim_delivery(issue_id, record["revision"], data.get("channel_id", "wind-news"), kind,
+            claimed = self.store.claim_delivery(issue_id, record["revision"], self.profile.channel, kind,
                                                 max_attempts=12 if kind == "daily" else 3)
             if not claimed["claimed"]:
                 evidence = claimed.get("result") or {}
@@ -260,7 +267,8 @@ class JobRunner:
             from .delivery import send_card
             try:
                 outcome = send_card(record["payload"], webhook, self.config["policy"].get("publisher", {}).get("pages_base_url", ""),
-                                    card_format=os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive"))
+                                    card_format=self.profile.env("TEAMS_CARD_FORMAT", "adaptive"), industry=self.profile.industry,
+                                    connection_test=kind == "connection_test")
                 state = outcome.get("status", "UNKNOWN")
                 if state == "SKIPPED":
                     state = "FAILED"
@@ -273,20 +281,27 @@ class JobRunner:
 
 
 def create_app(config=None, *, store=None, runtime=None, token=None, start_worker=True, collector=None, publisher=None, summarizer=None, clock=None):
-    config = config or load_config(os.environ.get("WIND_NEWS_CONFIG"))
-    token = token if token is not None else os.environ.get("WIND_NEWS_API_TOKEN", "")
+    selected = profile_for(os.environ.get("BRE_NEWS_INDUSTRY", (config or {}).get("industry", "wind")))
+    config = config or load_config(selected.env("CONFIG"), selected.industry)
+    if config.get("industry", selected.industry) != selected.industry:
+        raise ValueError("news_profile_mismatch")
+    profile = bind_config(config, selected.industry)
+    token = token if token is not None else profile.env("API_TOKEN")
     if len(token) < 32:
         raise ValueError("api_token_minimum_32_characters")
-    runtime = Path(runtime or os.environ.get("WIND_NEWS_RUNTIME_DIR", "")).resolve()
+    runtime = Path(runtime or profile.env("RUNTIME_DIR")).resolve()
     repo = Path(__file__).resolve().parents[1]
     if store is None:
-        if not os.environ.get("WIND_NEWS_RUNTIME_DIR") and runtime == Path.cwd().resolve():
+        if not profile.env("RUNTIME_DIR") and runtime == Path.cwd().resolve():
             raise ValueError("runtime_directory_required")
         if runtime == repo or repo in runtime.parents:
             raise ValueError("runtime_must_be_outside_repository")
-        store = Store(runtime / "wind-news.duckdb")
-    if os.environ.get("WIND_NEWS_PUBLISH_CLONE"):
-        config["policy"].setdefault("publisher", {})["publish_clone"] = os.environ["WIND_NEWS_PUBLISH_CLONE"]
+        store = Store(runtime / (profile.industry + "-news.duckdb"))
+    store.bind_industry(profile.industry)
+    if profile.env("PUBLISH_CLONE"):
+        config["policy"]["publisher"]["publish_clone"] = profile.env("PUBLISH_CLONE")
+    if os.environ.get("BRE_NEWS_PUBLISH_LOCK"):
+        config["policy"]["publisher"]["lock_path"] = os.environ["BRE_NEWS_PUBLISH_LOCK"]
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=8 * 1024 * 1024)
     if summarizer is None and config["policy"].get("summarizer", {}).get("provider") == "codex_oauth":
@@ -337,7 +352,7 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @authenticated
     def health():
         store.call(lambda db: db.execute("SELECT 1").fetchone())
-        return jsonify(status="ready", schema_version=1)
+        return jsonify(status="ready", schema_version=1, industry=profile.industry)
 
     @app.get("/v1/config/collection")
     @authenticated
@@ -375,7 +390,7 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     def issues():
         day = request.args.get("issue_date")
         if day:
-            return issue("wind-" + day)
+            return issue(profile.industry + "-" + day)
         return jsonify(issues=[present_issue(i) for i in store.list_issues()])
 
     @app.get("/v1/issues/<issue_id>")
@@ -426,7 +441,7 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @app.get("/v1/deliveries/pending")
     @authenticated
     def pending():
-        return jsonify(deliveries=store.pending_deliveries(request.args.get("channel_id", "wind-news"), max_attempts=12))
+        return jsonify(deliveries=store.pending_deliveries(request.args.get("channel_id", profile.channel), max_attempts=12))
 
     @app.post("/v1/deliveries/claim")
     @authenticated
@@ -434,6 +449,8 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         data = body()
         if not all(k in data for k in ("issue_id", "revision", "channel_id")):
             raise ValueError("delivery_key_required")
+        if data["channel_id"] != profile.channel or not data["issue_id"].startswith(profile.industry + "-"):
+            raise ValueError("delivery_channel_mismatch")
         return jsonify(store.claim_delivery(data["issue_id"], data["revision"], data["channel_id"], data.get("message_type", "daily")))
 
     @app.post("/v1/deliveries/<delivery_id>/result")
@@ -452,30 +469,30 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         day = request.args.get("issue_date") or now.date().isoformat()
         if date.fromisoformat(day).isoformat() != day:
             raise ValueError("invalid_issue_date")
-        record = store.verified_issue("wind-" + day)
-        channel = request.args.get("channel_id", "wind-news")
+        record = store.verified_issue(profile.industry + "-" + day)
+        channel = request.args.get("channel_id", profile.channel)
         prior = store.daily_delivery(day, channel)
-        return jsonify(teams_configured=bool(os.environ.get("WIND_NEWS_TEAMS_WEBHOOK_URL")),
-                       card_format=os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive"),
+        return jsonify(teams_configured=bool(profile.env("TEAMS_WEBHOOK_URL")),
+                       card_format=profile.env("TEAMS_CARD_FORMAT", "adaptive"),
                        issue_date=day, revision=record["revision"] if record else None,
                        publication_state=record["state"] if record else None,
                        delivery_status=prior["status"] if prior else None,
                        delivery_id=prior["delivery_id"] if prior else None,
                        delivery_evidence={k: (prior.get("result") or {})[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in (prior.get("result") or {})} if prior else {},
-                       briefing_stopped=bool(runner.briefing_stopped(day)) if channel == "wind-news" else False,
+                       briefing_stopped=bool(runner.briefing_stopped(day)) if channel == profile.channel else False,
                        schedule_owner="n8n", first_check="08:30", last_check="09:25", deadline="09:30", interval_minutes=5)
 
     @app.post("/v1/deliveries/preview")
     @authenticated
     def delivery_preview():
         data = body()
-        issue_id = data.get("issue_id") or "wind-" + data.get("issue_date", runner.clock().astimezone(KST).date().isoformat())
+        issue_id = data.get("issue_id") or profile.industry + "-" + data.get("issue_date", runner.clock().astimezone(KST).date().isoformat())
         record = store.verified_issue(issue_id)
         if not record:
             return jsonify(error_code="WEB_VERIFICATION_REQUIRED"), 409
         from .delivery import build_card
         return jsonify(build_card(record["payload"], config["policy"].get("publisher", {}).get("pages_base_url", ""),
-                                  os.environ.get("WIND_NEWS_TEAMS_CARD_FORMAT", "adaptive")))
+                                  profile.env("TEAMS_CARD_FORMAT", "adaptive"), industry=profile.industry))
 
     @app.post("/v1/deliveries/send")
     @authenticated
@@ -503,7 +520,7 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @app.get("/review")
     def review_ui():
         # The empty shell stores no data or token; all data requests are authenticated.
-        return render_template("review.html")
+        return render_template("review.html", industry=profile.industry, label=profile.label, type_field=profile.type_field)
 
     if start_worker:
         runner.start()

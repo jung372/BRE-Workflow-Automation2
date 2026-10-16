@@ -1,0 +1,8 @@
+# Apply with compose.yaml when enabling the solar publisher. Both services must
+# bind the same host directory; existing wind-only deployments need no change.
+services:
+  news-service:
+    environment:
+      BRE_NEWS_PUBLISH_LOCK: /var/lib/bre-news-locks/publish.lock
+    volumes:
+      - ${BRE_NEWS_LOCK_ROOT:?Set the same shared lock directory for both news services}:/var/lib/bre-news-locks

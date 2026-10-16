@@ -44,7 +44,7 @@ python3 - "$root" "$temp" "$source_root" <<'PY'
 import json, sys, uuid
 from pathlib import Path
 root, temp, source = map(Path, sys.argv[1:])
-flows = [json.loads(p.read_text()) for p in sorted((source / 'automation/n8n').glob('*.json'))]
+flows = [json.loads(p.read_text()) for p in sorted((source / 'automation/n8n').glob('BRE-WIND-*.json'))]
 manifest = root / 'settings/n8n-links.json'
 if manifest.exists(): links = json.loads(manifest.read_text())
 else:

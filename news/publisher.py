@@ -10,12 +10,14 @@ import time
 from datetime import date
 from pathlib import Path
 
+from .profiles import profile_for
+from .locks import file_lock
 from .collector import safe_public_url
 
 PREFIX = "data/wind-news/"
 ISSUE_FIELDS = {"schema_version", "issue_id", "issue_date", "revision", "timezone", "window_start", "window_end",
                 "published_at", "content_status", "headline_summary", "correction_reason", "corrected_at"}
-ITEM_FIELDS = {"headline", "title", "summary", "companies", "project_name", "region", "wind_type", "primary_category",
+ITEM_FIELDS = {"headline", "title", "summary", "companies", "project_name", "region", "wind_type", "solar_type", "primary_category",
                "contract_stage", "tags", "source_name", "source_url", "source_published_at", "event_id",
                "representative_article_id", "evidence_scope", "late_arrival", "timestamp_basis",
                "amount", "currency", "capacity", "capacity_unit", "event_date"}
@@ -58,14 +60,18 @@ def _public_issue(issue):
     return public
 
 
-def build_snapshot(issues, output_dir):
+def build_snapshot(issues, output_dir, industry="wind"):
     """Generate only from approved DB snapshots; output_dir is the site root.
 
     Index and search show the newest revision for each day. Older revisions remain
     immutable archive files; an old-date backfill never replaces a newer latest.
     """
+    profile = profile_for(industry)
+    PREFIX = profile.prefix
     root = Path(output_dir).resolve()
     issues = list(issues)
+    if any(i.get("issue_id") != profile.issue_id(i["issue_date"]) for i in issues):
+        raise ValueError("ISSUE_INDUSTRY_MISMATCH")
     active_keys = {(i["issue_date"], i["revision"]) for i in issues if i.get("state") in ("READY", "COMMITTED")}
     active_months = {key[0][:7] for key in active_keys}
     all_issues = sorted((_public_issue(i) for i in issues), key=lambda i: (i["issue_date"], i["revision"]))
@@ -171,6 +177,10 @@ def verify_pages(snapshot, base_url, transport=None, *, timeout_seconds=60, max_
 class Publisher:
     def __init__(self, config, transport=None, git_runner=None):
         self.config = config.get("publisher", config)
+        self.profile = profile_for(self.config.get("industry", "wind"))
+        self.prefix = self.profile.prefix
+        self.marker = "." + self.profile.industry + "-news-publish-clone"
+        self.commit_prefix = "Publish " + self.profile.industry + " news snapshot "
         self.transport = transport
         self.git_runner = git_runner
 
@@ -204,10 +214,10 @@ class Publisher:
                     raise ValueError("INVALID_GIT_STATUS")
                 entries.append((code, parts[index]))
                 index += 1
-        dirty = [(code, path) for code, path in entries if path != ".wind-news-publish-clone"]
-        if any(not path.startswith(PREFIX) for _, path in dirty):
+        dirty = [(code, path) for code, path in entries if path != self.marker]
+        if any(not path.startswith(self.prefix) for _, path in dirty):
             raise ValueError("PUBLISH_CLONE_DIRTY")
-        news_root = (clone / PREFIX).resolve()
+        news_root = (clone / self.prefix).resolve()
         if not news_root.is_relative_to(clone):
             raise ValueError("UNSAFE_SNAPSHOT_PATH")
         # Verify every deletion target before restoring or deleting any artifact.
@@ -223,14 +233,14 @@ class Publisher:
         if not recover:
             return
         if any(code != "??" for code, _ in dirty):
-            tracked = self._git(clone, "ls-tree", "-r", "--name-only", "HEAD", "--", PREFIX).stdout
+            tracked = self._git(clone, "ls-tree", "-r", "--name-only", "HEAD", "--", self.prefix).stdout
             if tracked:
                 # One bounded pathspec restores tracked news files only. Unrelated
                 # dirty changes were rejected before this reversible recovery.
-                self._git_restore_bytes(clone, "restore", "--source=HEAD", "--staged", "--worktree", "--", PREFIX)
+                self._git_restore_bytes(clone, "restore", "--source=HEAD", "--staged", "--worktree", "--", self.prefix)
             else:
                 # A first publication can crash after add but before commit.
-                self._git(clone, "reset", "HEAD", "--", PREFIX)
+                self._git(clone, "reset", "HEAD", "--", self.prefix)
                 # Files newly staged in that interrupted publication are untracked
                 # after reset and are regenerated from approved DB input below.
                 for code, path in dirty:
@@ -244,7 +254,7 @@ class Publisher:
         """Avoid Windows' command-line limit even for multi-year rebuilds."""
         batch, length = [], 0
         for path in paths:
-            if not path.startswith(PREFIX):
+            if not path.startswith(self.prefix):
                 raise ValueError("PUBLISH_PATH_OUTSIDE_ALLOWLIST")
             size = len(path) + 3
             if size > 12000:
@@ -258,6 +268,15 @@ class Publisher:
             self._git(clone, "add", "--", *batch)
 
     def publish(self, issues):
+        path = self.config.get("lock_path") or os.environ.get("BRE_NEWS_PUBLISH_LOCK")
+        if self.profile.industry == "solar" and not path:
+            raise ValueError("SHARED_PUBLISH_LOCK_REQUIRED")
+        if path:
+            with file_lock(path):
+                return self._publish(issues)
+        return self._publish(issues)
+
+    def _publish(self, issues):
         cfg = self.config
         if not cfg.get("enabled", False):
             raise ValueError("PUBLISHER_DISABLED")
@@ -268,7 +287,7 @@ class Publisher:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", remote) or remote.startswith("-"):
             raise ValueError("INVALID_REMOTE")
         # This must be a dedicated disposable publish checkout, never a code release.
-        if not (clone / ".wind-news-publish-clone").is_file():
+        if not (clone / self.marker).is_file():
             raise ValueError("PUBLISH_CLONE_MARKER_REQUIRED")
         self._recover_dirty_news(clone, recover=False)
         if self._git(clone, "branch", "--show-current").stdout.strip() != branch:
@@ -288,7 +307,7 @@ class Publisher:
                     subject = self._git(clone, "show", "-s", "--format=%s", pending).stdout.strip()
                     touched = self._git(clone, "diff-tree", "--no-commit-id", "--name-only", "-r", pending).stdout.splitlines()
                     parents = self._git(clone, "show", "-s", "--format=%P", pending).stdout.split()
-                    if not subject.startswith("Publish wind news snapshot ") or not touched or len(parents) != 1 or any(not p.startswith(PREFIX) for p in touched):
+                    if not subject.startswith(self.commit_prefix) or not touched or len(parents) != 1 or any(not p.startswith(self.prefix) for p in touched):
                         raise ValueError("PUBLISH_CLONE_LOCAL_COMMITS")
                 ancestor = self._git(clone, "merge-base", "--is-ancestor", remote_head, "HEAD", check=False)
                 if ancestor.returncode:
@@ -304,19 +323,19 @@ class Publisher:
         for attempt in range(min(3, max(1, int(cfg.get("max_push_attempts", 3))))):
             # Retain remote published archives when an older DB replay/backfill runs.
             merged = {(i["issue_date"], i["revision"]): i for i in incoming}
-            archive = clone / PREFIX / "issues"
+            archive = clone / self.prefix / "issues"
             if archive.exists():
                 for path in archive.rglob("*.json"):
                     public = json.loads(path.read_text(encoding="utf-8"))
                     key = (public["issue_date"], public["revision"])
                     merged.setdefault(key, dict(public, approved=True, state="WEB_VERIFIED"))
-            snapshot = build_snapshot(merged.values(), clone)
+            snapshot = build_snapshot(merged.values(), clone, self.profile.industry)
             self._stage_paths(clone, sorted(snapshot["changed_paths"]))
             staged = self._git(clone, "diff", "--cached", "--name-only").stdout.splitlines()
-            if any(not path.startswith(PREFIX) for path in staged):
+            if any(not path.startswith(self.prefix) for path in staged):
                 raise ValueError("PUBLISH_PATH_OUTSIDE_ALLOWLIST")
             if staged:
-                self._git(clone, "commit", "-m", "Publish wind news snapshot " + snapshot["snapshot_id"])
+                self._git(clone, "commit", "-m", self.commit_prefix + snapshot["snapshot_id"])
             commit = self._git(clone, "rev-parse", "HEAD").stdout.strip()
             pushed = self._git(clone, "push", remote, f"HEAD:refs/heads/{branch}", check=False)
             if pushed.returncode == 0:

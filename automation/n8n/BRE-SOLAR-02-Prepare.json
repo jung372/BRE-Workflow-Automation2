@@ -1,0 +1,297 @@
+{
+  "name": "BRE-SOLAR-02-Prepare",
+  "active": false,
+  "nodes": [
+    {
+      "id": "fc69641a-a1a3-5847-b000-85f62cdb66f4",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "40 7 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dd166530-03f9-5938-b424-be637926f9e9",
+      "name": "Manual test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        180
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ebf5a0bf-7b4d-55c5-bab0-0c7ddf62d00a",
+      "name": "Configure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const issue_date = $now.setZone('Asia/Seoul').toFormat('yyyy-MM-dd');\nreturn [{json: {service_url: \"http://solar-news-service:8091\", issue_date, issue_id: 'solar-' + issue_date, deadline: Date.now() + 1100000}}];"
+      }
+    },
+    {
+      "id": "bcad22a4-87bc-5cc1-b6d1-b4d5b02abf7d",
+      "name": "Submit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Configure').first().json.service_url + '/v1/issues/prepare' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 35000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $workflow.name + ':' + $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date}) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "BRE Solar Service"
+        }
+      }
+    },
+    {
+      "id": "53191314-e3d2-5c5f-878b-c225adb51d31",
+      "name": "Wait for job",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1080,
+        0
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "7ebe6f4c-23c1-502e-8488-ee4ebbc57853",
+      "name": "Poll job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Configure').first().json.service_url + '/v1/jobs/' + $('Submit').first().json.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 35000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "BRE Solar Service"
+        }
+      }
+    },
+    {
+      "id": "71261fae-b2b9-5fe3-8772-ee49fcf90cfb",
+      "name": "Check outcome",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "if ($json.status === 'FAILED') throw new Error('news_job_failed:' + ($json.error_code || 'unknown'));\nif (!['QUEUED','RUNNING','SUCCEEDED'].includes($json.status)) throw new Error('invalid_job_status');\nif (Date.now() > $('Configure').first().json.deadline) throw new Error('news_job_deadline');\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "b26696e3-dbdb-536f-b3f9-5d2fbf52b1fa",
+      "name": "Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "job-done",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "538ccca6-1243-5c6d-b7c9-4f2d7d5105ab",
+      "name": "Setup instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -300
+      ],
+      "parameters": {
+        "content": "## Import inactive\nBind every HTTP node to Header Auth `BRE Solar Service`: Authorization = Bearer <service token>. Edit Configure.service_url. No credentials are included. Codex OAuth performs automatic evidence review. Set Error workflow to imported BRE-SOLAR-05A-Errors. Read docs/solar-news-operations.md before enabling schedules.",
+        "height": 240,
+        "width": 600
+      }
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Configure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual test": {
+      "main": [
+        [
+          {
+            "node": "Configure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure": {
+      "main": [
+        [
+          {
+            "node": "Submit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit": {
+      "main": [
+        [
+          {
+            "node": "Wait for job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for job": {
+      "main": [
+        [
+          {
+            "node": "Poll job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll job": {
+      "main": [
+        [
+          {
+            "node": "Check outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check outcome": {
+      "main": [
+        [
+          {
+            "node": "Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completed?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait for job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul",
+    "executionTimeout": 1200,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

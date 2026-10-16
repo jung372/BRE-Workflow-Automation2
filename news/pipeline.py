@@ -9,14 +9,15 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import polars as pl
 
+from .profiles import profile_for
 from .store import Conflict, canonical, digest, utcnow
 from .relevance import industry_relevant, editorial_order
 from .dedup import RULE_VERSION, agreement_anchor, agreement_classification, group_events
 
 KST = timezone(timedelta(hours=9))
 SUCCESS = {"success", "success_zero"}
-PUBLIC_ITEM_FIELDS = {"event_id", "representative_article_id", "headline", "summary", "primary_category", "tags", "source_name", "source_url", "source_published_at", "timestamp_basis", "evidence_scope", "project_name", "companies", "region", "wind_type", "contract_stage", "late_arrival", "amount", "currency", "capacity", "capacity_unit", "event_date"}
-EDITABLE_FIELDS = {"headline", "summary", "primary_category", "tags", "project_name", "companies", "region", "wind_type", "contract_stage"}
+PUBLIC_ITEM_FIELDS = {"event_id", "representative_article_id", "headline", "summary", "primary_category", "tags", "source_name", "source_url", "source_published_at", "timestamp_basis", "evidence_scope", "project_name", "companies", "region", "wind_type", "solar_type", "contract_stage", "late_arrival", "amount", "currency", "capacity", "capacity_unit", "event_date"}
+EDITABLE_FIELDS = {"headline", "summary", "primary_category", "tags", "project_name", "companies", "region", "wind_type", "solar_type", "contract_stage"}
 
 
 def instant(value):
@@ -53,13 +54,17 @@ def free_access(article):
     return article.get("access_status") == "free" and article.get("is_paywalled", False) is False
 
 
-def classify(article):
+def classify(article, industry="wind"):
+    profile = profile_for(industry)
     text = article["title"] + " " + article.get("description", "") + " " + article.get("text", "")
     stages = [("해지·변경", r"계약(?:을|이|의)?\s*(?:해지|변경)|(?:해지|변경)\s*(?:된|한)?\s*계약"), ("조건부 계약", r"조건부.{0,8}계약"), ("금융종결", r"금융종결|금융 종결|PF\s*종결|financial close"), ("실행", r"대출.{0,6}실행|자금.{0,6}집행"), ("금융약정", r"금융약정|금융 약정|대출 약정|대출약정"), ("MOU", r"MOU|양해각서|업무협약"), ("우선협상", r"우선협상"), ("본계약", r"본계약|EPC.{0,10}(체결|계약)|공급계약.{0,5}체결"), ("검토", r"검토|추진 예정")]
     matches = [name for name, pattern in stages if re.search(pattern, text, re.I)]
     # Multiple explicit stages can mean a historical comparison. Human review resolves it.
     stage = matches[0] if len(matches) == 1 else "미확인"
     categories = [("사고·안전", r"사고|사망|부상|화재|안전사고"), ("민원·수용성", r"민원|주민 반대|분쟁|소송|갈등"), ("금융·PF", r"금융|PF|대출|자금조달"), ("EPC·시공", r"EPC|시공"), ("MOU·협약", r"MOU|양해각서|업무협약"), ("터빈·공급계약", r"터빈|공급계약"), ("인허가·정책", r"인허가|허가|정책|법안|입찰"), ("착공·준공·상업운전", r"착공|준공|상업운전"), ("산업·공급망", r"공급망|해저케이블|하부구조|설치선|O&M")]
+    if industry == "solar":
+        categories = [(name.replace("터빈·공급계약", "모듈·공급계약"), pattern.replace("터빈", "모듈|인버터|셀 공장|폴리실리콘")) for name, pattern in categories]
+        categories += [("전력시장·계약", r"SMP|REC|PPA|RE100|고정가격"), ("계통·운영", r"출력제어|계통|접속|유지보수|O&M")]
     # Full public articles contain historical/incidental accident or complaint
     # references. Classify the subject from the headline first, then the lead.
     headline_categories = [("민원·수용성", r"어민|상생|공존|수용성|보상"),
@@ -70,7 +75,9 @@ def classify(article):
         lead = article.get("description") or article.get("text", "")[:400]
         category = next((name for name, pattern in categories if re.search(pattern, lead, re.I)), "기타 주요 동향")
     wind_type = "부유식 해상" if "부유식" in text else "고정식 해상" if "해상풍력" in text else "육상" if "육상풍력" in text else "공통"
-    return {"contract_stage": stage, "primary_category": category, "wind_type": wind_type, "review_required": len(matches) > 1 or category in {"사고·안전", "민원·수용성"}, "stage_conflict": len(matches) > 1}
+    if industry == "solar":
+        wind_type = next((value for value in ("영농형", "수상형", "지붕형", "건물일체형", "지상형") if value.removesuffix("형") in text), "공통")
+    return {"contract_stage": stage, "primary_category": category, profile.type_field: wind_type, "review_required": len(matches) > 1 or category in {"사고·안전", "민원·수용성"}, "stage_conflict": len(matches) > 1}
 
 
 def event_key(article, classification):
@@ -100,6 +107,10 @@ def approval_digest(public, candidates, batch_ids):
 class Pipeline:
     def __init__(self, store, collection, policy, summarizer=None):
         self.store, self.collection, self.policy = store, collection, policy
+        self.profile = profile_for(policy.get("industry", collection.get("industry", "wind")))
+        if collection.get("industry", self.profile.industry) != self.profile.industry:
+            raise ValueError("news_profile_mismatch")
+        store.bind_industry(self.profile.industry)
         if summarizer is None:
             from .summarizer import summarize
             summarizer = summarize
@@ -134,7 +145,7 @@ class Pipeline:
                 text = clean(entry.get("text")) if source.get("allow_body", False) else ""
                 if not title:
                     raise ValueError("missing_title")
-                if not re.search(r"[가-힣]", title) or not industry_relevant(title, description + " " + text):
+                if not re.search(r"[가-힣]", title) or not industry_relevant(title, description + " " + text, self.profile.industry):
                     excluded += 1
                     continue
                 published = instant(entry["source_published_at"])
@@ -196,7 +207,7 @@ class Pipeline:
     def prepare(self, payload):
         day = payload["issue_date"]
         start, end = window(day, payload.get("cutoff"))
-        issue_id = "wind-" + day
+        issue_id = self.profile.issue_id(day)
         previous = self.store.issue(issue_id)
         correction = bool(payload.get("correction_reason"))
         if previous and not correction:
@@ -268,25 +279,25 @@ class Pipeline:
             if not end.astimezone(timezone.utc) - timedelta(hours=72) <= published < end.astimezone(timezone.utc) or article["article_id"] in prior_articles:
                 continue
             eligible += 1
-            classification = classify(article)
+            classification = classify(article, self.profile.industry)
             key = event_key(article, classification)
             event_id = "evt-" + key[:24]
             if event_id in prior_events:
                 continue
             article.update(classification, event_id=event_id, event_key=key, late_arrival=published < start.astimezone(timezone.utc))
             eligible_articles.append(article)
-        groups = group_events(eligible_articles)
+        groups = group_events(eligible_articles, self.profile.industry)
         summary_start = monotonic_time.monotonic()
         max_summaries = min(30, max(1, int(self.policy.get("max_summary_candidates", 20))))
         summary_deadline = min(900, max(1, int(self.policy.get("summary_deadline_seconds", 900))))
-        for candidate_number, (event_id, members) in enumerate(editorial_order(groups)):
+        for candidate_number, (event_id, members) in enumerate(editorial_order(groups, self.profile.industry)):
             members.sort(key=lambda a: (-a["trust_score"], -len(a.get("text", "")), -len(a.get("description", "")), a["source_published_at"], a["url"]))
             article = members[0]
             if candidate_number >= max_summaries or monotonic_time.monotonic() - summary_start >= summary_deadline:
                 summary = {"summary": "", "valid": False, "review_required": True, "validation_status": "SUMMARY_BUDGET_EXHAUSTED"}
             else:
                 summary = self.summarizer(article, self.policy.get("summarizer", {}))
-            item = {"event_id": event_id, "representative_article_id": article["article_id"], "headline": article["title"], "summary": summary.get("summary", ""), "primary_category": article["primary_category"], "tags": [article["contract_stage"]] if article["contract_stage"] != "미확인" else [], "source_name": article["source_name"], "source_url": article["url"], "source_published_at": article["source_published_at"], "timestamp_basis": article["timestamp_basis"], "evidence_scope": article["evidence_scope"], "project_name": article.get("project_name"), "companies": article.get("companies", []), "region": article.get("region"), "wind_type": article["wind_type"], "contract_stage": article["contract_stage"], "late_arrival": article["late_arrival"], "amount": None, "currency": None, "capacity": None, "capacity_unit": None}
+            item = {"event_id": event_id, "representative_article_id": article["article_id"], "headline": article["title"], "summary": summary.get("summary", ""), "primary_category": article["primary_category"], "tags": [article["contract_stage"]] if article["contract_stage"] != "미확인" else [], "source_name": article["source_name"], "source_url": article["url"], "source_published_at": article["source_published_at"], "timestamp_basis": article["timestamp_basis"], "evidence_scope": article["evidence_scope"], "project_name": article.get("project_name"), "companies": article.get("companies", []), "region": article.get("region"), self.profile.type_field: article[self.profile.type_field], "contract_stage": article["contract_stage"], "late_arrival": article["late_arrival"], "amount": None, "currency": None, "capacity": None, "capacity_unit": None}
             validated = summary.get("valid") is True and isinstance(summary.get("summary"), str) and bool(summary["summary"].strip())
             if validated and summary.get("validation_status") == "CODEX_VERIFIED":
                 metadata = summary.get("metadata", {})
@@ -387,7 +398,8 @@ class Pipeline:
                 if len(targets) != 1 or not request.get("reason"):
                     raise ValueError("edit_requires_one_item_and_reason")
                 changes = request.get("changes", {})
-                if not changes or not set(changes) <= EDITABLE_FIELDS:
+                allowed_fields = EDITABLE_FIELDS - ({"wind_type"} if self.profile.industry == "solar" else {"solar_type"})
+                if not changes or not set(changes) <= allowed_fields:
                     raise ValueError("invalid_edit_fields")
                 if "summary" in changes and (not isinstance(changes["summary"], str) or not changes["summary"].strip()):
                     raise ValueError("summary_string_required")
@@ -411,17 +423,16 @@ class Pipeline:
             return self.store._issue(db.execute("SELECT * FROM issues WHERE issue_id=? AND revision=?", [issue_id, record["revision"]]).fetchone())
         return self.store.call(work, write=True)
 
-    @staticmethod
-    def _replace_representative(db, candidate, article_id):
+    def _replace_representative(self, db, candidate, article_id):
         row = db.execute("SELECT metadata,evidence,content_hash FROM articles WHERE article_id=?", [article_id]).fetchone()
         if not row:
             raise ValueError("article_not_found")
         article, evidence = json.loads(row[0]), json.loads(row[1])
-        facts = classify({**article, **evidence})
-        anchor = agreement_anchor({**article, **evidence})
+        facts = classify({**article, **evidence}, self.profile.industry)
+        anchor = agreement_anchor({**article, **evidence}, self.profile.industry)
         if anchor:
             facts.update(agreement_classification(anchor))
-        candidate["item"].update(representative_article_id=article_id, headline=article["title"], summary=clean(evidence.get("text") or evidence.get("description") or article["title"])[:280], source_name=article["source_name"], source_url=article["url"], source_published_at=article["source_published_at"], timestamp_basis=article["timestamp_basis"], evidence_scope=article["evidence_scope"], project_name=article.get("project_name"), companies=article.get("companies", []), region=article.get("region"), contract_stage=facts["contract_stage"], primary_category=facts["primary_category"], wind_type=facts["wind_type"])
+        candidate["item"].update(representative_article_id=article_id, headline=article["title"], summary=clean(evidence.get("text") or evidence.get("description") or article["title"])[:280], source_name=article["source_name"], source_url=article["url"], source_published_at=article["source_published_at"], timestamp_basis=article["timestamp_basis"], evidence_scope=article["evidence_scope"], project_name=article.get("project_name"), companies=article.get("companies", []), region=article.get("region"), contract_stage=facts["contract_stage"], primary_category=facts["primary_category"], **{self.profile.type_field: facts[self.profile.type_field]})
         candidate.update(evidence_hash=row[2], approved=False, held=True, review_required=True)
         candidate["item"]["tags"] = [facts["contract_stage"]] if facts["contract_stage"] != "미확인" else []
 

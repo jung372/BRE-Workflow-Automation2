@@ -12,6 +12,7 @@ from urllib.parse import quote, urlsplit
 
 import requests
 
+from .profiles import profile_for
 from .collector import safe_public_url
 
 
@@ -41,7 +42,10 @@ def _plain(value: object, limit: int) -> str:
     return re.sub(r"([\\`*_{}\[\]()#+!<>])", r"\\\1", text)
 
 
-def build_card(issue: dict, site_url: str, card_format: str = "adaptive") -> dict:
+def build_card(issue: dict, site_url: str, card_format: str = "adaptive", *, industry="wind", connection_test=False) -> dict:
+    profile = profile_for(industry)
+    if issue.get("issue_id") and issue["issue_id"] != profile.issue_id(issue.get("issue_date", "")):
+        raise ValueError("issue_industry_mismatch")
     if card_format not in {"adaptive", "messagecard"}:
         raise ValueError("invalid_card_format")
     day = issue.get("issue_date", "")
@@ -50,23 +54,27 @@ def build_card(issue: dict, site_url: str, card_format: str = "adaptive") -> dic
     date.fromisoformat(day)
     if not _public_https(site_url):
         raise ValueError("invalid_site_url")
-    report_url = site_url.rstrip("/") + "/#/daily/" + day
+    report_url = site_url.rstrip("/") + "/#/" + profile.route + "/" + day
     items = issue.get("items", [])
     held = int(issue.get("counts", {}).get("held", 0))
     overview = f"주요 사건 {len(items)}건 · 집계 마감 07:30 KST"
     if held:
         overview += f" · 검토 중 {held}건"
     body = [
-        {"type": "TextBlock", "text": f"[풍력 일간 시황] {day}",
+        {"type": "TextBlock", "text": f"[{profile.label} 일간 시황] {day}",
          "weight": "Bolder", "size": "Large", "wrap": True},
         {"type": "TextBlock", "text": overview,
          "wrap": True, "isSubtle": True},
     ]
+    if connection_test:
+        body[0]["text"] = f"[{profile.label} 연결 테스트] {day}"
+    if industry == "solar" and issue.get("content_status") == "partial":
+        body.append({"type": "TextBlock", "text": "일부 출처 또는 기사 검증이 제한되었습니다. 웹 보고서에서 확인하세요.", "wrap": True})
     if issue.get("revision", 1) > 1:
         body.append({"type": "TextBlock", "text": "정정된 보고서입니다.", "wrap": True})
     if not items:
         body.append({"type": "TextBlock", "text": "오늘 새로 선정된 주요 기사가 없습니다.", "wrap": True})
-    for rank, item in enumerate(items, 1):
+    for rank, item in enumerate(items[:5] if industry == "solar" else items, 1):
         url = item.get("source_url", "")
         if not _public_https(url) or re.search(r"[\s\x00-\x1f\x7f]", url):
             raise ValueError("invalid_article_url")
@@ -94,14 +102,14 @@ def build_card(issue: dict, site_url: str, card_format: str = "adaptive") -> dic
         {"contentType": "application/vnd.microsoft.card.adaptive", "contentUrl": None, "content": card}]}
 
 
-def send_card(issue: dict, webhook_url: str, site_url: str, session=None, *, card_format="adaptive") -> dict:
+def send_card(issue: dict, webhook_url: str, site_url: str, session=None, *, card_format="adaptive", industry="wind", connection_test=False) -> dict:
     """Return an outcome safe for logs. Do not infer channel delivery from 2xx."""
     if not webhook_url:
         return {"status": "SKIPPED", "error_code": "teams_not_configured"}
     if not _webhook_allowed(webhook_url):
         return {"status": "FAILED", "error_code": "teams_url_not_allowed"}
     try:
-        payload = build_card(issue, site_url, card_format)
+        payload = build_card(issue, site_url, card_format, industry=industry, connection_test=connection_test)
     except (ValueError, TypeError, KeyError):
         return {"status": "FAILED", "error_code": "invalid_card_input"}
     client = session or requests.Session()

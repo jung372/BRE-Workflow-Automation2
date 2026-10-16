@@ -41,7 +41,7 @@ def _event_date(prefix, published):
     return None
 
 
-def agreement_anchor(article):
+def agreement_anchor(article, industry="wind"):
     title = article["title"]
     if _OTHER_STAGE.search(title) or re.search(r"사고|민원|소송|갈등|반대|예정|검토", title):
         return None
@@ -67,7 +67,8 @@ def agreement_anchor(article):
             continue
         event_date = _event_date(prefix, published)
         purpose = quote.group(1)
-        wind_type = next((x for x in ("육상풍력", "해상풍력") if x in purpose), None)
+        types = ("육상풍력", "해상풍력") if industry == "wind" else ("영농형 태양광", "수상 태양광", "지붕 태양광", "태양광")
+        wind_type = next((x for x in types if x in purpose), None)
         if not event_date or not wind_type:
             continue
         scope = re.sub(r"[^가-힣a-z0-9]", "", purpose.lower().split(wind_type)[0]).removesuffix("지역")
@@ -103,11 +104,11 @@ def agreement_classification(anchor):
             "primary_category": "MOU·협약", "review_required": False}
 
 
-def group_events(articles):
+def group_events(articles, industry="wind"):
     """Keep exact event identities; augment with complete-link corroboration."""
     groups, buckets = {}, {}
     for article in sorted(articles, key=lambda a: (a["source_published_at"], a["url"])):
-        anchor = agreement_anchor(article)
+        anchor = agreement_anchor(article, industry)
         if anchor:
             article["agreement_anchor"] = anchor
             article.update(agreement_classification(anchor))

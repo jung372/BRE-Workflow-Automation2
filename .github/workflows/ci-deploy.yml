@@ -10,6 +10,7 @@ on:
       - 'data/status.json'
       - 'last_state.json'
       - 'data/wind-news/**'
+      - 'data/solar-news/**'
       - 'docs/**'
       - '**/*.md'
       # 키워드는 설정 데이터다. publish clone 에서 읽으므로 재배포가 필요 없고,
@@ -23,7 +24,7 @@ on:
       news_action:
         description: 'News server operation (preflight is read-only)'
         type: choice
-        options: [normal, check, preflight, install, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
+        options: [normal, check, preflight, install, solar-install, connect, verify, oauth, launch, correct, refresh, dedup-correct, briefing]
         default: normal
 
 env:
@@ -37,6 +38,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  solar-install:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'solar-install' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated solar service and verify health
+        shell: powershell
+        run: .\scripts\solar_news\install_server.ps1
+
   news-oauth:
     if: github.event_name == 'workflow_dispatch' && inputs.news_action == 'oauth'
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
@@ -119,13 +134,13 @@ jobs:
           python -m compileall -q `
             config.py state.py runtime_config.py keywords.py scraper.py run_local.py `
             notify_teams.py push_to_github.py dashboard_app.py `
-            logic scrapers presentation news tests scripts/wind_news
+            logic scrapers presentation news tests scripts/wind_news scripts/solar_news
 
       - name: 🧪 단위 테스트
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: 뉴스 웹 모듈 검증
-        run: node --test tests/test_wind_news_frontend.js
+        run: node --test tests/test_wind_news_frontend.js tests/test_solar_news_frontend.js
 
       - name: 📥 진입점 임포트 확인
         shell: pwsh

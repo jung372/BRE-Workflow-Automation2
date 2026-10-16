@@ -2,8 +2,17 @@
 import re
 
 
-def industry_relevant(title, text=""):
+def industry_relevant(title, text="", industry="wind"):
+    from .profiles import profile_for
+    profile_for(industry)
     value = title + " " + text
+    if industry == "solar":
+        if (re.search(r"주가|급등|급락|상한가|하한가|목표가|특징주", title)
+                and not re.search(r"계약|수주|착공|준공|인허가|증설|공장|발전소|입찰|인수|매각", value)):
+            return False
+        return bool(re.search(r"태양광|photovoltaic|solar\s*(?:power|panel|cell|farm|module)", value, re.I)
+                    or (re.search(r"폴리실리콘|웨이퍼|인버터|페로브스카이트|탠덤\s*셀", value)
+                        and re.search(r"발전|모듈|전지|재생에너지", value)))
     if re.search(r"풍력|풍황|모노파일|해상\s*변전소|wind\s*(power|farm|turbine)|offshore wind", value, re.I):
         return True
     # Supply-chain news need not literally contain the word 'wind'. A company
@@ -12,7 +21,7 @@ def industry_relevant(title, text=""):
                 and re.search(r"재생에너지|해상발전|해상\s*에너지|신재생|해상단지", value))
 
 
-def editorial_order(groups):
+def editorial_order(groups, industry="wind"):
     """Prioritize direct industry subjects and spread a finite LLM budget.
 
     Evidence grouping happens before this ordering. Remaining similar titles
@@ -31,7 +40,7 @@ def editorial_order(groups):
             article = pair[1][0]
             title = title_grams[pair[0]]
             similarity = max((len(title & other) / max(1, min(len(title), len(other))) for other in titles), default=0)
-            priority = 4 * industry_relevant(article["title"]) - 5 * similarity
+            priority = 4 * industry_relevant(article["title"], industry=industry) - 5 * similarity
             priority -= min(3, used.get(article["source_name"], 0)) * .6
             return priority, article["source_published_at"], article["url"]
         pair = max(remaining, key=score)

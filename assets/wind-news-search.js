@@ -1,6 +1,10 @@
 (function (root) {
   'use strict';
-  const fields = ['q', 'company', 'project', 'region', 'wind', 'category'];
+  function create(industry = 'wind') {
+  if (!['wind', 'solar'].includes(industry)) throw new Error('Unknown news industry');
+  const page = industry === 'wind' ? 'daily' : 'solar';
+  const typeKey = industry === 'wind' ? 'wind' : 'solar';
+  const fields = ['q', 'company', 'project', 'region', typeKey, 'category'];
   function dateValid(value) {
     return /^\d{4}-\d{2}-\d{2}$/.test(value || '') && Number.isFinite(Date.parse(value + 'T00:00:00Z')) && new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value;
   }
@@ -20,7 +24,7 @@
   function buildHash(filters) {
     const params = new URLSearchParams();
     ['period', 'from', 'to', ...fields, 'sort', 'page'].forEach(key => { if (filters[key]) params.set(key, String(filters[key])); });
-    return '#/daily/archive?' + params.toString();
+    return '#/' + page + '/archive?' + params.toString();
   }
   function selectedMonths(months, filters) {
     return months.filter(d => (!filters.from || d.month >= filters.from.slice(0, 7)) && (!filters.to || d.month <= filters.to.slice(0, 7)));
@@ -42,7 +46,7 @@
       (!f.q || contains((item.headline || item.title || '') + ' ' + item.summary, f.q)) &&
       (!f.company || contains((item.companies || []).join(' '), f.company)) &&
       (!f.project || contains(item.project_name, f.project)) && (!f.region || contains(item.region, f.region)) &&
-      (!f.wind || contains(item.wind_type, f.wind)) && (!f.category || contains(item.primary_category, f.category)))
+      (!f[typeKey] || contains(item[typeKey + '_type'], f[typeKey])) && (!f.category || contains(item.primary_category, f.category)))
       .sort((a, b) => {
         const dateOrder = a.issue_date.localeCompare(b.issue_date) || String(a.source_published_at || '').localeCompare(String(b.source_published_at || ''));
         return (f.sort === 'oldest' ? dateOrder : -dateOrder) || String(a.event_id).localeCompare(String(b.event_id));
@@ -53,12 +57,10 @@
     return { items: items.slice((current - 1) * size, current * size), page: current, pages, total: items.length };
   }
   const api = { defaultRange, readFilters, buildHash, selectedMonths, latestRevisionItems, filterItems, paginate };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  root.WindNewsSearch = api;
-  if (!root.document) return;
+  if (!root.document) return api;
   let manifest = null, checked = 0;
   const shards = new Map();
-  const W = root.WindNews;
+  const W = industry === 'wind' ? root.WindNews : root.SolarNews;
   function formFor(filters) {
     const form = W.el('form', null, 'wn-search-form');
     const title = W.el('div', null, 'wn-search-title'); title.append(W.el('h2', '누적 기사 검색'), W.el('p', '브리핑 발행일 기준 · 공개 승인된 발간 기사만 검색합니다.', 'wn-muted')); form.append(title);
@@ -72,11 +74,11 @@
     const grid = W.el('div', null, 'wn-search-grid');
     grid.append(field('검색 기간', 'period', '', [['recent', '최근 30일 / 지정 기간'], ['all', '전체 기간']]), field('시작 발행일', 'from', 'date'), field('종료 발행일', 'to', 'date'));
     grid.append(field('제목·요약 키워드', 'q'), field('기업', 'company'), field('프로젝트', 'project'), field('지역', 'region'),
-      field('육상 / 해상', 'wind'), field('사건 분류', 'category'), field('정렬', 'sort', '', [['newest', '최신순'], ['oldest', '과거순']]));
+      field(industry === 'wind' ? '육상 / 해상' : '사업 유형', typeKey), field('사건 분류', 'category'), field('정렬', 'sort', '', [['newest', '최신순'], ['oldest', '과거순']]));
     form.append(grid);
     const actions = W.el('div', null, 'wn-search-actions');
     const submit = W.el('button', '기사 검색', 'wn-button wn-button-primary'); submit.type = 'submit';
-    actions.append(submit, W.link('조건 초기화', '#/daily/archive', 'wn-button')); form.append(actions);
+    actions.append(submit, W.link('조건 초기화', '#/' + page + '/archive', 'wn-button')); form.append(actions);
     form.elements.period.addEventListener('change', () => {
       const range = form.elements.period.value === 'all' ? { from: '', to: '' } : defaultRange(W.kstDate());
       form.elements.from.value = range.from; form.elements.to.value = range.to;
@@ -93,7 +95,7 @@
   }
   async function loadManifest(force) {
     if (!force && manifest && Date.now() - checked < 60000) return manifest;
-    const value = await W.fetchJSON('data/wind-news/search/manifest.json');
+    const value = await W.fetchJSON('data/' + industry + '-news/search/manifest.json');
     if (!Array.isArray(value.months) || !value.months.every(d => /^\d{4}-(0[1-9]|1[0-2])$/.test(d.month) && W.safePath(d.path, 'search') && /^[a-f0-9]{64}$/i.test(d.sha256 || '') && Number.isInteger(d.count) && d.count >= 0) || new Set(value.months.map(d => d.month)).size !== value.months.length) throw new Error('검색 manifest 형식이 올바르지 않습니다.');
     manifest = value; checked = Date.now(); return value;
   }
@@ -163,4 +165,10 @@
     progress.textContent = requested.length ? '월별 자료 ' + complete + ' / ' + requested.length + ' 확인 완료' + (recovered.length ? ' · 재조회 실패 ' + recovered.length + '개 월은 마지막 검증 자료 사용' : '') : '검색 대상 월 없음'; render();
   }
   api.activate = activate;
+  return api;
+  }
+  root.WindNewsSearch = create('wind');
+  root.SolarNewsSearch = create('solar');
+  root.WindNewsSearch.create = create;
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.WindNewsSearch;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

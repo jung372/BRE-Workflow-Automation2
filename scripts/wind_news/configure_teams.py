@@ -8,7 +8,10 @@ import time
 from urllib.parse import urlsplit
 
 
-def update_settings(path, webhook):
+def update_settings(path, webhook, *, industry="wind", card_format="messagecard"):
+    if industry not in {"wind", "solar"} or card_format not in {"messagecard", "adaptive"}:
+        raise ValueError("INVALID_TEAMS_PROFILE")
+    prefix = industry.upper() + "_NEWS_"
     # Windows PowerShell's redirected stdin can prepend a UTF-8 BOM on the
     # server. Remove that transport marker before validating the URL itself.
     webhook = webhook.removeprefix("\ufeff").strip()
@@ -30,11 +33,13 @@ def update_settings(path, webhook):
                 ("logic.azure.com", "api.powerplatform.com", "webhook.office.com"))
             or parsed.hostname == "outlook.office.com" and parsed.path.startswith("/webhook/")):
         raise ValueError("UNSUPPORTED_SHARED_TEAMS_HOST")
-    original = path.read_text(encoding="utf-8")
-    keys = {"WIND_NEWS_TEAMS_WEBHOOK_URL", "WIND_NEWS_TEAMS_CARD_FORMAT"}
+    original = path.read_text(encoding="utf-8") if path.exists() else ""
+    if industry == "solar" and any(line.strip().startswith(("WIND_NEWS_", "TEAMS_WEBHOOK_URL=")) for line in original.splitlines()):
+        raise ValueError("SOLAR_SETTINGS_MUST_BE_DEDICATED")
+    keys = {prefix + "TEAMS_WEBHOOK_URL", prefix + "TEAMS_CARD_FORMAT"}
     lines = [line for line in original.splitlines() if line.split("=", 1)[0].strip() not in keys]
     # Single quotes prevent Compose from interpolating any $ in the signed URL.
-    lines += [f"WIND_NEWS_TEAMS_WEBHOOK_URL='{webhook}'", "WIND_NEWS_TEAMS_CARD_FORMAT=messagecard"]
+    lines += [f"{prefix}TEAMS_WEBHOOK_URL='{webhook}'", f"{prefix}TEAMS_CARD_FORMAT={card_format}"]
     updated = "\n".join(lines) + "\n"
     changed = updated != original
     if changed:
@@ -69,6 +74,9 @@ def main():
         webhook, changed = update_settings(root / "settings" / "compose.env", sys.stdin.read(8193))
         compose = ["docker", "compose", "--project-name", "bre-wind-news", "--env-file",
                    str(root / "settings" / "compose.env"), "-f", str(compose_file)]
+        if any(line.startswith("BRE_NEWS_LOCK_ROOT=") and line.split("=", 1)[1].strip()
+               for line in (root / "settings" / "compose.env").read_text(encoding="utf-8").splitlines()):
+            compose += ["-f", str(compose_file.with_name("shared-publish-lock.yaml"))]
         stage = "COMPOSE_VALIDATE"
         run(compose + ["config", "--quiet"])
         stage = "CONTAINER_APPLY"

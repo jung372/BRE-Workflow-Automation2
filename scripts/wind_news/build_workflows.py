@@ -124,7 +124,10 @@ def workflow(number, label, endpoint, body, crons, service_url, *, async_job=Tru
                          "saveManualExecutions": False}, "pinData": {}, "tags": []}
 
 
-def build(service_url="http://news-service:8090"):
+def build(service_url=None, industry="wind"):
+    if industry not in {"wind", "solar"}:
+        raise ValueError("unsupported_news_industry")
+    service_url = service_url or ("http://solar-news-service:8091" if industry == "solar" else "http://news-service:8090")
     config_body = "={{ JSON.stringify({issue_date: $('Configure').first().json.issue_date}) }}"
     definitions = [
         ("01", "Collect", "'/v1/collect'", config_body, ["5 * * * *", "30 7 * * *"], {}),
@@ -138,19 +141,31 @@ def build(service_url="http://news-service:8090"):
         ("05B", "Reconcile", "'/v1/reconcile'", config_body, ["*/5 * * * *"], {}),
         ("06", "Backup", "'/v1/backup'", "{}", ["30 2 * * *"], {}),
     ]
-    return [workflow(*args, service_url, **options) for *args, options in definitions]
+    flows = [workflow(*args, service_url, **options) for *args, options in definitions]
+    if industry == "solar":
+        text = json.dumps(flows, ensure_ascii=False)
+        for old, new in [("BRE-WIND", "BRE-SOLAR"), ("BRE Wind Service", "BRE Solar Service"),
+                         ("'wind-'", "'solar-'"), ("docs/wind-news-operations.md", "docs/solar-news-operations.md")]:
+            text = text.replace(old, new)
+        flows = json.loads(text)
+        for flow in flows:
+            for item in flow["nodes"]:
+                item["id"] = str(uuid5(NAMESPACE_URL, "bre-solar/" + item["name"]))
+    return flows
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--service-url", default="http://news-service:8090")
+    parser.add_argument("--industry", choices=["wind", "solar"], default="wind")
+    parser.add_argument("--service-url")
     parser.add_argument("--output", type=Path, default=ROOT / "automation/n8n")
     args = parser.parse_args()
+    args.service_url = args.service_url or ("http://solar-news-service:8091" if args.industry == "solar" else "http://news-service:8090")
     parsed = urlsplit(args.service_url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
         parser.error("service URL must be a credential-free HTTP(S) base URL")
     args.output.mkdir(parents=True, exist_ok=True)
-    for item in build(args.service_url.rstrip("/")):
+    for item in build(args.service_url.rstrip("/"), args.industry):
         (args.output / (item["name"] + ".json")).write_text(json.dumps(item, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("Generated 7 inactive workflows; no network calls made.")
 

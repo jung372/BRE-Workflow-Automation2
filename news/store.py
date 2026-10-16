@@ -120,6 +120,22 @@ class Store:
         self._queue.put((fn, write, future))
         return future.result(timeout=120)
 
+    def bind_industry(self, industry):
+        from .profiles import profile_for
+        profile_for(industry)
+        def bind(db):
+            db.execute("CREATE TABLE IF NOT EXISTS news_profile (industry VARCHAR PRIMARY KEY)")
+            existing = db.execute("SELECT industry FROM news_profile").fetchall()
+            foreign = db.execute("SELECT 1 FROM issues WHERE issue_id NOT LIKE ? LIMIT 1", [industry + "-%"]).fetchone()
+            legacy_data = not existing and industry == "solar" and any(
+                db.execute("SELECT 1 FROM " + table + " LIMIT 1").fetchone()
+                for table in ("articles", "batches", "jobs", "events", "deliveries"))
+            if foreign or legacy_data or any(row[0] != industry for row in existing):
+                raise ValueError("news_database_industry_mismatch")
+            if not existing:
+                db.execute("INSERT INTO news_profile VALUES (?)", [industry])
+        self.call(bind, write=True)
+
     def close(self):
         if not self._closed:
             self._closed = True
@@ -234,7 +250,7 @@ class Store:
     def claim_delivery(self, issue_id, revision, channel_id, message_type="daily", *, max_attempts=3):
         if not isinstance(max_attempts, int) or not 1 <= max_attempts <= 12:
             raise ValueError("invalid_delivery_attempt_limit")
-        if not channel_id or len(channel_id) > 100 or message_type not in {"daily", "correction"}:
+        if not channel_id or len(channel_id) > 100 or message_type not in {"daily", "correction", "connection_test"}:
             raise ValueError("invalid_delivery_key")
         def work(db):
             issue = self._issue(db.execute("SELECT * FROM issues WHERE issue_id=? AND revision=?", [issue_id, revision]).fetchone())

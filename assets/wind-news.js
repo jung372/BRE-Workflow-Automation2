@@ -1,5 +1,8 @@
 (function (root) {
   'use strict';
+  function create(industry = 'wind') {
+  if (!['wind', 'solar'].includes(industry)) throw new Error('Unknown news industry');
+  const profile = { industry, page: industry === 'wind' ? 'daily' : 'solar', label: industry === 'wind' ? '풍력' : '태양광', typeField: industry === 'wind' ? 'wind_type' : 'solar_type', searchName: industry === 'wind' ? 'WindNewsSearch' : 'SolarNewsSearch', prefix: 'data/' + industry + '-news/' };
   const KST_OFFSET = 9 * 60 * 60 * 1000;
   function kstDate(now = new Date()) { return new Date(+now + KST_OFFSET).toISOString().slice(0, 10); }
   function statusForDate(issueDate, now = new Date()) {
@@ -9,7 +12,7 @@
     return shifted.getUTCHours() * 60 + shifted.getUTCMinutes() >= 495 ? '오늘 브리핑 발행 지연' : '오늘 브리핑 준비 중';
   }
   function safePath(path, kind) {
-    const prefix = kind === 'search' ? 'data/wind-news/search/' : 'data/wind-news/issues/';
+    const prefix = kind === 'search' ? profile.prefix + 'search/' : profile.prefix + 'issues/';
     return typeof path === 'string' && path.startsWith(prefix) && path.endsWith('.json') &&
       /^[a-zA-Z0-9_./-]+$/.test(path) && !path.split('/').some(p => !p || p === '.' || p === '..');
   }
@@ -57,10 +60,9 @@
     if (actual !== expected.toLowerCase()) throw new Error('게시 파일의 해시가 일치하지 않습니다.');
   }
   const api = { kstDate, statusForDate, safePath, safeSource, validDate, validDescriptor, validIssue, statusLabel, countLabel, timestampBasisLabel, correctionEntries, verifyBytes };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  root.WindNews = api;
-  if (!root.document) return;
-  const host = document.getElementById('dailyContent');
+  api.profile = profile;
+  if (!root.document) return api;
+  const host = document.getElementById(profile.page + 'Content');
   const issueCache = new Map();
   const lastIssue = new Map();
   let latest = null, index = null, lastCheck = 0, latestError = null, activeKey = '', activeAt = 0, activeDay = '', generation = 0, pendingLatest = null;
@@ -80,7 +82,7 @@
     return box;
   }
   async function fetchJSON(path, hash, revalidate = false) {
-    if (hash && !safePath(path, path.startsWith('data/wind-news/search/') ? 'search' : 'issue')) throw new Error('잘못된 게시 경로입니다.');
+    if (hash && !safePath(path, path.startsWith(profile.prefix + 'search/') ? 'search' : 'issue')) throw new Error('잘못된 게시 경로입니다.');
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
@@ -94,7 +96,7 @@
     } finally { clearTimeout(timer); }
   }
   function updateShortcut() {
-    document.getElementById('dailyShortcutStatus').textContent = latestError ? '최신 브리핑 조회 오류' :
+    document.getElementById(profile.page + 'ShortcutStatus').textContent = latestError ? '최신 브리핑 조회 오류' :
       latest ? latest.issue_date + ' · ' + statusForDate(latest.issue_date) : '발간 이력 없음 · ' + statusForDate(null);
   }
   async function getLatest(force) {
@@ -102,7 +104,7 @@
     if (pendingLatest) return pendingLatest;
     pendingLatest = (async () => {
       try {
-        const manifest = await fetchJSON('data/wind-news/latest.json');
+        const manifest = await fetchJSON(profile.prefix + 'latest.json');
         if (manifest.latest !== null && !validDescriptor(manifest.latest)) throw new Error('최신 호 정보가 올바르지 않습니다.');
         latest = manifest.latest; latestError = null; lastCheck = Date.now();
       } catch (error) { latestError = error; lastCheck = Date.now(); }
@@ -113,7 +115,7 @@
   }
   async function getIndex(force) {
     if (index && !force && Date.now() - index.checked < 60000) return index.issues;
-    const manifest = await fetchJSON('data/wind-news/index.json');
+    const manifest = await fetchJSON(profile.prefix + 'index.json');
     if (!Array.isArray(manifest.issues) || !manifest.issues.every(validDescriptor)) throw new Error('발간 목록 형식이 올바르지 않습니다.');
     const byDate = new Map();
     manifest.issues.forEach(d => { if (!byDate.has(d.issue_date) || byDate.get(d.issue_date).revision < d.revision) byDate.set(d.issue_date, d); });
@@ -133,10 +135,10 @@
   }
   function articleCard(item, position, archive) {
     const card = el('article', null, 'wn-article');
-    card.id = 'event-' + String(item.event_id || position).replace(/[^a-zA-Z0-9_-]/g, '_');
+    card.id = profile.page + '-event-' + String(item.event_id || position).replace(/[^a-zA-Z0-9_-]/g, '_');
     const meta = el('div', null, 'wn-article-meta');
     if (archive) meta.append(el('span', item.issue_date + ' 브리핑', 'wn-chip'));
-    [item.wind_type, item.primary_category, item.contract_stage].filter(Boolean).forEach(v => meta.append(el('span', v, 'wn-chip')));
+    [item[profile.typeField], item.primary_category, item.contract_stage].filter(Boolean).forEach(v => meta.append(el('span', v, 'wn-chip')));
     if (item.late_arrival) meta.append(el('span', '지연 수집', 'wn-chip wn-chip-warning'));
     card.append(meta, el('h3', item.headline || item.title || '제목 미확인'), el('p', item.summary || '요약 없음', 'wn-summary'));
     const detail = [(item.companies || []).join(', '), item.project_name, item.region].filter(Boolean).join(' · ');
@@ -150,13 +152,13 @@
     const url = safeSource(item.source_url);
     if (url) { const source = link('원문 보기 ↗', url); source.target = '_blank'; source.rel = 'noopener noreferrer'; actions.append(source); }
     else actions.append(el('span', '원문 주소 미확인', 'wn-muted'));
-    if (archive && validDate(item.issue_date)) actions.append(link('해당 호 보기 →', '#/daily/' + item.issue_date + '?event=' + encodeURIComponent(item.event_id || '')));
+    if (archive && validDate(item.issue_date)) actions.append(link('해당 호 보기 →', '#/' + profile.page + '/' + item.issue_date + '?event=' + encodeURIComponent(item.event_id || '')));
     foot.append(actions); card.append(foot); return card;
   }
   function renderIssue(issue, today) {
     const section = el('div', null, 'wn-issue');
     const heading = el('div', null, 'wn-issue-heading');
-    heading.append(el('span', issue.issue_date === kstDate() && today ? '오늘 브리핑' : '발간 브리핑', 'wn-eyebrow'), el('h2', '풍력 일간 시황 · ' + issue.issue_date));
+    heading.append(el('span', issue.issue_date === kstDate() && today ? '오늘 브리핑' : '발간 브리핑', 'wn-eyebrow'), el('h2', profile.label + ' 일간 시황 · ' + issue.issue_date));
     heading.append(el('p', '집계 마감 ' + formatTime(issue.window_end || issue.cutoff_at || issue.cutoff) + ' · 웹 반영 ' + formatTime(issue.published_at) + ' · revision ' + issue.revision, 'wn-muted'));
     heading.append(el('p', '수집·편집 상태: ' + statusLabel(issue.content_status), 'wn-muted'));
     section.append(heading);
@@ -175,18 +177,22 @@
     section.append(notes); return section;
   }
   async function activate(route, force) {
+    if (route.page !== profile.page) {
+      generation++; activeKey = '';
+      if (route.page === 'notices') await getLatest(force);
+      return;
+    }
     const key = route.page + ':' + route.tab + ':' + (route.date || '') + ':' + (route.params ? route.params.toString() : '');
     if (!force && key === activeKey && Date.now() - activeAt < 60000 && activeDay === kstDate()) { updateShortcut(); return; }
     const entering = key !== activeKey;
     activeKey = key;
     activeAt = Date.now(); activeDay = kstDate();
     const run = ++generation;
-    if (route.page === 'notices') { await getLatest(force); return; }
     const retry = () => activate(route, true);
-    document.getElementById('dailyRefresh').disabled = true;
+    document.getElementById(profile.page + 'Refresh').disabled = true;
     if (route.tab === 'archive') {
-      try { await root.WindNewsSearch.activate(host, route.params, force, () => run === generation); }
-      finally { if (run === generation) document.getElementById('dailyRefresh').disabled = false; }
+      try { await root[profile.searchName].activate(host, route.params, force, () => run === generation); }
+      finally { if (run === generation) document.getElementById(profile.page + 'Refresh').disabled = false; }
       return;
     }
     host.replaceChildren(message('브리핑 확인 중…', '검증된 발간 자료를 불러오고 있습니다.'));
@@ -196,12 +202,12 @@
         const issues = await getIndex(force);
         if (run !== generation) return;
         const picker = el('div', null, 'wn-date-picker');
-        const label = el('label', '브리핑 발행일'); label.htmlFor = 'issueDate';
-        const select = el('select'); select.id = 'issueDate';
+        const label = el('label', '브리핑 발행일'); label.htmlFor = profile.page + 'IssueDate';
+        const select = el('select'); select.id = profile.page + 'IssueDate';
         select.append(new Option('발행일 선택', ''));
         issues.forEach(d => select.append(new Option(d.issue_date + ' · revision ' + d.revision, d.issue_date)));
         select.value = route.date || '';
-        select.addEventListener('change', () => { if (select.value) location.hash = '#/daily/' + select.value; });
+        select.addEventListener('change', () => { if (select.value) location.hash = '#/' + profile.page + '/' + select.value; });
         picker.append(label, select); host.replaceChildren(picker);
         if (!route.date) { host.append(message(issues.length ? '날짜를 선택해 주세요' : '발간 이력 없음', issues.length ? '선택한 날짜의 최신 정정 호를 확인할 수 있습니다.' : '아직 공개된 브리핑이 없습니다.')); return; }
         descriptor = issues.find(d => d.issue_date === route.date);
@@ -218,21 +224,27 @@
       if (run !== generation) return;
       host.append(renderIssue(issue, route.tab === 'today'));
       const requestedEvent = new URLSearchParams(location.hash.split('?')[1] || '').get('event');
-      if (requestedEvent) document.getElementById('event-' + requestedEvent.replace(/[^a-zA-Z0-9_-]/g, '_'))?.scrollIntoView({ block: 'center' });
+      if (requestedEvent) document.getElementById(profile.page + '-event-' + requestedEvent.replace(/[^a-zA-Z0-9_-]/g, '_'))?.scrollIntoView({ block: 'center' });
     } catch (error) {
       if (run !== generation) return;
       if (!host.querySelector('.wn-date-picker') && !host.querySelector('.wn-pending') && !host.querySelector('.wn-error')) host.replaceChildren();
       host.append(message('브리핑 로딩 실패', error.message, 'wn-error', retry));
       const fallback = lastIssue.get(descriptor ? descriptor.issue_date : route.date);
       if (fallback) { host.append(message('마지막 유효 호 표시', '현재 게시 자료 조회에 실패하여 이전에 검증한 revision ' + fallback.revision + '을 표시합니다.', 'wn-pending'), renderIssue(fallback, false)); }
-    } finally { if (run === generation) document.getElementById('dailyRefresh').disabled = false; }
+    } finally { if (run === generation) document.getElementById(profile.page + 'Refresh').disabled = false; }
   }
   Object.assign(api, { el, link, message, fetchJSON, articleCard, activate });
   setInterval(() => {
     if (!document.hidden && root.WindNavigation) {
       const route = root.WindNavigation.parseRoute(location.hash);
-      if (route.page === 'daily' && route.tab === 'today') activate(route, false);
+      if (route.page === profile.page && route.tab === 'today') activate(route, false);
       else if (route.page === 'notices') updateShortcut();
     }
   }, 60000);
+  return api;
+  }
+  root.WindNews = create('wind');
+  root.SolarNews = create('solar');
+  root.WindNews.create = create;
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.WindNews;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

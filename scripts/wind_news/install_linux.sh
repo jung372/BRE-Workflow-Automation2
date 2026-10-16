@@ -13,7 +13,7 @@ mkdir -p "$release/infra/wind-news" "$release/config" "$root/settings" "$root/ru
 # Explicit allowlist: never copy credentials, existing runtime, or scraper data.
 cp -a "$source_root/news" "$source_root/schemas" "$release/"
 cp "$source_root/config/wind_news_collection.json" "$source_root/config/wind_news_policy.json" "$release/config/"
-cp "$source_root/infra/wind-news/Dockerfile" "$source_root/infra/wind-news/compose.yaml" "$release/infra/wind-news/"
+cp "$source_root/infra/wind-news/Dockerfile" "$source_root/infra/wind-news/compose.yaml" "$source_root/infra/wind-news/shared-publish-lock.yaml" "$release/infra/wind-news/"
 cp "$source_root/.dockerignore" "$release/"
 mkdir -p "$release/automation" "$release/scripts"
 cp -a "$source_root/automation/n8n" "$release/automation/"
@@ -46,6 +46,9 @@ env_path.write_text(''.join(f'{k}={v}\n' for k,v in values.items()))
 for path in (token_path, env_path, policy_path): os.chmod(path, 0o600)
 PY
 compose=(docker compose --project-name bre-wind-news --env-file "$root/settings/compose.env" -f "$release/infra/wind-news/compose.yaml")
+if grep -Eq '^BRE_NEWS_LOCK_ROOT=.+$' "$root/settings/compose.env"; then
+    compose+=(-f "$release/infra/wind-news/shared-publish-lock.yaml")
+fi
 "${compose[@]}" config --quiet
 "${compose[@]}" build
 # Fix only these three private directories; container user owns its state.

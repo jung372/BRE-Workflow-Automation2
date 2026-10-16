@@ -1,0 +1,110 @@
+{
+  "enabled": false,
+  "provider": "public_publishers",
+  "overlap_hours": 72,
+  "max_pages": 5,
+  "timeout_seconds": 15,
+  "queries": [
+    "태양광",
+    "태양광 인허가",
+    "태양광 경쟁입찰",
+    "태양광 금융 PF",
+    "태양광 EPC",
+    "태양광 주민 참여",
+    "지붕 태양광",
+    "영농형 태양광",
+    "수상 태양광",
+    "태양광 PPA RE100",
+    "태양광 REC SMP",
+    "태양광 출력제어 계통",
+    "태양광 ESS",
+    "태양광 모듈 셀",
+    "태양광 인버터",
+    "폴리실리콘 태양광",
+    "태양광 발전소 인수 매각",
+    "태양광 유지보수"
+  ],
+  "sources": [
+    {
+      "source_id": "yonhap",
+      "name": "연합뉴스",
+      "hosts": [
+        "www.yna.co.kr"
+      ],
+      "enabled": true,
+      "required": true,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 30,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-10-16_solar_briefing",
+      "discovery": "rss",
+      "feed_urls": [
+        "https://www.yna.co.kr/rss/industry.xml",
+        "https://www.yna.co.kr/rss/economy.xml",
+        "https://www.yna.co.kr/rss/local.xml"
+      ],
+      "body_selector": ".story-news.article",
+      "industry": "solar"
+    },
+    {
+      "source_id": "energynews",
+      "name": "에너지신문",
+      "hosts": [
+        "www.energy-news.co.kr"
+      ],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-10-16_solar_briefing",
+      "discovery": "ndsoft_list",
+      "list_url": "https://www.energy-news.co.kr/news/articleList.html?sc_area=A&view_type=sm&sc_word=%ED%83%9C%EC%96%91%EA%B4%91",
+      "body_selector": "#article-view-content-div",
+      "industry": "solar"
+    },
+    {
+      "source_id": "electimes",
+      "name": "전기신문",
+      "hosts": [
+        "www.electimes.com"
+      ],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-10-16_solar_briefing",
+      "discovery": "ndsoft_list",
+      "list_url": "https://www.electimes.com/news/articleList.html?sc_area=A&view_type=sm&sc_word=%ED%83%9C%EC%96%91%EA%B4%91",
+      "body_selector": "#article-view-content-div",
+      "industry": "solar"
+    },
+    {
+      "source_id": "industry_search",
+      "name": "산업 전반 뉴스 검색",
+      "hosts": [],
+      "enabled": true,
+      "required": false,
+      "domestic": true,
+      "language": "ko",
+      "rights_reviewed": false,
+      "trust_score": 25,
+      "allow_body": true,
+      "authorization_basis": "user_instruction_2026-10-16_solar_briefing",
+      "discovery": "naver_news_search",
+      "industry": "solar"
+    }
+  ],
+  "max_articles_per_source": 30,
+  "request_interval_seconds": 0.4,
+  "search_max_articles": 240,
+  "search_pages_per_query": 3,
+  "industry": "solar"
+}
