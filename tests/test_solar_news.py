@@ -1,12 +1,16 @@
 """Solar contracts use fixtures, local DBs and mocked transports only."""
 import copy
 from datetime import datetime, timezone
+import importlib.util
 import json
 import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+
+if not all(importlib.util.find_spec(x) for x in ('duckdb', 'polars', 'flask', 'jsonschema')):
+    raise unittest.SkipTest('solar-news isolated dependencies are not installed')
 
 from news.codex_summary import CodexSummary
 from news.delivery import build_card
