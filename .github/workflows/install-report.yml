@@ -1,0 +1,32 @@
+name: Teams 정기 보고 서버 예약 설치·검증
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [verify, install]
+        default: verify
+        description: '검증된 서버 릴리스에 오전 정기 보고 예약 설치 또는 읽기 전용 검증'
+permissions:
+  contents: read
+concurrency:
+  group: bre-workflow-production
+  cancel-in-progress: false
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  configure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install or verify server schedule without sending Teams
+        shell: powershell
+        env:
+          REPORT_ACTION: ${{ inputs.action }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: .\scripts\install_teams_report.ps1 -VerifyOnly:($env:REPORT_ACTION -ne 'install')

@@ -1,64 +1,32 @@
-"""
-MS Teams 정기 보고 (평일 09:00 KST)
-Entry Point — 비교 로직과 카드 빌딩은 logic/detector.py, presentation/teams_card.py 참조.
+"""Teams report entrypoint; automatic sends only on weekdays before 09:00 KST."""
+import argparse
+import json
+import os
 
-환경변수:
-  TEAMS_WEBHOOK_URL  (필수) GitHub Secret에 등록
-  DASHBOARD_URL      (선택) 대시보드 바로가기 URL
-  FORCE_SEND         (선택) "true" 설정 시 --force와 동일
-"""
-
-import json, os, sys
-import requests
-
-from runtime_config        import get_status_file
-from state                  import load_state, STATE_FILE
-from logic.detector         import get_new_items
-from presentation.teams_card import build_card, SITE_DISPLAY, MUTED_METMASTS
-
-FORCE_SEND  = "--force" in sys.argv or os.environ.get("FORCE_SEND", "").lower() == "true"
-WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL", "")
-STATUS_FILE = str(get_status_file())
-
-
-def load_metmasts() -> list:
-    if not os.path.exists(STATUS_FILE):
-        return []
-    with open(STATUS_FILE, encoding="utf-8") as f:
-        return json.load(f).get("metmasts", [])
+from runtime_config import ensure_utf8_stdout, get_data_dir, get_runtime_dir
+from logic.regular_report import run_report
 
 
 def main():
-    if not WEBHOOK_URL:
-        print("❌ TEAMS_WEBHOOK_URL 환경변수 미설정. GitHub Secret 확인.")
-        sys.exit(1)
-    if not os.path.exists(STATE_FILE):
-        print("❌ last_state.json 없음. scraper.py 를 먼저 실행하세요.")
-        sys.exit(1)
-
-    state    = load_state()
-    metmasts = load_metmasts()
-    new_items, b_key, a_key = get_new_items(state, SITE_DISPLAY)
-    offline  = [m for m in metmasts if m.get("status") != "Online" and m.get("id") not in MUTED_METMASTS]
-
-    print(f"📊 비교 윈도우: {a_key}  →  {b_key}")
-    print(f"📰 신규 게시글: {len(new_items)}건 / 📡 오프라인 계측기: {len(offline)}대")
-
-    if not new_items and not offline:
-        if FORCE_SEND:
-            print("⚡ --force 모드: 신규 항목 없어도 강제 발송합니다.")
-        else:
-            print("✅ 신규 게시글 없음 + 모든 계측기 정상 → 알림 생략")
-            return
-
-    card = build_card(new_items, metmasts)
-    resp = requests.post(WEBHOOK_URL, json=card, timeout=15)
-    if resp.status_code in (200, 202):
-        print("✅ Teams 알림 발송 완료")
-    else:
-        print(f"❌ Teams 발송 실패: HTTP {resp.status_code} / {resp.text[:200]}")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preview", action="store_true")
+    parser.add_argument("--manual", action="store_true", help="Explicit manual send outside the morning window")
+    parser.add_argument("--force", action="store_true", help="Include an empty report; never bypass the daily claim")
+    args = parser.parse_args()
+    ensure_utf8_stdout()
+    try:
+        result = run_report(get_data_dir(), get_runtime_dir(), os.environ.get("TEAMS_WEBHOOK_URL", ""),
+                            preview=args.preview, manual=args.manual,
+                            force=args.force or os.environ.get("FORCE_SEND", "").lower() == "true")
+    except Exception:
+        # A crash during POST leaves the pre-written UNKNOWN claim intact.
+        print("TEAMS_REPORT status=INTERNAL_ERROR")
+        return 1
+    print("TEAMS_REPORT " + json.dumps(result, ensure_ascii=False))
+    if result["status"] == "DATA_NOT_READY":
+        return 20
+    return 1 if result["status"] in {"FAILED", "UNKNOWN", "NOT_CONFIGURED", "LEDGER_INVALID", "DEADLINE_MISSED"} else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

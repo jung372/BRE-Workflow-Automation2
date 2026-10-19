@@ -8,12 +8,12 @@ def prev_weekday(date):
     return date - timedelta(days=3 if date.weekday() == 0 else 1)
 
 
-def get_new_items(state: dict, site_display: dict) -> tuple:
+def get_new_items(state: dict, site_display: dict, now=None) -> tuple:
     """
     금일 08:00 스냅샷(B) - 전일 08:00 스냅샷(A) 로 신규 아이템 추출.
     반환: (new_items_list, today_key, prev_key)
     """
-    now       = datetime.now(KST)
+    now       = now or datetime.now(KST)
     today_key = now.date().strftime("%Y-%m-%d") + " 08"
     prev_key  = prev_weekday(now.date()).strftime("%Y-%m-%d") + " 08"
 

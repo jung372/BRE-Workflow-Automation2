@@ -47,8 +47,10 @@ self-hosted runner 가 자동 배포합니다. 서버에 직접 접속해 코드
               ├▶ GitHub Pages 갱신
               └▶ report.yml 입력 갱신
 
-GitHub Actions "report.yml" (평일 08:30 KST)
-  └ last_state.json 의 전일/금일 08시 스냅샷 비교 → Teams 발송
+Windows 예약 "BRE Teams Morning Report" (평일, KST)
+  ├ 08:05부터 수집 데이터 준비 확인·누락 시 기존 수집 작업 복구 요청
+  └ 08:30~08:55, 5분 간격 → 전일/금일 08시 비교 → Teams (09:00 마감)
+GitHub Actions "report.yml": 서버의 같은 발송 기록을 사용하는 수동 확인·발송
 ```
 
 코드(릴리스 폴더), 데이터(publish clone), 비밀정보·로그(RuntimeRoot)가 분리되어
@@ -231,7 +233,7 @@ python keywords.py config/keywords.json
 | `BRE_NODE_ROLE` | 런처 | `server` 이면 서버 노드 |
 | `BRE_SKIP_PUSH` | 런처/CLI | `1` 이면 발행 생략 |
 | `BRE_SMOKE_MIN_OK` | 저장소 변수 | 스모크 통과 임계값 (기본 3) |
-| `TEAMS_WEBHOOK_URL` | GitHub Secret | Teams 웹훅 (서버 `.env` 아님) |
+| `TEAMS_WEBHOOK_URL` | GitHub Secret → 서버 DPAPI 암호화 저장 | Teams 웹훅 (값 출력·커밋 금지, 서버 `.env` 아님) |
 | `SERVER_DEPLOY_ENABLED` | 저장소 변수 | `true` 일 때만 서버 배포 실행 |
 
 ## 점검
@@ -271,7 +273,7 @@ state.py              스냅샷 상태 DB 입출력
 scraper.py            스크래핑만 수행하는 최소 진입점
 run_local.py          서버 예약 작업 진입점 (락·스모크·발행)
 push_to_github.py     publish clone 으로 데이터 발행
-notify_teams.py       Teams 보고 진입점 (GitHub Actions 에서 실행)
+notify_teams.py       Teams 보고 진입점 (서버 예약 및 수동 Actions 공용)
 dashboard_app.py      로컬 개발용 Flask 대시보드
 logic/                runner(수집 오케스트레이션), detector(신규 판정)
 scrapers/             사이트별 파서, MetMast 체크, 재시도 유틸

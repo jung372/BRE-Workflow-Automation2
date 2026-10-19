@@ -20,6 +20,7 @@ launcher/
 current_release.txt
 deployment.json
 release.json
+teams-report/
 
 # 민감 설정 (이메일 계정 등)
 config.json

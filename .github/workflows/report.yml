@@ -1,40 +1,38 @@
-name: Teams 정기 보고 (평일 08:30 KST)
+name: Teams 정기 보고 (서버 평일 08:30, 수동 확인)
 
 on:
-  schedule:
-    - cron: '30 23 * * 0-4'  # 평일 08:30 KST (= UTC 23:30)
-  workflow_dispatch:          # 수동 실행
+  # Server clock owns weekdays 08:30-08:55 retries; GitHub cron can be hours late.
+  workflow_dispatch:
     inputs:
+      preview:
+        description: '발송 없이 비교 데이터와 오늘 발송 상태 확인'
+        type: boolean
+        default: true
       force_send:
-        description: '조건 무시하고 강제 발송 (신규글 0건 + 계측기 정상이어도 발송)'
+        description: '신규글 0건이어도 수동 발송 (하루 중복 방지는 유지)'
         type: boolean
         default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
-  contents: read             # last_state.json, data/status.json 읽기만 필요
-
+  contents: read
+concurrency:
+  group: bre-teams-regular-report
+  cancel-in-progress: false
 jobs:
   report:
-    runs-on: ubuntu-latest
-
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    environment: production
+    timeout-minutes: 5
     steps:
-      - name: 📥 코드 체크아웃
-        uses: actions/checkout@v4
-
-      - name: 🐍 Python 3.11 설정
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
         with:
-          python-version: '3.11'
-
-      - name: 📦 패키지 설치
-        run: pip install requests
-
-      - name: 🔔 Teams 알림 발송
+          persist-credentials: false
+      - name: Inspect or send using the shared server daily ledger
+        shell: powershell
         env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-          DASHBOARD_URL:     https://jung372.github.io/BRE-Workflow-Automation2/
-          FORCE_SEND:        ${{ inputs.force_send }}
-        run: python notify_teams.py
+          REPORT_PREVIEW: ${{ inputs.preview }}
+          REPORT_FORCE: ${{ inputs.force_send }}
+        run: .\scripts\run_teams_report.ps1 -Manual -Preview:($env:REPORT_PREVIEW -ne 'false') -Force:($env:REPORT_FORCE -eq 'true')
