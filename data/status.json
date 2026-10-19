@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-19 20:00:04",
+  "checked_at": "2026-10-20 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -30,30 +30,14 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 4,
+      "new_count": 2,
       "new_items": [
-        {
-          "num": "ME20260111",
-          "title": "삼척 노곡풍력 발전사업",
-          "date": "2026-08-28",
-          "comp_date": "2026-10-15",
-          "status": "변경협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
         {
           "num": "ME20260109",
           "title": "영천 고경풍력발전단지 조성사업",
           "date": "2026-09-02",
           "comp_date": "2026-10-16",
           "status": "변경협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260061",
-          "title": "삼척 내봉산풍력발전사업",
-          "date": "2026-09-03",
-          "comp_date": "2026-10-12",
-          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         },
         {
@@ -96,21 +80,8 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "uid": "DCT37B07C4FAE1F216F94C6C7223DB00FBC",
-          "title": "2026년 국유임산물(제14차, 사용허가지 지장목_삼척에코윈드) 매각 추진",
-          "dept": "태백국유림관리소",
-          "dept_full": "산림청 동부지방산림청 태백국유림관리소",
-          "instt": "산림청",
-          "date": "2026-10-15",
-          "prod_date": "2026-10-14",
-          "doc_no": "태백국유림관리소-8149",
-          "keyword": "삼척에코윈드",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%82%BC%EC%B2%99%EC%97%90%EC%BD%94%EC%9C%88%EB%93%9C"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 49,
       "keywords": [
         "시루풍력",
