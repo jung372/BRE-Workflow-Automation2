@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-21 20:00:04",
+  "checked_at": "2026-10-22 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -80,7 +80,7 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 4,
+      "new_count": 3,
       "new_items": [
         {
           "uid": "2800163047872",
@@ -117,21 +117,9 @@
           "doc_no": "부울본(계통)-18133",
           "keyword": "이스트블루파워",
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        },
-        {
-          "uid": "DCT20EAF72BF30609AF61541FA6A4BCEBBB",
-          "title": "전기사업허가 신청에 따른 의견회신(경주시루풍력 2호)",
-          "dept": "문화유산과",
-          "dept_full": "경상북도 경주시 문화관광국 문화유산과",
-          "instt": "경상북도 경주시",
-          "date": "2026-10-20",
-          "prod_date": "2026-07-23",
-          "doc_no": "문화유산과-10706",
-          "keyword": "시루풍력",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%8B%9C%EB%A3%A8%ED%92%8D%EB%A0%A5"
         }
       ],
-      "total": 53,
+      "total": 52,
       "keywords": [
         "시루풍력",
         "왕신풍력",
