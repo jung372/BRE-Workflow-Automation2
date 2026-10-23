@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-23 12:00:05",
+  "checked_at": "2026-10-23 13:00:04",
   "sites": [
     {
       "id": "notice",
@@ -30,7 +30,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 3,
       "new_items": [
         {
           "num": "ME20260109",
@@ -38,6 +38,14 @@
           "date": "2026-09-02",
           "comp_date": "2026-10-16",
           "status": "변경협의(완료)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "ME20260098",
+          "title": "울진군 신림풍력발전사업",
+          "date": "2026-10-19",
+          "comp_date": "",
+          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         },
         {
@@ -49,7 +57,7 @@
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
-      "total": 62
+      "total": 61
     },
     {
       "id": "kepco_notice",
