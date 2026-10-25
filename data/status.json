@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-25 20:00:04",
+  "checked_at": "2026-10-26 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -72,7 +72,7 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 4,
+      "new_count": 1,
       "new_items": [
         {
           "uid": "DCT6BE83555AF54575EF447A1B5FE839CFE",
@@ -85,45 +85,9 @@
           "doc_no": "태백국유림관리소-8357",
           "keyword": "삼척에코윈드",
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%82%BC%EC%B2%99%EC%97%90%EC%BD%94%EC%9C%88%EB%93%9C"
-        },
-        {
-          "uid": "2800163047872",
-          "title": "이스트블루파워 해상풍력 발전사업 변경허가신청 관련 계통영향 검토결과 알림",
-          "dept": "한국전력공사",
-          "dept_full": "한국전력공사",
-          "instt": "한국전력공사",
-          "date": "2026-10-21",
-          "prod_date": "2026-10-20",
-          "doc_no": "부울본(계통)-3625",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        },
-        {
-          "uid": "2800163047873",
-          "title": "이스트블루파워 해상풍력 발전사업 변경허가신청 관련 계통영향 검토결과 보고",
-          "dept": "한국전력공사",
-          "dept_full": "한국전력공사",
-          "instt": "한국전력공사",
-          "date": "2026-10-21",
-          "prod_date": "2026-10-20",
-          "doc_no": "부울본(계통)-18134",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        },
-        {
-          "uid": "2800163047871",
-          "title": "이스트블루파워 해상풍력 발전사업 변경허가신청 관련 계통영향 검토결과 보고",
-          "dept": "한국전력공사",
-          "dept_full": "한국전력공사",
-          "instt": "한국전력공사",
-          "date": "2026-10-21",
-          "prod_date": "2026-10-20",
-          "doc_no": "부울본(계통)-18133",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
         }
       ],
-      "total": 52,
+      "total": 50,
       "keywords": [
         "시루풍력",
         "왕신풍력",
@@ -144,7 +108,7 @@
     {
       "id": "SIRU",
       "name": "SIRU",
-      "status": "Offline",
+      "status": "Online",
       "url": "https://d215027.connect.ammonit.com/"
     },
     {
