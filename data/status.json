@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-27 06:00:04",
+  "checked_at": "2026-10-27 07:00:04",
   "sites": [
     {
       "id": "notice",
@@ -80,9 +80,22 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 49,
+      "new_count": 1,
+      "new_items": [
+        {
+          "uid": "7597D9F70A862D524CAF57CF0057CF32",
+          "title": "문무바람 부유식 해상풍력 발전사업 참여의향서 제출",
+          "dept": "한국동서발전(주)",
+          "dept_full": "한국동서발전(주)",
+          "instt": "한국동서발전(주)",
+          "date": "2026-10-27",
+          "prod_date": "2026-10-26",
+          "doc_no": "재생_해상풍력부-1115",
+          "keyword": "문무바람",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
+        }
+      ],
+      "total": 50,
       "keywords": [
         "시루풍력",
         "왕신풍력",
