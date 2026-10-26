@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-26 20:00:04",
+  "checked_at": "2026-10-27 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -80,22 +80,9 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "uid": "DCT6BE83555AF54575EF447A1B5FE839CFE",
-          "title": "징수결의[국유임산물(제14차, 사용허가지 지장목_삼척에코윈드)]",
-          "dept": "태백국유림관리소",
-          "dept_full": "산림청 동부지방산림청 태백국유림관리소",
-          "instt": "산림청",
-          "date": "2026-10-22",
-          "prod_date": "2026-10-21",
-          "doc_no": "태백국유림관리소-8357",
-          "keyword": "삼척에코윈드",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%82%BC%EC%B2%99%EC%97%90%EC%BD%94%EC%9C%88%EB%93%9C"
-        }
-      ],
-      "total": 50,
+      "new_count": 0,
+      "new_items": [],
+      "total": 49,
       "keywords": [
         "시루풍력",
         "왕신풍력",
