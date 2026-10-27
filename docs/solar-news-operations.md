@@ -91,6 +91,13 @@ GitHub Action 외에는 `scripts/solar_news/configure_teams.py --settings <priva
 
 최초 서비스 배포는 `검증 및 서버 배포` workflow의 `news_action=solar-install`로 실행한다. `scripts/solar_news/install_server.ps1`과 `install_linux.sh`가 기존 WSL/n8n network에 독립 컨테이너를 설치하며, 새 전용 API 토큰을 서버 안에서 생성한다. 첫 설치의 수집·게시 설정과 모든 일정은 비활성이다. Codex 로그인은 `solar-share-login`으로 기존 풍력 로그인을 연결할 수 있다. 게시 clone과 Git 인증, 전용 Teams 웹훅, n8n credential은 별도로 연결한다. 이후 재설치와 Teams 설정 변경에서도 공유 로그인 경로를 보존한다. 설치 결과는 값 노출 없이 연결 여부와 모델·health를 보고한다.
 
+### 운영 연결 순서 (2026-10-28 추가)
+
+2026-10-28 점검 결과: 10-16 `solar-install`/`solar-share-login` 이후 연결·활성화 단계가 실행되지 않았다. 서버 상태는 `collection_enabled=false`, `publisher_enabled=false`, `publish_connected=false`, `teams_configured=false`였고, 태양광 n8n 워크플로도 import되지 않았다. 그래서 수집 0회, 게시 0회가 되었고, `data/solar-news`는 최초 빈 manifest 상태로 남아 `#/solar`에 기사가 표시되지 않았다. 코드 결함이 아니라 운영 연결 단계가 누락된 것이 원인이었다. 풍력의 `connect`·`launch`에 해당하는 태양광 단계가 없었기 때문에 아래 두 단계를 추가했다.
+
+1. `news_action=solar-connect`: 태양광 전용 SSH 배포 키와 `.solar-news-publish-clone` 게시 clone을 만들고, `BRE-SOLAR-*` 7개를 **BRE Solar Service** credential과 함께 비활성 상태로 import한다. 출력된 `SOLAR_PUBLISH_DEPLOY_PUBLIC_KEY`를 저장소 Deploy keys에 **쓰기 허용**으로 등록한다. 풍력 키는 재사용하지 않는다. 다시 실행하면 `SOLAR_PUBLISH_SSH_READY=true`가 표시된다. n8n import는 활성화 상태를 초기화하지 않도록 최초 1회만 수행한다.
+2. `news_action=solar-launch`: 07:20~09:35 KST에는 실행을 거부한다. 풍력 `compose.env`에 `BRE_NEWS_LOCK_ROOT`가 없으면 추가하고 풍력 서비스를 재설치해 공유 게시 잠금을 연결한 뒤, 두 컨테이너의 잠금 경로와 mount가 같은지 확인한다. 이어서 태양광 `collection.enabled`, `policy.publisher.enabled`, `policy.auto_recover`를 켜고 재기동한다. 첫 수집·호 준비·게시를 실행해 `WEB_VERIFIED`까지 확인한 다음 n8n 01·02·03·05A·05B·06 일정을 활성화한다. Teams 수신 확인 전이므로 04 Deliver는 비활성으로 남긴다.
+
 수집·게시 활성화는 비밀값 없는 운영 JSON의 `collection.enabled`, `policy.publisher.enabled`로 제어하고 서버 재기동 후 실제 적용을 확인한다. 재해 복구용 자동 준비·게시가 필요하면 `policy.auto_recover`도 설정한다. 하루 모델 호출 한도와 발행 소요시간을 확인해 풍력 업무가 밀리지 않게 한다.
 
 ## 검증과 복구

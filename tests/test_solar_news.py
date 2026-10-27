@@ -148,6 +148,27 @@ class SolarContracts(unittest.TestCase):
         deliver = next(f for f in flows if '-04-' in f['name'])
         self.assertIn('0-25/5 9 * * *', json.dumps(deliver))
 
+    def test_operator_actions_connect_and_launch_solar_without_wind_state(self):
+        deploy = (ROOT / '.github/workflows/ci-deploy.yml').read_text(encoding='utf-8')
+        for action in ('solar-install', 'solar-share-login', 'solar-connect', 'solar-launch'):
+            self.assertIn(action, deploy)
+        server = (ROOT / 'scripts/solar_news/install_server.ps1').read_text(encoding='utf-8')
+        self.assertIn("'connect' = 'connect_linux.sh'", server)
+        self.assertIn("'launch' = 'launch_linux.sh'", server)
+        connect = (ROOT / 'scripts/solar_news/connect_linux.sh').read_text(encoding='utf-8')
+        self.assertIn('.solar-news-publish-clone', connect)
+        self.assertIn("glob('BRE-SOLAR-*.json')", connect)
+        self.assertIn("'BRE Solar Service'", connect)
+        self.assertNotIn('bre-wind', connect)
+        launch = (ROOT / 'scripts/solar_news/launch_linux.sh').read_text(encoding='utf-8')
+        self.assertIn('SOLAR_LAUNCH_BLOCKED_MORNING_WINDOW', launch)
+        self.assertIn('SHARED_PUBLISH_LOCK_CONNECTED', launch)
+        self.assertIn("'solar_news_collection.json'", launch)
+        self.assertIn('http://127.0.0.1:8091', launch)
+        # Teams delivery stays off until a real solar chat receipt is confirmed.
+        self.assertNotIn("'BRE-SOLAR-04-Deliver', 'BRE-SOLAR-05A", launch)
+        self.assertIn("links['BRE-SOLAR-04-Deliver'] in after", launch)
+
     def test_solar_oauth_uses_sol_and_separate_private_runtime(self):
         with tempfile.TemporaryDirectory() as folder:
             auth, runtime = Path(folder) / 'auth', Path(folder) / 'runtime'
