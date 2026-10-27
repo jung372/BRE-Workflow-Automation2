@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-27 20:00:04",
+  "checked_at": "2026-10-28 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -30,7 +30,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
         {
           "num": "ME20260129",
@@ -38,14 +38,6 @@
           "date": "2026-10-23",
           "comp_date": "",
           "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260098",
-          "title": "울진군 신림풍력발전사업",
-          "date": "2026-10-19",
-          "comp_date": "",
-          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
@@ -95,7 +87,7 @@
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
         }
       ],
-      "total": 50,
+      "total": 49,
       "keywords": [
         "시루풍력",
         "왕신풍력",
