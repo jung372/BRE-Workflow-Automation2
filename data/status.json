@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-29 18:00:04",
+  "checked_at": "2026-10-29 19:00:04",
   "sites": [
     {
       "id": "notice",
@@ -26,9 +26,16 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 11
+      "new_count": 1,
+      "new_items": [
+        {
+          "num": "공지",
+          "title": "제330차 전기위원회 개최 결과",
+          "date": "2026-10-29",
+          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
+        }
+      ],
+      "total": 12
     },
     {
       "id": "eiass_wind",
