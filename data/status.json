@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-29 11:00:04",
+  "checked_at": "2026-10-29 12:00:04",
   "sites": [
     {
       "id": "notice",
@@ -37,7 +37,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
         {
           "num": "ME20260129",
@@ -45,6 +45,14 @@
           "date": "2026-10-23",
           "comp_date": "",
           "status": "본협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "ME20260098",
+          "title": "울진군 신림풍력발전사업",
+          "date": "2026-10-19",
+          "comp_date": "2026-10-26",
+          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
@@ -59,7 +67,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     },
     {
       "id": "nie_notice",
