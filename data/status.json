@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-02 20:00:04",
+  "checked_at": "2026-11-03 06:00:05",
   "sites": [
     {
       "id": "notice",
@@ -19,15 +19,8 @@
       "color": "#10b981",
       "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "공지",
-          "title": "제330차 전기위원회 개최 결과",
-          "date": "2026-10-29",
-          "url": "https://www.korec.go.kr/notice/result/selectNoticeList.do"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 12
     },
     {
@@ -37,17 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "ME20260098",
-          "title": "울진군 신림풍력발전사업",
-          "date": "2026-10-19",
-          "comp_date": "2026-10-26",
-          "status": "",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 62
     },
     {
@@ -81,7 +65,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 44,
+      "total": 41,
       "keywords": [
         "시루풍력",
         "왕신풍력",
