@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-04 06:00:05",
+  "checked_at": "2026-11-04 07:00:06",
   "sites": [
     {
       "id": "notice",
@@ -63,9 +63,34 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 41,
+      "new_count": 2,
+      "new_items": [
+        {
+          "uid": "JHOMS263070652144000",
+          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 문의에 대한 검토의견 회신",
+          "dept": "한국전력거래소",
+          "dept_full": "한국전력거래소",
+          "instt": "한국전력거래소",
+          "date": "2026-11-04",
+          "prod_date": "2026-11-03",
+          "doc_no": "계통계획팀-1892",
+          "keyword": "이스트블루파워",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
+        },
+        {
+          "uid": "JHOMS263070652155000",
+          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 검토결과",
+          "dept": "한국전력거래소",
+          "dept_full": "한국전력거래소",
+          "instt": "한국전력거래소",
+          "date": "2026-11-04",
+          "prod_date": "2026-11-03",
+          "doc_no": "계통계획팀-1891",
+          "keyword": "이스트블루파워",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
+        }
+      ],
+      "total": 43,
       "keywords": [
         "시루풍력",
         "왕신풍력",
