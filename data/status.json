@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-04 17:00:04",
+  "checked_at": "2026-11-04 18:00:04",
   "sites": [
     {
       "id": "notice",
@@ -30,13 +30,21 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
         {
           "num": "ME20260123",
           "title": "포항 죽장 풍력발전단지",
           "date": "2026-09-30",
           "comp_date": "2026-11-03",
+          "status": "변경협의(완료)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "ME20260119",
+          "title": "삼척 도계풍력 발전사업(도계읍 황조리 산159)",
+          "date": "2026-09-30",
+          "comp_date": "2026-11-04",
           "status": "변경협의(완료)",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
