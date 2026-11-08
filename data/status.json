@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-08 20:00:05",
+  "checked_at": "2026-11-09 06:00:05",
   "sites": [
     {
       "id": "notice",
@@ -30,24 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 3,
+      "new_count": 1,
       "new_items": [
-        {
-          "num": "ME20260123",
-          "title": "포항 죽장 풍력발전단지",
-          "date": "2026-09-30",
-          "comp_date": "2026-11-03",
-          "status": "변경협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260119",
-          "title": "삼척 도계풍력 발전사업(도계읍 황조리 산159)",
-          "date": "2026-09-30",
-          "comp_date": "2026-11-04",
-          "status": "변경협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
         {
           "num": "ME20260037",
           "title": "AWP 영양풍력발전단지 소규모 환경영향평가 변경협의",
@@ -88,34 +72,9 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 2,
-      "new_items": [
-        {
-          "uid": "JHOMS263070652144000",
-          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 문의에 대한 검토의견 회신",
-          "dept": "한국전력거래소",
-          "dept_full": "한국전력거래소",
-          "instt": "한국전력거래소",
-          "date": "2026-11-04",
-          "prod_date": "2026-11-03",
-          "doc_no": "계통계획팀-1892",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        },
-        {
-          "uid": "JHOMS263070652155000",
-          "title": "울산 이스트블루파워 해상풍력 발전사업 변경허가 검토결과",
-          "dept": "한국전력거래소",
-          "dept_full": "한국전력거래소",
-          "instt": "한국전력거래소",
-          "date": "2026-11-04",
-          "prod_date": "2026-11-03",
-          "doc_no": "계통계획팀-1891",
-          "keyword": "이스트블루파워",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EC%9D%B4%EC%8A%A4%ED%8A%B8%EB%B8%94%EB%A3%A8%ED%8C%8C%EC%9B%8C"
-        }
-      ],
-      "total": 43,
+      "new_count": 0,
+      "new_items": [],
+      "total": 41,
       "keywords": [
         "시루풍력",
         "왕신풍력",
