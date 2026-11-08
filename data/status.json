@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-08 19:00:05",
+  "checked_at": "2026-11-08 20:00:05",
   "sites": [
     {
       "id": "notice",
@@ -148,13 +148,13 @@
     {
       "id": "BLMU",
       "name": "BLMU",
-      "status": "Offline",
+      "status": "Online",
       "url": "http://d243101.connect.ammonit.com/"
     },
     {
       "id": "DKAM",
       "name": "DKAM",
-      "status": "Offline",
+      "status": "Online",
       "url": "https://d244024.connect.ammonit.com/"
     }
   ],
