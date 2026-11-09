@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-10 06:00:06",
+  "checked_at": "2026-11-10 07:00:08",
   "sites": [
     {
       "id": "notice",
@@ -79,9 +79,22 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 0,
-      "new_items": [],
-      "total": 41,
+      "new_count": 1,
+      "new_items": [
+        {
+          "uid": "2800163273641",
+          "title": "해울이 해상풍력 발전소 변경 이용신청 접수 보고",
+          "dept": "한국전력공사",
+          "dept_full": "한국전력공사",
+          "instt": "한국전력공사",
+          "date": "2026-11-10",
+          "prod_date": "2026-11-09",
+          "doc_no": "부울본(계통)-19258",
+          "keyword": "해울이해상풍력",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%ED%95%B4%EC%9A%B8%EC%9D%B4%ED%95%B4%EC%83%81%ED%92%8D%EB%A0%A5"
+        }
+      ],
+      "total": 42,
       "keywords": [
         "시루풍력",
         "왕신풍력",
