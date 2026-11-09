@@ -38,7 +38,7 @@ jobs:
       - name: 뉴스 브리핑 확인 및 Teams 보고
         shell: powershell
         env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          WIND_NEWS_TEAMS_WEBHOOK_URL: ${{ secrets.WIND_NEWS_TEAMS_WEBHOOK_URL }}
           NEWS_REPORT_MODE: ${{ inputs.mode || 'preview' }}
           NEWS_REPORT_DATE: ${{ inputs.issue_date }}
         run: .\scripts\wind_news\report_teams.ps1

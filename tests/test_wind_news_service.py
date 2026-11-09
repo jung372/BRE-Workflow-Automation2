@@ -86,6 +86,18 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(len(self.publisher.calls), 1)
         self.assertEqual(self.store.issue(record["issue_id"])["state"], "WEB_VERIFIED")
 
+    def test_missing_wind_webhook_never_falls_back_to_notice_or_solar(self):
+        self.publish(self.ready())
+        settings = {"WIND_NEWS_TEAMS_WEBHOOK_URL": "",
+                    "TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/notice",
+                    "SOLAR_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/solar"}
+        with patch.dict(os.environ, settings), patch("news.delivery.send_card") as send:
+            status = self.client.get("/v1/deliveries/status", headers=self.headers)
+            self.assertFalse(status.json["teams_configured"])
+            result = self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
+            self.assertEqual(result.json["error_code"], "TEAMS_NOT_CONFIGURED")
+            send.assert_not_called()
+
     def test_timeout_unknown_never_repeated(self):
         self.publish(self.ready())
         with patch.dict(os.environ, {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example"}), patch("news.delivery.send_card", return_value={"status": "UNKNOWN", "error_code": "TIMEOUT"}) as send:
@@ -110,16 +122,19 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.client.get("/v1/deliveries/status").status_code, 401)
         self.assertEqual(self.client.post("/v1/deliveries/preview", json={}).status_code, 401)
 
-    def test_shared_receiver_format_used_for_preview_and_send_and_historical_status(self):
+    def test_dedicated_receiver_format_used_for_preview_and_send_and_historical_status(self):
         self.publish(self.ready())
         self.runner.clock = lambda: datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc)
         settings = {"WIND_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/example",
-                    "WIND_NEWS_TEAMS_CARD_FORMAT": "messagecard"}
+                    "WIND_NEWS_TEAMS_CARD_FORMAT": "messagecard",
+                    "TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/notice",
+                    "SOLAR_NEWS_TEAMS_WEBHOOK_URL": "https://fixture.logic.azure.com/solar"}
         with patch.dict(os.environ, settings), patch("news.delivery.send_card", return_value={"status": "ACCEPTED"}) as send:
             preview = self.client.post("/v1/deliveries/preview", json={"issue_date": "2026-09-30"}, headers=self.headers)
             self.assertEqual(preview.json["@type"], "MessageCard")
             self.client.post("/v1/deliveries/send", json={"issue_date": "2026-09-30"}, headers=self.headers)
             self.assertEqual(send.call_args.kwargs["card_format"], "messagecard")
+            self.assertEqual(send.call_args.args[1], settings["WIND_NEWS_TEAMS_WEBHOOK_URL"])
             status = self.client.get("/v1/deliveries/status?issue_date=2026-09-30", headers=self.headers)
             self.assertEqual(status.json["delivery_status"], "ACCEPTED")
             self.assertEqual(status.json["card_format"], "messagecard")
