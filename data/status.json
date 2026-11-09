@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-09 17:00:05",
+  "checked_at": "2026-11-09 18:00:05",
   "sites": [
     {
       "id": "notice",
@@ -30,8 +30,16 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
+        {
+          "num": "GW20260176",
+          "title": "간성풍력발전 한전 간성-인제간 가공선로 건설공사",
+          "date": "2026-11-05",
+          "comp_date": "",
+          "status": "본협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
         {
           "num": "ME20260037",
           "title": "AWP 영양풍력발전단지 소규모 환경영향평가 변경협의",
