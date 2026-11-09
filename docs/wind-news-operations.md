@@ -64,7 +64,7 @@ python -m venv .venv-news
 | `WIND_NEWS_HOST`, `WIND_NEWS_PORT` | 기본 `127.0.0.1`, `8090`. 내부 도달 경로에 맞게 선택 |
 | `WIND_NEWS_PUBLISH_CLONE` | 뉴스 전용 게시 clone 경로 |
 | `WIND_NEWS_NAVER_CLIENT_ID`, `WIND_NEWS_NAVER_CLIENT_SECRET` | 폐기된 네이버 경로의 과거 변수. 새로 발급하거나 입력하지 않음 |
-| `WIND_NEWS_TEAMS_WEBHOOK_URL` | 선택: 뉴스용 Teams Workflows 수신 주소 |
+| `WIND_NEWS_TEAMS_WEBHOOK_URL` | 풍력 알림용 전용 Teams Workflows 수신 주소. GitHub의 같은 이름 Secret에서 동기화하며, 공지용 주소로 대체하지 않음 |
 | `WIND_NEWS_CODEX_HOME` | 저장소 밖 뉴스 전용 Codex OAuth 로그인 디렉터리. CLI가 토큰 갱신을 관리 |
 | `WIND_NEWS_CODEX_BINARY` | 선택: 공식 Codex CLI 실행 파일 경로. 기본 `codex` |
 
@@ -290,14 +290,36 @@ PR #7을 main에 병합한 commit은 `6a83e3a089c92e764ca7584ec6f09043047c5ffe`�
 
 당시 별도 검증이 남은 항목은 Teams 수신과 Windows 재부팅·로그아웃 후 지속 운영이었다. 아래 최신 Teams 운영 계약을 우선한다.
 
-### 2026-10-14 기존 공고 채팅과 뉴스 수신 설정 통합
+### 2026-10-14 기존 공고 채팅과 뉴스 수신 설정 통합 (과거 기록)
 
 `report.yml`은 GitHub Secret `TEAMS_WEBHOOK_URL`과 MessageCard를 사용한다. 기존 뉴스 Action은 별도 서버 설정 `WIND_NEWS_TEAMS_WEBHOOK_URL`과 AdaptiveCard를 사용하여 동일한 수신 설정을 보장하지 못했다. 2026-10-13 뉴스 실행 38328486468은 `UNKNOWN / teams_ambiguous_response`, 2026-10-14 기존 공고 실행 38498953448은 실제 전송 성공을 기록했다. 수신 워크플로 내부의 실패 단계는 GitHub 로그만으로 확인할 수 없다.
 
-뉴스 서비스·일정 업데이트(`ci-deploy.yml`, `news_action=briefing`) 후 `news-report.yml`의 `preview`를 실행한다. Action은 기존 공고와 같은 GitHub Secret을 표준입력으로 전달하여 서버의 뉴스 수신 설정만 갱신하고 카드 형식을 `messagecard`로 지정한다. 값은 명령 인자·로그·저장소에 출력하지 않는다. 전용 Compose 설정 파일을 원자적으로 갱신한 뒤 뉴스 컨테이너만 적용하고 실제 환경 일치를 검사한다. n8n도 같은 서비스를 호출하므로 정기·수동 발송이 동일 수신기·형식·중복 방지 원장을 사용한다.
+당시에는 뉴스 서비스·일정 업데이트(`ci-deploy.yml`, `news_action=briefing`) 후 `news-report.yml`의 `preview`가 공지용 GitHub Secret을 서버의 풍력 설정으로 복사하고 카드 형식을 `messagecard`로 지정했다. 아래 전용 webhook 분리 절차가 이 공유 설정 방식을 대체한다.
 
 `preview`는 연결 설정을 동기화하고 카드를 검증하며 메시지를 발송하지 않는다. `send`는 게시 검증된 호만 발송한다. `diagnose`는 서비스 API 백업의 해시를 검증한 스냅샷에서 작업·게시·발송 시각을 조회하며 연결 설정을 변경하지 않는다. GitHub Secret 누락·설정 적용 실패는 발송 전에 Action을 실패시키며 미리보기는 카드 형식과 해당 날짜의 기존 발송 상태를 표시한다.
 
 `UNKNOWN`은 수신 여부가 불확실한 기록이므로 자동 재전송·원장 초기화로 우회하지 않는다. HTTP 2xx의 `ACCEPTED`는 수신기의 접수이며 채팅 화면 표시 확인과 구분한다. 2026-10-14 뉴스는 사용자가 15:30 수신을 확인했으므로 재발송하지 않는다.
 
 실제 지연 진단: [38545083049](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/38545083049)에서 당일 뉴스 작업은 14:05 수집부터 기록되어 있고, 14:35 게시 후 15:30 재확인에서 HTTP 202를 받았다. [38545316880](https://github.com/jung372/BRE-Workflow-Automation2/actions/runs/38545316880)에서 Windows 재부팅은 13:29, n8n·뉴스 컨테이너의 현재 시작은 13:30으로 확인했다. Windows 공고 수집은 오전 07:00~13:00에도 성공했으므로 Windows 전체가 오전 내내 꺼져 있었다고 단정할 수 없다. 오전 뉴스 실행 누락의 최초 중단 원인은 별도 로그 증거가 없고, 기존 로그인 시 Supervisor에만 의존한 복구 경로와 매시간 재시도 간격이 확인됐다.
+
+
+### 풍력 전용 webhook 분리 운영
+
+| 알림 | GitHub Secret | 서버 적용 경로 |
+|---|---|---|
+| 공지 모니터링 | 기존 `TEAMS_WEBHOOK_URL` 유지 | 기존 공지 설치·실행 경로와 보호된 서버 저장 설정 유지 |
+| 풍력 뉴스 | 신규 `WIND_NEWS_TEAMS_WEBHOOK_URL` | `news-report.yml` → `report_teams.ps1` → WSL `~/bre-wind-news/settings/compose.env` → 뉴스 컨테이너 |
+
+`news-report.yml`은 풍력 전용 Secret만 표준입력으로 전달한다. 값은 명령 인자·로그·저장소에 출력하지 않는다. 설정 도구는 서버의 `WIND_NEWS_TEAMS_WEBHOOK_URL`과 `WIND_NEWS_TEAMS_CARD_FORMAT=messagecard`만 갱신한 뒤 뉴스 컨테이너에 적용하고 실제 환경 일치와 healthy 상태를 검사한다. n8n 정기 발송과 Action 수동 발송은 같은 풍력 서비스를 사용한다. 공지용 `.env`나 credential, 대시보드 프런트엔드를 수정할 필요는 없다.
+
+전환 순서:
+
+1. 별도 Teams 수신 흐름을 준비하고 현재 `messagecard` 형식을 처리하는지 확인한다.
+2. 저장소 **Settings → Secrets and variables → Actions**에서 `WIND_NEWS_TEAMS_WEBHOOK_URL`을 등록한다. 공지용 `TEAMS_WEBHOOK_URL`은 변경하지 않는다.
+3. 변경 코드를 `main`에 반영한 뒤, 서버 PC와 self-hosted runner가 실행 중인 상태에서 `news-report.yml`을 `mode=preview`로 실행한다. 정기 발송 시간대(서울 08:30~09:25)를 피해서 전환한다.
+4. 설정 적용·컨테이너 환경 일치·카드 미리보기 성공을 확인한다. `preview`는 설정을 실제로 변경하지만 메시지는 발송하지 않는다. `diagnose`는 Secret 없이도 실행할 수 있으며 설정을 변경하지 않는다.
+5. 이후 정상 발송 대상 호의 실제 수신처를 확인한다. `ACCEPTED`는 수신기 접수이며 채팅 화면의 도착 확인과 구분한다. 이미 발송되었거나 `UNKNOWN`인 호의 원장을 초기화하여 재전송하지 않는다.
+
+Secret 등록이나 코드 변경만으로 실행 중인 서버 주소가 바뀌지는 않는다. **서버 설정 적용이 성공하기 전까지 기존 주소가 사용될 수 있다.** 전용 Secret 누락·공백·잘못된 주소·설정 적용 실패 시 해당 Action은 발송 전에 실패하며 공지용 Secret으로 자동 대체하지 않는다. 실패한 Action이 n8n 정기 실행까지 중지하는 것은 아니다. 전환 실패로 수신처가 불확실하면 풍력 Deliver 스케줄을 일시 중지하고 서버의 실제 설정을 확인한다. 설정 파일 갱신 후 컨테이너 적용 단계에서 실패한 경우 파일과 실행 환경이 다를 수 있으므로 원인을 해결한 뒤 `preview`를 재실행한다. 공지 알림은 기존 운영을 계속한다.
+
+이후 풍력 주소 변경도 전용 Secret 수정 → `preview` 적용 순서로 처리한다. 서버 파일만 수동 변경하면 다음 `preview` 또는 `send`에서 전용 Secret 값으로 덮어쓴다. 복구가 필요하면 이전에 검증한 풍력 전용 주소를 같은 Secret에 등록하고 `preview`로 재적용하며, 공지 주소를 자동 복구 대상으로 사용하지 않는다.

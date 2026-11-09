@@ -9,7 +9,7 @@ from scripts.wind_news.configure_teams import main, update_settings
 from news.delivery import _webhook_allowed
 
 
-class SharedTeamsConfigTests(unittest.TestCase):
+class WindTeamsConfigTests(unittest.TestCase):
     def test_windows_stdin_bom_is_removed_without_changing_signed_url(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "compose.env"
@@ -44,13 +44,17 @@ class SharedTeamsConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "compose.env"
             path.write_text("# private settings\nWIND_NEWS_API_TOKEN=fixture-token\n"
+                            "TEAMS_WEBHOOK_URL=notice-fixture\nSOLAR_NEWS_TEAMS_WEBHOOK_URL=solar-fixture\n"
                             "WIND_NEWS_RELEASE=abc\nWIND_NEWS_TEAMS_WEBHOOK_URL=old\n"
                             "WIND_NEWS_TEAMS_WEBHOOK_URL=duplicate\n", encoding="utf-8")
             webhook = "https://fixture.logic.azure.com/workflows/test?sig=fixture$literal"
             _, changed = update_settings(path, webhook)
             self.assertTrue(changed)
             value = path.read_text(encoding="utf-8")
-            self.assertIn("# private settings\nWIND_NEWS_API_TOKEN=fixture-token\nWIND_NEWS_RELEASE=abc\n", value)
+            self.assertIn("WIND_NEWS_API_TOKEN=fixture-token\n", value)
+            self.assertIn("WIND_NEWS_RELEASE=abc\n", value)
+            self.assertIn("\nTEAMS_WEBHOOK_URL=notice-fixture\n", value)
+            self.assertIn("\nSOLAR_NEWS_TEAMS_WEBHOOK_URL=solar-fixture\n", value)
             self.assertEqual(value.count("WIND_NEWS_TEAMS_WEBHOOK_URL="), 1)
             self.assertIn(f"WIND_NEWS_TEAMS_WEBHOOK_URL='{webhook}'", value)
             self.assertIn("WIND_NEWS_TEAMS_CARD_FORMAT=messagecard", value)

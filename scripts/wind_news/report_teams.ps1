@@ -26,9 +26,9 @@ if ($mode -eq 'diagnose') {
     & wsl -d Ubuntu-24.04 --exec docker inspect --format 'N8N_CONTAINER_STARTED={{.State.StartedAt}} RESTARTS={{.RestartCount}}' n8n-personal-n8n-1
     & wsl -d Ubuntu-24.04 --exec docker ps -a --format '{{.Names}}: {{.State}}'
 }
-# Feed the shared GitHub Secret through stdin, never argv, logs or checkout files.
+# Feed the dedicated wind-news GitHub Secret through stdin, never argv, logs or checkout files.
 if ($mode -ne 'diagnose') {
-if (-not $env:TEAMS_WEBHOOK_URL) { throw 'TEAMS_WEBHOOK_URL GitHub Secret is required' }
+if ([string]::IsNullOrWhiteSpace($env:WIND_NEWS_TEAMS_WEBHOOK_URL)) { throw 'WIND_NEWS_TEAMS_WEBHOOK_URL GitHub Secret is required' }
 $start = New-Object System.Diagnostics.ProcessStartInfo
 $start.FileName = 'wsl.exe'
 $start.Arguments = "-d Ubuntu-24.04 --exec python3 `"$linuxSource/scripts/wind_news/configure_teams.py`""
@@ -36,10 +36,10 @@ $start.UseShellExecute = $false
 $start.CreateNoWindow = $true
 $start.RedirectStandardInput = $true
 $process = [System.Diagnostics.Process]::Start($start)
-$process.StandardInput.Write($env:TEAMS_WEBHOOK_URL)
+$process.StandardInput.Write($env:WIND_NEWS_TEAMS_WEBHOOK_URL)
 $process.StandardInput.Close()
 $process.WaitForExit()
-if ($process.ExitCode -ne 0) { throw 'Shared Teams configuration failed; no message sent' }
+if ($process.ExitCode -ne 0) { throw 'Wind news Teams configuration failed; no message sent' }
 $process.Dispose()
 }
 $result = & wsl -d Ubuntu-24.04 --exec bash "$linuxSource/scripts/wind_news/report_linux.sh" $linuxSource $mode $day

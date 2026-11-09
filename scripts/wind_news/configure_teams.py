@@ -1,4 +1,4 @@
-"""Connect news to report.yml's receiver using private stdin; print no secrets."""
+"""Configure the dedicated wind-news receiver using private stdin; print no secrets."""
 import os
 from pathlib import Path
 import subprocess

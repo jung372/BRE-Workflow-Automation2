@@ -82,7 +82,18 @@ class ActionsReportTests(unittest.TestCase):
         self.assertIn("name: 뉴스 브리핑 Teams 수동 확인", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertIn("default: preview", text)
-        self.assertIn("TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}", text)
+        self.assertIn("WIND_NEWS_TEAMS_WEBHOOK_URL: ${{ secrets.WIND_NEWS_TEAMS_WEBHOOK_URL }}", text)
+        self.assertNotIn("secrets.TEAMS_WEBHOOK_URL", text)
         self.assertNotIn("  schedule:", text)
         self.assertIn("scripts\\wind_news\\report_teams.ps1", text)
         self.assertNotIn("${{ inputs.issue_date }}", text.split("run:")[-1])
+
+    def test_server_entrypoint_requires_dedicated_secret_before_configuration(self):
+        path = Path(__file__).resolve().parents[1] / "scripts/wind_news/report_teams.ps1"
+        text = path.read_text(encoding="utf-8-sig")
+        self.assertNotIn("$env:TEAMS_WEBHOOK_URL", text)
+        guard = "if ([string]::IsNullOrWhiteSpace($env:WIND_NEWS_TEAMS_WEBHOOK_URL))"
+        self.assertIn(guard, text)
+        self.assertLess(text.index(guard), text.index("[System.Diagnostics.Process]::Start"))
+        self.assertIn("$process.StandardInput.Write($env:WIND_NEWS_TEAMS_WEBHOOK_URL)", text)
+        self.assertIn("if ($process.ExitCode -ne 0) { throw", text)
