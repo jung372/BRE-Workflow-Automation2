@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-09 20:00:05",
+  "checked_at": "2026-11-10 06:00:06",
   "sites": [
     {
       "id": "notice",
@@ -30,7 +30,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
         {
           "num": "GW20260176",
@@ -38,14 +38,6 @@
           "date": "2026-11-05",
           "comp_date": "",
           "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260037",
-          "title": "AWP 영양풍력발전단지 소규모 환경영향평가 변경협의",
-          "date": "2026-11-05",
-          "comp_date": "",
-          "status": "",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
