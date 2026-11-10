@@ -1,0 +1,106 @@
+name: GitHub Searcher Server Operations
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        required: true
+        options: [probe, recover, deploy, test, verify]
+      package_sha:
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: bre-workflow-production
+  cancel-in-progress: false
+jobs:
+  operate:
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 45
+    steps:
+      - name: Operate the isolated GitHub discovery service
+        shell: powershell
+        env:
+          OPERATION: ${{ inputs.operation }}
+          PACKAGE_SHA: ${{ inputs.package_sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:COMPUTERNAME -ne 'DESKTOP-EVU6USL') { throw 'Unexpected server' }
+          $root = 'D:\05 AI 스터디\Github_searcher'
+          $op = $env:OPERATION
+          if ($op -eq 'probe') {
+            $r = [ordered]@{ computer=$env:COMPUTERNAME; tools=@{}; tasks=@() }
+            foreach ($name in @('python','node','git','gh','codex','tailscale')) {
+              $c = Get-Command $name -ErrorAction SilentlyContinue
+              $r.tools[$name] = if ($c) { $c.Source } else { $null }
+            }
+            if ($r.tools.codex) {
+              $auth = (& $r.tools.codex login status 2>&1 | Out-String)
+              $r.codexChatGptLogin = ($auth -match 'ChatGPT')
+              $r.codexApiKeyLogin = ($auth -match 'API key')
+              $r.codexVersion = (& $r.tools.codex --version | Out-String).Trim()
+            }
+            if ($r.tools.gh) {
+              $account = (& gh api user --jq .login 2>$null | Out-String).Trim()
+              $r.githubOwnerAuthenticated = ($LASTEXITCODE -eq 0 -and $account -eq 'jung372')
+            }
+            foreach ($task in @(Get-ScheduledTask | Where-Object { $_.TaskName -match 'Personal n8n|GitHub Searcher|BRE News Morning Guard' })) {
+              $i=Get-ScheduledTaskInfo -TaskName $task.TaskName
+              $r.tasks += @{ name=$task.TaskName; state=[string]$task.State; logon=[string]$task.Principal.LogonType; lastResult=$i.LastTaskResult; lastRun=[string]$i.LastRunTime; nextRun=[string]$i.NextRunTime; executionLimit=[string]$task.Settings.ExecutionTimeLimit }
+            }
+            $r | ConvertTo-Json -Depth 6
+            exit 0
+          }
+          if ($op -eq 'recover') {
+            $task=Get-ScheduledTask -TaskName 'Personal n8n Supervisor' -ErrorAction Stop
+            if ($task.State -ne 'Running') { Start-ScheduledTask -TaskName $task.TaskName }
+            $healthy=$false
+            foreach ($attempt in 1..24) {
+              try { $h=Invoke-WebRequest 'http://127.0.0.1:5678/healthz' -UseBasicParsing -TimeoutSec 5; if ($h.StatusCode -eq 200) {$healthy=$true; break} } catch {}
+              Start-Sleep -Seconds 5
+            }
+            Write-Output ('N8N_HEALTHY=' + $healthy)
+            Get-ScheduledTask -TaskName 'Personal n8n Supervisor' | Select-Object TaskName,State
+            if (-not $healthy) {
+              & wsl -d Ubuntu-24.04 --exec docker ps -a --format '{{.Names}} | {{.Status}}'
+              throw 'n8n did not become healthy; no data or credentials were changed'
+            }
+            exit 0
+          }
+          if ($op -eq 'deploy') {
+            $sha=$env:PACKAGE_SHA
+            if ($sha -notmatch '^[0-9a-f]{64}$') { throw 'Invalid package hash' }
+            $inbox=Join-Path $root 'incoming'
+            New-Item -ItemType Directory -Force $inbox | Out-Null
+            $ts=Get-Command tailscale -ErrorAction Stop
+            & $ts.Source file get --conflict=skip $inbox *> $null
+            $archive=Join-Path $inbox ('github-searcher-' + $sha + '.zip')
+            if (-not (Test-Path -LiteralPath $archive)) { throw 'Expected private Taildrop package is missing' }
+            if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha) { throw 'Package checksum mismatch' }
+            $release=Join-Path (Join-Path $root 'releases') $sha
+            if (-not (Test-Path -LiteralPath $release)) {
+              Add-Type -AssemblyName System.IO.Compression.FileSystem
+              $zip=[IO.Compression.ZipFile]::OpenRead($archive)
+              try {
+                foreach ($entry in $zip.Entries) {
+                  $target=[IO.Path]::GetFullPath((Join-Path $release $entry.FullName))
+                  if (-not $target.StartsWith($release + '\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe archive entry' }
+                }
+              } finally { $zip.Dispose() }
+              [IO.Compression.ZipFile]::ExtractToDirectory($archive,$release)
+            }
+            & (Join-Path $release 'ops\install_server.ps1') -InstallRoot $root -ReleaseRoot $release
+            if ($LASTEXITCODE -ne 0) { throw 'Installation failed' }
+            exit 0
+          }
+          if ($op -in @('test','verify')) {
+            $pointer=Join-Path $root 'current_release.txt'
+            if (-not (Test-Path -LiteralPath $pointer)) { throw 'No installed release' }
+            $release=[IO.File]::ReadAllText($pointer).Trim()
+            if (-not $release.StartsWith((Join-Path $root 'releases')+'\',[StringComparison]::OrdinalIgnoreCase)) {throw 'Invalid release pointer'}
+            & (Join-Path $release 'ops\operate_server.ps1') -InstallRoot $root -Mode $op
+            if ($LASTEXITCODE -ne 0) { throw 'Operation failed' }
+            exit 0
+          }
+          throw 'Unknown operation'
