@@ -36,14 +36,18 @@ jobs:
               $r.tools[$name] = if ($c) { $c.Source } else { $null }
             }
             if ($r.tools.codex) {
+              $ErrorActionPreference = 'Continue'
               $auth = (& $r.tools.codex login status 2>&1 | Out-String)
               $r.codexChatGptLogin = ($auth -match 'ChatGPT')
               $r.codexApiKeyLogin = ($auth -match 'API key')
               $r.codexVersion = (& $r.tools.codex --version | Out-String).Trim()
+              $ErrorActionPreference = 'Stop'
             }
             if ($r.tools.gh) {
+              $ErrorActionPreference = 'Continue'
               $account = (& gh api user --jq .login 2>$null | Out-String).Trim()
               $r.githubOwnerAuthenticated = ($LASTEXITCODE -eq 0 -and $account -eq 'jung372')
+              $ErrorActionPreference = 'Stop'
             }
             foreach ($task in @(Get-ScheduledTask | Where-Object { $_.TaskName -match 'Personal n8n|GitHub Searcher|BRE News Morning Guard' })) {
               $i=Get-ScheduledTaskInfo -TaskName $task.TaskName
