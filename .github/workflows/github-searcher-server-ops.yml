@@ -5,7 +5,7 @@ on:
       operation:
         type: choice
         required: true
-        options: [probe, recover, deploy, test, verify]
+        options: [probe, recover, deploy, test, verify, authorize]
       package_sha:
         type: string
         required: false
@@ -98,8 +98,13 @@ jobs:
               } finally { $zip.Dispose() }
               [IO.Compression.ZipFile]::ExtractToDirectory($archive,$release)
             }
-            & (Join-Path $release 'ops\install_server.ps1') -InstallRoot $root -ReleaseRoot $release
+            & (Join-Path $release 'ops\install_server.ps1') -InstallRoot $root -ReleaseRoot $release -SkipTasks
             if ($LASTEXITCODE -ne 0) { throw 'Installation failed' }
+            exit 0
+          }
+          if ($op -eq 'authorize') {
+            $release=[IO.File]::ReadAllText((Join-Path $root 'current_release.txt')).Trim()
+            & (Join-Path $release 'ops\authorize_server.ps1') -InstallRoot $root
             exit 0
           }
           if ($op -in @('test','verify')) {
