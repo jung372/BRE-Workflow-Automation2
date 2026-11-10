@@ -80,6 +80,10 @@ jobs:
             $ts=Get-Command tailscale -ErrorAction Stop
             & $ts.Source file get --conflict=skip $inbox *> $null
             $archive=Join-Path $inbox ('github-searcher-' + $sha + '.zip')
+            if (-not (Test-Path -LiteralPath $archive)) {
+              $download=Join-Path (Join-Path $env:USERPROFILE 'Downloads') ([IO.Path]::GetFileName($archive))
+              if (Test-Path -LiteralPath $download) { Copy-Item -LiteralPath $download -Destination $archive }
+            }
             if (-not (Test-Path -LiteralPath $archive)) { throw 'Expected private Taildrop package is missing' }
             if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha) { throw 'Package checksum mismatch' }
             $release=Join-Path (Join-Path $root 'releases') $sha
