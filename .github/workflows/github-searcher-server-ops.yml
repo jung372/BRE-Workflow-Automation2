@@ -5,7 +5,7 @@ on:
       operation:
         type: choice
         required: true
-        options: [probe, recover, deploy, test, verify, authorize]
+        options: [probe, recover, deploy, test, verify, authorize, reconcile]
       package_sha:
         type: string
         required: false
@@ -107,6 +107,11 @@ jobs:
             }
             & (Join-Path $release 'ops\install_server.ps1') -InstallRoot $root -ReleaseRoot $release -SkipTasks
             if ($LASTEXITCODE -ne 0) { throw 'Installation failed' }
+            exit 0
+          }
+          if ($op -eq 'reconcile') {
+            $release=[IO.File]::ReadAllText((Join-Path $root 'current_release.txt')).Trim()
+            & (Join-Path $release 'ops\reconcile_test.ps1') -InstallRoot $root
             exit 0
           }
           if ($op -eq 'authorize') {
