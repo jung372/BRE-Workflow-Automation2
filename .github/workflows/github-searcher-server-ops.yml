@@ -27,7 +27,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:COMPUTERNAME -ne 'DESKTOP-EVU6USL') { throw 'Unexpected server' }
-          $root = 'D:\05 AI 스터디\Github_searcher'
+          $root = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('RDpcMDUgQUkg7Iqk7YSw65SUXEdpdGh1Yl9zZWFyY2hlcg=='))
           $op = $env:OPERATION
           if ($op -eq 'probe') {
             $r = [ordered]@{ computer=$env:COMPUTERNAME; tools=@{}; tasks=@() }
