@@ -53,6 +53,13 @@ jobs:
               $i=Get-ScheduledTaskInfo -TaskName $task.TaskName
               $r.tasks += @{ name=$task.TaskName; state=[string]$task.State; logon=[string]$task.Principal.LogonType; lastResult=$i.LastTaskResult; lastRun=[string]$i.LastRunTime; nextRun=[string]$i.NextRunTime; executionLimit=[string]$task.Settings.ExecutionTimeLimit }
             }
+            $r.serverSession=[Diagnostics.Process]::GetCurrentProcess().SessionId
+            $r.elevated=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            $resultLog=Join-Path $root 'runtime\task-test.log'
+            if(Test-Path -LiteralPath $resultLog) {
+              $last=Get-Content -LiteralPath $resultLog -Tail 1
+              try {$result=$last | ConvertFrom-Json;if($result.error -match '^[A-Za-z]+(Error|Expired)$') {$r.applicationErrorClass=$result.error}} catch {}
+            }
             $r | ConvertTo-Json -Depth 6
             exit 0
           }
