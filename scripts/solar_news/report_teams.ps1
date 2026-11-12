@@ -19,9 +19,18 @@ function Invoke-SolarWsl([string[]]$Arguments, [string]$InputText = '', [switch]
         $process.StandardInput.Close()
         if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'SOLAR_COMMAND_TIMEOUT' }
         $output = $stdout.GetAwaiter().GetResult()
-        [void]$stderr.GetAwaiter().GetResult()
+        $errorText = $stderr.GetAwaiter().GetResult()
         if ($ShowOutput) { Write-Output $output.Trim() }
-        if ($process.ExitCode -ne 0) { throw 'SOLAR_COMMAND_FAILED' }
+        if ($process.ExitCode -ne 0) {
+            $code = 'COMMAND_FAILED'
+            foreach ($known in @('SyntaxError', 'IndentationError', 'SOLAR_OPERATOR_REQUEST_FAILED',
+                'No such container', 'Cannot connect to the Docker daemon', 'executable file not found',
+                'unrecognized arguments', 'unknown flag', 'WSL_E_DISTRO_NOT_FOUND')) {
+                if ($errorText.Contains($known)) { $code = $known; break }
+            }
+            Write-Output ('SOLAR_COMMAND_FAILED exit=' + $process.ExitCode + ' code=' + $code)
+            throw 'SOLAR_COMMAND_FAILED'
+        }
     } finally { $process.Dispose() }
 }
 $mode = $env:SOLAR_NEWS_REPORT_MODE
