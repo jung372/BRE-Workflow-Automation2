@@ -61,9 +61,15 @@ python scripts/solar_news/prepare_config.py --output <private-settings-directory
 태양광 채팅방 이름·종류와 그 채팅방을 대상으로 하는 수신 흐름을 확인한다. 채팅방 링크를 웹훅으로 입력하지 않는다. 다음 GitHub Actions Secrets를 운영자가 직접 등록한다.
 
 - `SOLAR_NEWS_TEAMS_WEBHOOK_URL`: 태양광 전용 수신 웹훅.
-- `SOLAR_NEWS_API_TOKEN`: 설치된 태양광 서비스와 동일한 전용 API 토큰.
 
-수신 설정 적용용 Repository Variables는 `SOLAR_NEWS_WSL_DISTRO`, `SOLAR_NEWS_WSL_USER`, `SOLAR_NEWS_RELEASE_ROOT`, `SOLAR_NEWS_SETTINGS_FILE`, `SOLAR_NEWS_TEAMS_CARD_FORMAT`이다. 경로 두 개는 서버 WSL의 절대 경로이며 settings 파일은 태양광 전용이어야 한다. 카드 형식은 수신 흐름에 맞춰 `adaptive` 또는 `messagecard`로 입력한다. `SOLAR_NEWS_SERVICE_URL`은 수동 조회용 주소로, 생략하면 `http://127.0.0.1:8091`을 사용한다.
+운영 서버의 기본 설치에서는 웹훅 Secret 하나만 등록하면 된다. API 토큰은 실행 중인 태양광 컨테이너의 값을 사용한다. 서버 WSL은 `Ubuntu-24.04`와 기본 사용자, 릴리스는 `~/bre-solar-news/current`, 설정은 `~/bre-solar-news/settings/compose.env`를 사용한다.
+
+1. [저장소 Actions Secrets](https://github.com/jung372/BRE-Workflow-Automation2/settings/secrets/actions)에서 **New repository secret**을 누른다.
+2. 이름에 `SOLAR_NEWS_TEAMS_WEBHOOK_URL`, 값에 태양광 전용 Teams 웹훅 URL을 입력한다.
+3. [태양광 Teams 워크플로](https://github.com/jung372/BRE-Workflow-Automation2/actions/workflows/solar-news-report.yml)의 **Run workflow**에서 `main`과 `mode=configure`를 선택한다. 서버 설정 저장·컨테이너 적용·health와 실제 값 일치를 확인한다.
+4. `mode=preview`로 카드 생성 가능 여부와 `teams_configured=true`를 확인한 뒤, `mode=test`로 전용 채팅방의 시험 수신을 확인한다. 과거 호를 확인할 때는 `issue_date`를 지정한다.
+
+기본 카드 형식은 풍력과 같은 `messagecard`다. 수신 흐름이 Adaptive Card를 요구하면 Repository Variable `SOLAR_NEWS_TEAMS_CARD_FORMAT=adaptive`를 등록한다. 설치 환경을 변경한 경우에만 `SOLAR_NEWS_WSL_DISTRO`, `SOLAR_NEWS_WSL_USER`, `SOLAR_NEWS_RELEASE_ROOT`, `SOLAR_NEWS_SETTINGS_FILE`을 지정한다. 경로 두 개는 서버 WSL의 절대 경로이며 설정 파일은 태양광 전용이어야 한다. 웹훅을 교체할 때도 Secret 변경 후 `configure`를 다시 실행한다.
 
 `.github/workflows/solar-news-report.yml`에는 다음 수동 모드를 제공한다. 정기 schedule은 없다.
 

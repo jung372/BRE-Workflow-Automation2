@@ -1,4 +1,4 @@
-name: 태양광 브리핑 설정 및 수동 확인
+name: 태양광 브리핑 Teams 설정·확인·발송
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
         env:
           SOLAR_NEWS_REPORT_MODE: configure
           SOLAR_NEWS_TEAMS_WEBHOOK_URL: ${{ secrets.SOLAR_NEWS_TEAMS_WEBHOOK_URL }}
-          SOLAR_NEWS_TEAMS_CARD_FORMAT: ${{ vars.SOLAR_NEWS_TEAMS_CARD_FORMAT }}
+          SOLAR_NEWS_TEAMS_CARD_FORMAT: ${{ vars.SOLAR_NEWS_TEAMS_CARD_FORMAT || 'messagecard' }}
           SOLAR_NEWS_WSL_DISTRO: ${{ vars.SOLAR_NEWS_WSL_DISTRO }}
           SOLAR_NEWS_WSL_USER: ${{ vars.SOLAR_NEWS_WSL_USER }}
           SOLAR_NEWS_RELEASE_ROOT: ${{ vars.SOLAR_NEWS_RELEASE_ROOT }}
@@ -47,6 +47,6 @@ jobs:
         env:
           SOLAR_NEWS_REPORT_MODE: ${{ inputs.mode }}
           SOLAR_NEWS_REPORT_DATE: ${{ inputs.issue_date }}
-          SOLAR_NEWS_API_TOKEN: ${{ secrets.SOLAR_NEWS_API_TOKEN }}
-          SOLAR_NEWS_SERVICE_URL: ${{ vars.SOLAR_NEWS_SERVICE_URL || 'http://127.0.0.1:8091' }}
+          SOLAR_NEWS_WSL_DISTRO: ${{ vars.SOLAR_NEWS_WSL_DISTRO }}
+          SOLAR_NEWS_WSL_USER: ${{ vars.SOLAR_NEWS_WSL_USER }}
         run: .\scripts\solar_news\report_teams.ps1
