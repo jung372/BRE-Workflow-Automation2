@@ -20,8 +20,8 @@ function Invoke-SolarWsl([string[]]$Arguments, [string]$InputText = '', [switch]
         if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'SOLAR_COMMAND_TIMEOUT' }
         $output = $stdout.GetAwaiter().GetResult()
         [void]$stderr.GetAwaiter().GetResult()
-        if ($process.ExitCode -ne 0) { throw 'SOLAR_COMMAND_FAILED' }
         if ($ShowOutput) { Write-Output $output.Trim() }
+        if ($process.ExitCode -ne 0) { throw 'SOLAR_COMMAND_FAILED' }
     } finally { $process.Dispose() }
 }
 $mode = $env:SOLAR_NEWS_REPORT_MODE
@@ -65,4 +65,4 @@ try {
     # Reuse the installed container token without duplicating it in GitHub Secrets.
     $client = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'report.py') -Raw -Encoding UTF8
     Invoke-SolarWsl -Arguments ($wslArgs + @('docker', 'exec', '-i', 'bre-solar-news-solar-news-service-1', 'python', '-') + $reportArgs) -InputText $client -ShowOutput
-} catch { Write-Output 'SOLAR_REPORT_FAILED'; exit 1 }
+} catch { Write-Output ('SOLAR_REPORT_FAILED type=' + $_.Exception.GetType().Name); exit 1 }
