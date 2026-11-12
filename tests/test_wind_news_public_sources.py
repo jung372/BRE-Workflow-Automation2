@@ -41,6 +41,25 @@ class Transport:
 
 
 class PublicSourceTests(unittest.TestCase):
+    def test_solar_discovery_collects_solar_only_articles(self):
+        title = "영농형 태양광 발전소 준공"
+        article = page(("태양광 발전소가 준공돼 전력 공급을 시작했다. " * 8)).replace(
+            "해상풍력 설치 완료".encode(), title.encode())
+        rss = feed().replace("풍력 설치".encode(), title.encode())
+        listing = ('<section id="section-list"><a href="/news/articleView.html?idxno=1">'
+                   + title + '</a></section>').encode()
+        for source, discovery_page in [
+            (SOURCE, rss),
+            (dict(SOURCE, discovery="ndsoft_list", list_url="https://news.example.com/list"), listing),
+        ]:
+            with self.subTest(discovery=source["discovery"]):
+                transport = Transport([Response(discovery_page), Response(article)])
+                collector = PublicCollector({"industry": "solar", "sources": [source]},
+                                            transport, sleeper=lambda _: None)
+                result = collector.collect(until=datetime(2026, 9, 30, tzinfo=timezone.utc))
+                self.assertEqual([a["title"] for a in result["articles"]], [title])
+                self.assertEqual(result["source_results"][0]["status"], "success")
+
     def collect(self, responses):
         transport = Transport(responses)
         collector = PublicCollector({"sources": [SOURCE]}, transport=transport, sleeper=lambda _: None)
