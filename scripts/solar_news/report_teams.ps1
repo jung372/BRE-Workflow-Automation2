@@ -9,7 +9,6 @@ function Invoke-SolarWsl([string[]]$Arguments, [string]$InputText = '', [switch]
     $info.RedirectStandardInput = $true
     $info.RedirectStandardOutput = $true
     $info.RedirectStandardError = $true
-    $info.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $info
     try {
