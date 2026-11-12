@@ -3,7 +3,9 @@ function Invoke-SolarWsl([string[]]$Arguments, [string]$InputText = '', [switch]
     # All arguments below are fixed words or validated paths/identifiers.
     $info = [System.Diagnostics.ProcessStartInfo]::new()
     $info.FileName = 'wsl.exe'
-    $info.Arguments = ($Arguments | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+    $info.Arguments = ($Arguments | ForEach-Object {
+        if ($_ -match '[\s"]') { '"' + $_.Replace('"', '\"') + '"' } else { $_ }
+    }) -join ' '
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
     $info.RedirectStandardInput = $true
