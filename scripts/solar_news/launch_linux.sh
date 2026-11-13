@@ -96,7 +96,12 @@ for result in collected.get('source_results',[]):
 assert collected['ingested'] > 0, 'NO_ARTICLES_COLLECTED'
 now = datetime.now(timezone(timedelta(hours=9)))
 day = (now.date() if (now.hour, now.minute) >= (7,30) else (now-timedelta(days=1)).date()).isoformat()
-issue = job('/v1/issues/prepare', {'issue_date':day, 'retry_blocked':True})
+# Bootstrap before 07:30 uses yesterday's issue date. Its default batch
+# lookup ends at midnight and would omit the collection we just completed.
+prepare = {'issue_date':day, 'retry_blocked':True}
+if day != now.date().isoformat():
+    prepare['batch_ids'] = [collected['batch_id']]
+issue = job('/v1/issues/prepare', prepare)
 print('LAUNCH_ISSUE_STATE='+issue['state'], flush=True)
 print('LAUNCH_COUNTS='+json.dumps(issue['issue']['counts']), flush=True)
 assert issue['state'] in ('READY','COMMITTED','WEB_VERIFIED'), 'ISSUE_NOT_READY'

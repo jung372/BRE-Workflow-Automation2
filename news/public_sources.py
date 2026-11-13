@@ -162,6 +162,15 @@ class PublicCollector:
                 response.close()
         raise SourceError("SOURCE_REDIRECT_LIMIT")
 
+    @staticmethod
+    def discovery_match(text, source):
+        industry = source.get("industry", "wind")
+        if industry == "solar":
+            return industry_relevant(text, industry=industry)
+        if source["discovery"] == "rss":
+            return "풍력" in text
+        return bool(re.search(r"풍력|재생에너지|해상|터빈|해저케이블", text))
+
     def discover(self, source, start, end):
         links, seen, saturated = [], set(), False
         if source["discovery"] == "rss":
@@ -173,7 +182,7 @@ class PublicCollector:
                 for item in root.findall("./channel/item"):
                     if not all(item.findtext(field) for field in ('title', 'link', 'pubDate')):
                         raise SourceError("FEED_ITEM_PARSE_FAILED")
-                    if "풍력" not in clean_text(" ".join(item.itertext())):
+                    if not self.discovery_match(clean_text(" ".join(item.itertext())), source):
                         continue
                     published = parsedate_to_datetime(item.findtext("pubDate", ""))
                     if published.tzinfo is None:
@@ -204,7 +213,7 @@ class PublicCollector:
                     break
                 page_fingerprints.add(fingerprint)
                 for anchor in anchors:
-                    if not re.search(r"풍력|재생에너지|해상|터빈|해저케이블", anchor.get_text()):
+                    if not self.discovery_match(anchor.get_text(), source):
                         continue
                     link = urljoin(final, anchor["href"])
                     if link not in seen:

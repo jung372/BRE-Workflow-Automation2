@@ -2,10 +2,12 @@ import contextlib
 import io
 import json
 import os
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from scripts.solar_news import report
+from scripts.solar_news import report, configure_teams
 
 
 class Response:
@@ -23,6 +25,41 @@ class Response:
 
 
 class SolarOperatorTests(unittest.TestCase):
+    def test_secret_only_configuration_applies_and_verifies_container(self):
+        webhook = 'https://fixture.logic.azure.com/workflows/solar?sig=fake$only'
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            settings = home / 'bre-solar-news/settings/compose.env'
+            settings.parent.mkdir(parents=True)
+            settings.write_text('SOLAR_NEWS_API_TOKEN=fixture-token\n', encoding='utf-8')
+            output = io.StringIO()
+            with patch.object(configure_teams.Path, 'home', return_value=home), \
+                    patch('sys.argv', ['configure_teams.py', '--apply', '--card-format', 'messagecard']), \
+                    patch('sys.stdin', io.StringIO(webhook)), \
+                    patch.object(configure_teams, 'run', return_value='healthy') as run, \
+                    contextlib.redirect_stdout(output):
+                self.assertEqual(configure_teams.main(), 0)
+            self.assertIn('SOLAR_NEWS_API_TOKEN=fixture-token', settings.read_text())
+            self.assertIn("SOLAR_NEWS_TEAMS_WEBHOOK_URL='" + webhook + "'", settings.read_text())
+            self.assertNotIn(webhook, output.getvalue())
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertIn(str(home / 'bre-solar-news/current/infra/solar-news/compose.yaml'), commands[0])
+            self.assertIn('--no-build', commands[1])
+            self.assertIn('SOLAR_NEWS_TEAMS_WEBHOOK_URL', commands[-1][-2])
+            self.assertEqual(run.call_args.kwargs['input'], webhook)
+            self.assertNotIn(webhook, str(commands))
+
+    def test_configuration_failure_is_redacted_and_never_reports_success(self):
+        webhook = 'https://fixture.logic.azure.com/workflows/solar?sig=fake-private'
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(configure_teams.Path, 'home', return_value=Path(folder)), \
+                patch('sys.argv', ['configure_teams.py', '--apply', '--card-format', 'adaptive']), \
+                patch('sys.stdin', io.StringIO(webhook)), \
+                patch.object(configure_teams, 'run', side_effect=RuntimeError(webhook)), \
+                contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(configure_teams.main(), 1)
+            self.assertEqual(errors.getvalue().strip(), 'SOLAR_TEAMS_CONFIGURATION_FAILED')
+
     def run_operator(self, mode, industry='solar', outcome='ACCEPTED', base='http://127.0.0.1:8091'):
         calls = []
         values = [{'industry': industry, 'status': 'ready'},
