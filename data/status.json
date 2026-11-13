@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-13 17:00:05",
+  "checked_at": "2026-11-13 18:00:05",
   "sites": [
     {
       "id": "notice",
@@ -30,7 +30,7 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 1,
+      "new_count": 2,
       "new_items": [
         {
           "num": "GW20260176",
@@ -38,6 +38,14 @@
           "date": "2026-11-05",
           "comp_date": "",
           "status": "본협의(진행)",
+          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
+        },
+        {
+          "num": "GW20260149",
+          "title": "고성 평화풍력 발전사업",
+          "date": "2026-10-02",
+          "comp_date": "2026-11-13",
+          "status": "본협의(완료)",
           "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
         }
       ],
