@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-13 20:00:06",
+  "checked_at": "2026-11-14 06:00:06",
   "sites": [
     {
       "id": "notice",
@@ -30,16 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 2,
+      "new_count": 1,
       "new_items": [
-        {
-          "num": "GW20260176",
-          "title": "간성풍력발전 한전 간성-인제간 가공선로 건설공사",
-          "date": "2026-11-05",
-          "comp_date": "",
-          "status": "본협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
         {
           "num": "GW20260149",
           "title": "고성 평화풍력 발전사업",
@@ -58,15 +50,8 @@
       "color": "#f97316",
       "url": "https://online.kepco.co.kr/EWM040D00",
       "error": null,
-      "new_count": 1,
-      "new_items": [
-        {
-          "num": "-",
-          "title": "'26년 하반기 전국 3순위 재분배 시행 안내('26. 11. 9)",
-          "date": "2026.11.09",
-          "url": "https://online.kepco.co.kr/EWM040D00"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 10
     },
     {
