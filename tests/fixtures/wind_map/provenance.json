@@ -1,0 +1,13 @@
+{
+  "document": "2026년 3분기 3MW초과 발전사업허가대장",
+  "url": "https://www.korec.go.kr/notice/moveNoticeDetail.do?bbsSntncNo=509&bbsSe=0",
+  "sha256": "b1bc0d9aedf74f60ab01d8632e24c2b170a2dc0ac856bfa48e976d37d53f7d85",
+  "extracted_with": "pdfplumber 0.11.10",
+  "visually_checked": [
+    805,
+    860
+  ],
+  "page_860": "blank table confirmed from rendered original",
+  "page_805": "detached coordinate continuation is not SIRU location",
+  "checked_at": "2026-11-12"
+}

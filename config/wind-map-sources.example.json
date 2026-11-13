@@ -1,0 +1,27 @@
+{
+  "korec-notices": {
+    "kind": "korec",
+    "agency": "전기위원회",
+    "url": "https://www.korec.go.kr/notice/selectNoticeList.do",
+    "hosts": [
+      "www.korec.go.kr"
+    ],
+    "method": "GET",
+    "query_param": "seCn",
+    "page_param": "pageIndex",
+    "page_size": 10,
+    "params": {
+      "seCode": "02",
+      "reSearchYn": "N"
+    },
+    "total_selector": ".board-count span:first-child i",
+    "window_mode": "full_archive",
+    "watch_queries": [
+      "발전사업허가대장",
+      "풍력",
+      "허가취소",
+      "개최결과"
+    ],
+    "collect_attachments": true
+  }
+}

@@ -7,6 +7,10 @@
   }
   function parseRoute(hash) {
     const [path, query = ''] = (hash || '#/notices').replace(/^#/, '').split('?');
+    if (path === '/wind-map') return { page: 'wind-map', params: new URLSearchParams(query) };
+    const windProject = /^\/wind-map\/project\/([A-Za-z0-9_-]{1,100})$/.exec(path);
+    if (windProject) return { page: 'wind-map', projectId: windProject[1], params: new URLSearchParams(query) };
+    if (path.startsWith('/wind-map/')) return { page: 'wind-map', projectId: 'invalid', params: new URLSearchParams(query) };
     for (const page of ['daily', 'solar']) {
       if (path === '/' + page + '/archive') return { page, tab: 'archive', params: new URLSearchParams(query) };
       if (path === '/' + page + '/dates') return { page, tab: 'dates' };
@@ -36,6 +40,7 @@
     document.getElementById('noticesPage').hidden = route.page !== 'notices';
     document.getElementById('dailyPage').hidden = route.page !== 'daily';
     document.getElementById('solarPage').hidden = route.page !== 'solar';
+    document.getElementById('windMapPage').hidden = route.page !== 'wind-map';
     document.querySelectorAll('[data-page]').forEach(link => {
       if (link.dataset.page === route.page) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
@@ -47,9 +52,10 @@
     });
     toggle.setAttribute('aria-expanded', 'false');
     document.getElementById('siteMenu').classList.remove('is-open');
-    document.title = route.page === 'solar' ? '태양광 일간 시황 | BRE Workflow' : route.page === 'daily' ? '풍력 일간 시황 | BRE Workflow' : '공지 모니터링 | BRE Workflow';
+    document.title = route.page === 'wind-map' ? '풍력대동여지도 | BRE Workflow' : route.page === 'solar' ? '태양광 일간 시황 | BRE Workflow' : route.page === 'daily' ? '풍력 일간 시황 | BRE Workflow' : '공지 모니터링 | BRE Workflow';
     root.WindNews.activate(route, !!force);
     root.SolarNews.activate(route, !!force);
+    root.WindMap.activate(route, !!force);
   }
   root.addEventListener('hashchange', () => activate(false));
   document.getElementById('dailyRefresh').addEventListener('click', () => activate(true));

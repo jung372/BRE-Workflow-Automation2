@@ -11,6 +11,7 @@ on:
       - 'last_state.json'
       - 'data/wind-news/**'
       - 'data/solar-news/**'
+      - 'data/wind-map/**'
       - 'docs/**'
       - '**/*.md'
       # 키워드는 설정 데이터다. publish clone 에서 읽으므로 재배포가 필요 없고,
@@ -125,6 +126,7 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements.txt
           # 뉴스 DB 의존성은 CI와 뉴스 서비스 환경에만 설치한다.
           python -m pip install --disable-pip-version-check -r news/requirements.txt
+          python -m pip install --disable-pip-version-check -r wind_map/requirements.txt
 
       - name: Node.js for browser module tests
         uses: actions/setup-node@v4
@@ -137,13 +139,13 @@ jobs:
           python -m compileall -q `
             config.py state.py runtime_config.py keywords.py scraper.py run_local.py `
             notify_teams.py push_to_github.py dashboard_app.py `
-            logic scrapers presentation news tests scripts/wind_news scripts/solar_news
+            logic scrapers presentation news wind_map tests scripts/wind_news scripts/solar_news
 
       - name: 🧪 단위 테스트
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: 뉴스 웹 모듈 검증
-        run: node --test tests/test_wind_news_frontend.js tests/test_solar_news_frontend.js
+        run: node --test tests/test_wind_news_frontend.js tests/test_solar_news_frontend.js tests/test_wind_map_frontend.js
 
       - name: 📥 진입점 임포트 확인
         shell: pwsh

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/styles.css?v=industry-news-1" />
+  <link rel="stylesheet" href="assets/wind-map.css?v=1" />
 </head>
 <body>
 <a class="site-skip" href="#mainContent">본문으로 이동</a>
@@ -19,6 +20,7 @@
       <a href="#/notices" data-page="notices"><span>01</span> 공지 모니터링 대시보드</a>
       <a href="#/daily" data-page="daily"><span>02</span> 풍력 일간 시황</a>
       <a href="#/solar" data-page="solar"><span>03</span> 태양광 일간 시황</a>
+      <a href="#/wind-map" data-page="wind-map"><span>04</span> 풍력대동여지도</a>
     </nav>
     <p class="site-sidebar-note">국내 풍력·태양광 사업의 변화와<br>주요 공지를 한곳에서.</p>
   </aside>
@@ -135,6 +137,7 @@
   </nav>
   <div id="solarContent" aria-live="polite"></div>
 </section>
+<section id="windMapPage" hidden aria-label="풍력대동여지도"><div id="windMapContent" aria-live="polite"></div></section>
 </main>
 </div>
 
@@ -149,6 +152,7 @@
 <script src="assets/app.js"></script>
 <script src="assets/wind-news.js?v=industry-news-1"></script>
 <script src="assets/wind-news-search.js?v=industry-news-1"></script>
+<script src="assets/wind-map.js?v=1"></script>
 <script src="assets/navigation.js?v=industry-news-1"></script>
 </body>
 </html>

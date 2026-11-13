@@ -1,0 +1,35 @@
+name: Validate wind map public artifacts
+on:
+  push:
+    branches: [main]
+    paths: ['data/wind-map/**', 'config/wind-map-public.json', '.github/workflows/validate-wind-map.yml']
+  pull_request:
+    paths: ['data/wind-map/**', 'config/wind-map-public.json', 'wind_map/**', '.github/workflows/validate-wind-map.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate public key configuration
+        run: |
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          config = json.loads(Path("config/wind-map-public.json").read_text(encoding="utf-8-sig"))
+          assert set(config) == {"schema_version", "kakao_javascript_key"}
+          assert config["schema_version"] == 1
+          assert config["kakao_javascript_key"] == "" or re.fullmatch(r"[a-fA-F0-9]{32}", config["kakao_javascript_key"])
+          PY
+      - name: Verify snapshot bytes and reconciliation
+        run: |
+          if [ -f data/wind-map/current.json ]; then
+            python -m wind_map validate-public .
+          else
+            echo "No production wind-map snapshot published yet."
+          fi

@@ -46,7 +46,7 @@ async function loadData() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     render(await res.json());
   } catch(e) {
-    showToast('❌ 데이터 로드 실패. 잠시 후 다시 시도하세요.', 4000);
+    if (!location.hash.startsWith('#/wind-map')) showToast('❌ 데이터 로드 실패. 잠시 후 다시 시도하세요.', 4000);
   } finally {
     setBtnLoading(false);
   }
