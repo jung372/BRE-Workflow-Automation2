@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-14 06:00:06",
+  "checked_at": "2026-11-14 07:00:09",
   "sites": [
     {
       "id": "notice",
@@ -79,8 +79,32 @@
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
       "error": null,
-      "new_count": 1,
+      "new_count": 3,
       "new_items": [
+        {
+          "uid": "DM202608337267",
+          "title": "울산 문무바람 부유식 해상풍력 1,3단지 발전사업 투자 의향 알림",
+          "dept": "한국남부발전(주)",
+          "dept_full": "한국남부발전(주)",
+          "instt": "한국남부발전(주)",
+          "date": "2026-11-14",
+          "prod_date": "2026-11-13",
+          "doc_no": "재생(해상풍력)-686",
+          "keyword": "문무바람",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
+        },
+        {
+          "uid": "DM202608337269",
+          "title": "울산 문무바람 부유식 해상풍력 1,3단지 발전사업 운영·유지보수 참여의향 알림",
+          "dept": "한국남부발전(주)",
+          "dept_full": "한국남부발전(주)",
+          "instt": "한국남부발전(주)",
+          "date": "2026-11-14",
+          "prod_date": "2026-11-13",
+          "doc_no": "재생(해상풍력)-687",
+          "keyword": "문무바람",
+          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
+        },
         {
           "uid": "2800163273641",
           "title": "해울이 해상풍력 발전소 변경 이용신청 접수 보고",
@@ -94,7 +118,7 @@
           "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%ED%95%B4%EC%9A%B8%EC%9D%B4%ED%95%B4%EC%83%81%ED%92%8D%EB%A0%A5"
         }
       ],
-      "total": 41,
+      "total": 43,
       "keywords": [
         "시루풍력",
         "왕신풍력",
