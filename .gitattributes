@@ -14,3 +14,6 @@
 
 # 대용량 데이터 파일의 diff 출력을 줄인다.
 last_state.json -diff
+
+# Wind map manifests hash exact UTF-8 bytes; preserve them across Windows checkouts.
+data/wind-map/**/*.json -text

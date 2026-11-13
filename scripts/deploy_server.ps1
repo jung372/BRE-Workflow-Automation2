@@ -74,7 +74,7 @@ function Invoke-RobocopyChecked {
     # data 와 last_state.json 을 제외해 릴리스에 오래된 데이터 사본이 남지 않게 한다.
     # 실제 데이터는 BRE_DATA_DIR(publish clone)에서만 읽고 쓴다.
     & robocopy $From $To /E /R:2 /W:2 /NFL /NDL /NJH /NJS `
-        /XD .git .venv __pycache__ releases launcher data _smoke .claude `
+        /XD .git .venv .venv-wind-map .wind-map-work .wind-map-runtime __pycache__ releases launcher data _smoke .claude `
         /XF .env current_release.txt deployment.json last_state.json *.log *.pyc *.pyo
     if ($LASTEXITCODE -gt 7) {
         throw "소스 복사 실패 (robocopy exit $LASTEXITCODE): $From -> $To"
@@ -158,6 +158,14 @@ try {
         throw "의존성 설치 실패 (exit $LASTEXITCODE)"
     }
 
+    # The permit atlas runs in this release environment; private data stays in RuntimeRoot.
+    $windMapRequirements = Join-Path $releasePath 'wind_map\requirements.txt'
+    if (Test-Path -LiteralPath $windMapRequirements) {
+        & $venvPython -m pip install --disable-pip-version-check -r $windMapRequirements
+        if ($LASTEXITCODE -ne 0) {
+            throw "Wind map dependency installation failed (exit $LASTEXITCODE)"
+        }
+    }
     # 브라우저는 사용자 프로필에 캐시되어 릴리스 간 공유된다(최초 1회만 다운로드).
     & $venvPython -m playwright install chromium
     if ($LASTEXITCODE -ne 0) {

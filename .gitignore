@@ -44,3 +44,9 @@ auth.json
 # dashboard_app.py
 # run_dashboard.bat
 # run_korec_monitor.bat
+# Wind map private build/runtime artifacts
+.venv-wind-map/
+.wind-map-work/
+.wind-map-runtime/
+*.sqlite3-shm
+*.sqlite3-wal

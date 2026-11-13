@@ -1,0 +1,61 @@
+#windMapPage { --wm-ink:#153347; --wm-muted:#617585; --wm-line:#dbe5e9; color:var(--wm-ink); background:#f5f8f8; border-radius:18px; padding:28px; font-family:Pretendard,"Malgun Gothic",sans-serif; }
+#windMapPage[hidden] { display:none!important; }
+#windMapPage * { box-sizing:border-box; }
+#windMapPage h1 { color:var(--wm-ink); font-size:32px; letter-spacing:-1.2px; margin:4px 0 12px; }
+#windMapPage h2 { font-size:19px; color:var(--wm-ink); margin:0 0 16px; }
+#windMapPage h3 { font-size:17px; margin:20px 0 10px; }
+#windMapPage h4 { font-size:15px; margin:12px 0 7px; }
+#windMapPage p { line-height:1.7; }
+#windMapPage a { color:#08766f; text-decoration:underline; text-underline-offset:3px; }
+#windMapPage button,#windMapPage select,#windMapPage input { font:inherit; color:var(--wm-ink); background:white; border:1px solid #bdcfd7; border-radius:8px; padding:10px 12px; min-height:42px; }
+#windMapPage button { cursor:pointer; }
+#windMapPage :focus-visible { outline:3px solid #d38e28; outline-offset:3px; }
+.wm-eyebrow { color:#20837c; font-size:11px; font-weight:700; letter-spacing:2px; margin:0 0 8px; }
+.wm-muted,.wm-footnote { color:var(--wm-muted); font-size:13px; }
+.wm-badges { display:flex; gap:8px; flex-wrap:wrap; margin:20px 0; }
+.wm-badges span { border:1px solid var(--wm-line); border-radius:20px; padding:6px 12px; font-size:12px; background:white; }
+.wm-filters { display:flex; gap:10px; flex-wrap:wrap; margin:22px 0 18px; }
+.wm-filters button { margin-left:auto; }
+.wm-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.wm-stat { display:flex; flex-direction:column; gap:10px; padding:18px; border:1px solid var(--wm-line); border-radius:12px; background:white; }
+.wm-stat:first-child { background:#143d4b; color:white; border-color:#143d4b; }
+.wm-stat span { font-size:12px; }
+.wm-stat strong { font-size:24px; font-variant-numeric:tabular-nums; line-height:1.3; }
+.wm-stat small { font-size:11px; opacity:.72; line-height:1.5; }
+.wm-coverage { font-size:12px; color:var(--wm-muted); padding:3px 0; }
+.wm-map { height:390px; position:relative; overflow:hidden; border-radius:12px; border:1px solid #cbdcdd; background:#e9f1f0; }
+.wm-map-canvas { height:100%; width:100%; }
+.wm-map-fallback { height:100%; padding:30px; display:flex; justify-content:center; align-items:center; flex-direction:column; text-align:center; background:linear-gradient(120deg,#e3eeec,#f3f7f6); }
+.wm-map-fallback strong { font-size:20px; }
+.wm-map-fallback p { color:#66807e; font-size:13px; }
+.wm-marker-chooser { position:absolute; left:12px; bottom:12px; z-index:10; max-height:240px; overflow:auto; background:white; border-radius:8px; padding:14px; box-shadow:0 4px 20px #1234; }
+.wm-marker-chooser a { display:block; padding:9px 2px; }
+.wm-grid { display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin:22px 0; align-items:start; }
+.wm-panel { padding:20px; background:white; border:1px solid var(--wm-line); border-radius:12px; min-width:0; overflow:auto; }
+.wm-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:14px; }
+.wm-table th { color:#607782; font-weight:500; text-align:left; }
+.wm-table th,.wm-table td { padding:12px 6px; border-bottom:1px solid #e5edef; }
+.wm-table td:nth-child(2) { font-weight:700; white-space:nowrap; }
+.wm-project-list { list-style:none; padding:0; margin:0; }
+.wm-project-list li { padding:14px 0; border-bottom:1px solid #e5edef; display:grid; grid-template-columns:1fr auto; gap:8px; font-size:13px; }
+.wm-project-list small { grid-column:1/-1; color:var(--wm-muted); }
+.wm-search input { width:100%; }
+.wm-warning { background:#fff4df; color:#765716; padding:14px; border:1px solid #eed6a7; border-radius:8px; font-size:13px; }
+.wm-empty,.wm-loading { padding:40px 0; font-size:18px; }
+.wm-footnote { margin:20px 0 0; font-size:11px; word-break:break-all; }
+.wm-backdrop { position:fixed; inset:0; background:#102b3b66; z-index:2000; display:flex; justify-content:flex-end; }
+.wm-detail { width:min(610px,100%); height:100%; overflow:auto; background:#fff; padding:28px; box-shadow:-12px 0 50px #0c283133; overscroll-behavior:contain; }
+.wm-close { display:block; text-align:right; margin:0 0 20px; }
+.wm-permit { border-bottom:1px solid var(--wm-line); padding-bottom:18px; }
+.wm-detail dl { display:grid; grid-template-columns:160px 1fr; gap:10px; margin:20px 0; font-size:13px; }
+.wm-detail dt { color:var(--wm-muted); }
+.wm-detail dd { margin:0; }
+.wm-detail summary { cursor:pointer; color:#08766f; padding:8px 0; font-size:13px; }
+.wm-evidence article { padding:14px; background:#f2f6f6; margin:8px 0; border-radius:8px; font-size:12px; word-break:break-word; }
+.wm-evidence blockquote { margin:10px 0; padding-left:12px; border-left:2px solid #abcac7; white-space:pre-wrap; }
+.wm-evidence small,.wm-evidence a { display:block; margin-top:8px; }
+.wm-milestone,.wm-history { padding:10px 0; border-bottom:1px solid var(--wm-line); }
+.wm-milestone small { color:var(--wm-muted); font-size:12px; }
+@media(max-width:1000px) { .wm-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .wm-grid { grid-template-columns:1fr; } }
+@media(max-width:600px) { #windMapPage { padding:16px; border-radius:10px; } #windMapPage h1 { font-size:27px; } .wm-stat { padding:13px; } .wm-stat strong { font-size:21px; } .wm-map { height:300px; } .wm-detail { padding:20px; } .wm-detail dl { grid-template-columns:1fr; gap:5px; } .wm-detail dd { margin-bottom:10px; } .wm-filters { gap:8px; } .wm-filters select { max-width:100%; } }
+body.wm-dialog-open { overflow:hidden; }

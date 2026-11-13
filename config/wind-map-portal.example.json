@@ -1,0 +1,8 @@
+{
+  "information-portal": {
+    "kind": "open_portal",
+    "agency": "정보공개포털",
+    "url": "https://www.open.go.kr/othicInfo/infoList/infoList.ajax",
+    "hosts": ["www.open.go.kr"]
+  }
+}
