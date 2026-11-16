@@ -1,18 +1,153 @@
-"""Evidence-bound agreement grouping before the summary budget is consumed.
-
-Headline similarity alone is never an event identity. A dated, completed,
-quoted agreement with the same parties and purpose can corroborate another
-report even when discovery supplied no project/entity metadata.
-"""
+"""Group corroborated reports of one event before consuming summary budget."""
 from datetime import timedelta
+from decimal import Decimal
 import re
+import unicodedata
 
 
-RULE_VERSION = "agreement-evidence-v2"
+RULE_VERSION = "news-event-evidence-v3"
 _ORGANIZATION = re.compile(r"[가-힣A-Za-z0-9·]{2,30}(?:발전|개발공사|건설|에너지|공사|중공업)")
 _QUOTED = re.compile(r"[‘'“\"]([^‘'’“”\"\n]{12,180}(?:업무협약|양해각서)(?:\s*\(MOU\))?)[’'”\"]", re.I)
 _DATE = re.compile(r"(?:(\d{4})년\s*)?(?:(\d{1,2})월\s*)?(\d{1,2})일")
 _OTHER_STAGE = re.compile(r"본계약|공급계약|EPC.{0,12}(?:체결|계약)|금융\s*(?:약정|종결)|대출\s*(?:실행|약정)|조건부|해지|취소|변경", re.I)
+_ACTOR = re.compile(r"[가-힣A-Za-z0-9]{2,30}(?:발전|개발공사|건설|에너지|전력|중공업|그린파워|윈즈|솔라)")
+_REGIONS = re.compile(r"서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|충청북도|충청남도|전라남도|전라북도|경상북도|경상남도")
+_REGION_ALIASES = dict(zip(("충청북도", "충청남도", "전라북도", "전라남도", "경상북도", "경상남도"), ("충북", "충남", "전북", "전남", "경북", "경남")))
+_CAPACITY = re.compile(r"(?<![\d.])(\d+(?:,\d{3})*(?:\.\d+)?)\s*(gw|mw|kw)(?![a-z])", re.I)
+_KINDS = [
+    ("cancellation", r"해지|취소|철회"), ("accident", r"사고|사망|부상|화재"),
+    ("dispute", r"소송|주민\s*반대|분쟁|갈등"),
+    ("financial_close", r"금융\s*종결|PF\s*종결|financial close"),
+    ("disbursement", r"대출.{0,6}실행|자금.{0,6}집행"),
+    ("financing", r"금융\s*약정|대출\s*약정"),
+    ("final_contract", r"본계약|EPC.{0,10}(?:체결|계약)|공급계약|PPA.{0,10}(?:체결|계약)"),
+    ("operation", r"상업\s*운전|상업\s*가동"), ("completion", r"준공"),
+    ("construction", r"착공"), ("permit", r"허가\s*(?:취득|획득|승인)|허가받|인허가\s*승인"),
+    ("tender", r"입찰\s*(?:선정|낙찰|탈락)|낙찰|우선협상"),
+    ("agreement", r"MOU|양해각서|업무협약|협약\s*체결"),
+    ("cooperation", r"간담회|기술\s*교류회|협력|논의|협의|협업"),
+]
+
+
+def _normalized(value):
+    return unicodedata.normalize("NFKC", str(value or "")).lower()
+
+
+def _entity(value):
+    return re.sub(r"\([^)]*\)", "", company(_normalized(value))).strip("·.,()")
+
+
+def _project(value):
+    value = _normalized(value)
+    value = re.sub(r"부유식|고정식|해상\s*풍력|육상\s*풍력|풍력|태양광|발전소|공동\s*개발|프로젝트|사업", "", value)
+    return re.sub(r"[^가-힣a-z0-9]", "", value)
+
+
+def event_anchor(article, industry="wind"):
+    """Use the subject and lead, not historical stages deep in the article.
+
+    Unknown facts are left empty. In particular, a publication/announcement
+    date is not evidence that the meeting or contract happened on that date.
+    """
+    title = _normalized(article["title"])
+    lead = _normalized(article.get("text") or article.get("description", ""))[:900]
+    first_sentence = re.split(r"(?<=[다요])\.\s+", lead, maxsplit=1)[0]
+    subject = title + " " + lead
+    kind, clause = "", ""
+    for section in (title, first_sentence):
+        found = next(((name, match) for name, pattern in _KINDS
+                      if (match := re.search(pattern, section, re.I))), None)
+        if found:
+            kind, match = found
+            clause = section[:match.start()]
+            break
+    # If the headline supplies the kind but no date, inspect the corresponding
+    # lead clause. Dates after the action ('13일 밝혔다') are not event dates.
+    if kind and not _DATE.search(clause):
+        pattern = dict(_KINDS)[kind]
+        match = re.search(pattern, first_sentence, re.I)
+        if match:
+            clause = first_sentence[:match.start()]
+    status = "planned" if re.search(r"예정|계획이다|추진할", title + " " + first_sentence) else "actual"
+    if re.search(r"체결하지|개최하지|않았다|못했다|무산|불발", title + " " + first_sentence):
+        status = "negated"
+    event_day = article.get("event_date")
+    announcement = (re.search(r"밝혔다|전했다|알렸다", first_sentence)
+                    and not re.search(r"지난\s*(?:\d+년\s*)?(?:\d+월\s*)?\d+일", clause))
+    if not event_day and _DATE.search(clause) and not announcement:
+        from .pipeline import KST, instant
+        event_day = _event_date(clause, instant(article["source_published_at"]).astimezone(KST).date())
+    actors = {_entity(x) for x in _ACTOR.findall(subject)}
+    # Pipeline ingestion validates supplied entities against the full evidence.
+    actors.update(_entity(x) for x in article.get("companies", []))
+    actors.difference_update({"재생에너지", "신재생에너지", "해상발전", "태양광발전", "풍력발전"})
+    regions = set()
+    for section in (title, lead, _normalized(article.get("region"))):
+        regions = {_REGION_ALIASES.get(x, x) for x in _REGIONS.findall(section)}
+        if regions:
+            break
+    capacities = {str(Decimal(n.replace(",", "")) * {"gw": 1000, "mw": 1, "kw": Decimal("0.001")}[u.lower()])
+                  for n, u in _CAPACITY.findall(title + " " + first_sentence)}
+    capacities = {str(Decimal(n).normalize()) for n in capacities}
+    projects = set()
+    supplied = article.get("project_name")
+    if supplied and _project(supplied):
+        projects.add(_project(supplied))
+    project_matches = list(re.finditer(r"([가-힣a-z0-9]+)[’'”\"]?\s+(?:(?:부유식|고정식|수상형?|영농형|지붕형?|지상형|건물일체형)\s*)?(?:해상\s*풍력|육상\s*풍력|태양광)(?:\s|$)", subject))
+    project_matches += list(re.finditer(r"([가-힣a-z][가-힣a-z0-9]{2,})[’'”\"]?\s*(?:사업|프로젝트)", subject))
+    for match in project_matches:
+        name = _project(match.group(1))
+        if (name and name not in {"규모", "규모의", "위한", "국내", "글로벌", "추진중인", "수상", "영농형", "지붕형"}
+                and not name.endswith(("들과", "들은", "위해", "하고", "하며", "위한", "중인", "있는", "로", "과", "와", "는", "은", "을", "를"))
+                and not _REGIONS.fullmatch(name) and not _CAPACITY.fullmatch(name)):
+            projects.add(name)
+    types = ("부유식", "육상", "고정식") if industry == "wind" else ("영농형", "수상", "지붕", "건물일체형", "지상형")
+    subtype = next((x for section in (title, lead) for x in types if x in section), "")
+    return {"actors": actors, "regions": regions, "capacities": capacities, "projects": projects,
+            "kind": kind, "status": status, "date": event_day, "subtype": subtype,
+            "grams": _grams(subject), "title_grams": _grams(title)}
+
+
+def same_event(left, right, industry="wind"):
+    """Require shared event evidence; a common company or topic is insufficient."""
+    a_agreement, b_agreement = left.get("agreement_anchor"), right.get("agreement_anchor")
+    if a_agreement and b_agreement:
+        return same_agreement(left, right)
+    a = left.get("news_anchor") or event_anchor(left, industry)
+    b = right.get("news_anchor") or event_anchor(right, industry)
+    if a["status"] != b["status"]:
+        return False
+    for field in ("kind", "date", "subtype"):
+        if a[field] and b[field] and a[field] != b[field]:
+            return False
+    for field in ("regions", "capacities", "projects"):
+        if a[field] and b[field] and not a[field] & b[field]:
+            return False
+    actors = a["actors"] & b["actors"]
+    if (len(a["actors"]) >= 2 and len(b["actors"]) >= 2
+            and not (a["actors"] <= b["actors"] or b["actors"] <= a["actors"])):
+        return False
+    project = bool(a["projects"] & b["projects"])
+    location = bool(a["regions"] & b["regions"])
+    capacity = bool(a["capacities"] & b["capacities"])
+    kind = bool(a["kind"] and a["kind"] == b["kind"])
+    shared = len(a["grams"] & b["grams"])
+    similarity = shared / max(1, min(len(a["grams"]), len(b["grams"])))
+    matching_subject = (a["subtype"] and a["subtype"] == b["subtype"]
+                        and len(a["title_grams"] & b["title_grams"]) >= 7)
+    if len(actors) >= 2 and (project or location or capacity or matching_subject) and kind:
+        return True
+    if actors and project and kind:
+        return True
+    if actors and capacity and kind and len(a["title_grams"] & b["title_grams"]) >= 8:
+        return True
+    # A sparse report may omit the project name or capacity. Still require the
+    # same actor, location, technology, action and substantial headline wording.
+    if (actors and location and kind and a["subtype"] and a["subtype"] == b["subtype"]
+            and len(a["title_grams"] & b["title_grams"]) >= 7):
+        return True
+    return bool((actors or project) and shared >= 30 and similarity >= .8
+                and len(a["title_grams"] & b["title_grams"]) / max(1, min(len(a["title_grams"]), len(b["title_grams"]))) >= .45)
 
 
 def company(value):
@@ -108,23 +243,29 @@ def group_events(articles, industry="wind"):
     """Keep exact event identities; augment with complete-link corroboration."""
     groups, buckets = {}, {}
     for article in sorted(articles, key=lambda a: (a["source_published_at"], a["url"])):
+        article.pop("agreement_anchor", None)
         anchor = agreement_anchor(article, industry)
         if anchor:
             article["agreement_anchor"] = anchor
             article.update(agreement_classification(anchor))
+        article["news_anchor"] = event_anchor(article, industry)
         existing = groups.get(article["event_id"])
         if existing is not None:
             existing.append(article)
             continue
-        identity = (tuple(anchor["actors"]), anchor["date"], anchor["wind_type"]) if anchor else None
-        possible = buckets.get(identity, []) if anchor else []
-        match = next((members for members in possible
-                      if all(same_agreement(article, other) for other in members)), None)
+        keys = ([("agreement", tuple(anchor["actors"]), anchor["date"], anchor["wind_type"])] if anchor else
+                [("actor", x) for x in sorted(article["news_anchor"]["actors"])] +
+                [("project", x) for x in sorted(article["news_anchor"]["projects"])])
+        possible = dict.fromkeys(event_id for key in keys for event_id in buckets.get(key, []))
+        match = next((groups[event_id] for event_id in possible
+                      if all(same_event(article, other, industry) for other in groups[event_id])), None)
         if match is not None:
             article.update(event_id=match[0]["event_id"], event_key=match[0]["event_key"])
             match.append(article)
         else:
             groups[article["event_id"]] = [article]
-            if anchor:
-                buckets.setdefault(identity, []).append(groups[article["event_id"]])
+        for key in keys:
+            bucket = buckets.setdefault(key, [])
+            if article["event_id"] not in bucket:
+                bucket.append(article["event_id"])
     return groups

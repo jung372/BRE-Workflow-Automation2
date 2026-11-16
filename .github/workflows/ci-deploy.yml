@@ -74,7 +74,9 @@ jobs:
 
   news-install:
     needs: test
-    if: github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect' || inputs.news_action == 'launch' || inputs.news_action == 'correct' || inputs.news_action == 'refresh' || inputs.news_action == 'dedup-correct' || inputs.news_action == 'briefing')
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.news_action == 'install' || inputs.news_action == 'connect' || inputs.news_action == 'launch' || inputs.news_action == 'correct' || inputs.news_action == 'refresh' || inputs.news_action == 'dedup-correct' || inputs.news_action == 'briefing')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[deploy-wind]'))
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 30
     environment: production
@@ -85,7 +87,7 @@ jobs:
       - name: Install isolated news container in existing WSL
         shell: powershell
         env:
-          NEWS_ACTION: ${{ inputs.news_action }}
+          NEWS_ACTION: ${{ inputs.news_action || 'install' }}
         run: .\scripts\wind_news\operate_server.ps1 -Action $env:NEWS_ACTION
 
   news-preflight:
@@ -166,6 +168,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
       !contains(github.event.head_commit.message, '[deploy-solar]') &&
+      !contains(github.event.head_commit.message, '[deploy-wind]') &&
       (inputs.news_action == '' || inputs.news_action == 'normal') &&
       vars.SERVER_DEPLOY_ENABLED == 'true'
     runs-on:

@@ -67,6 +67,7 @@ done
 [[ "$health" == healthy ]] || { echo 'NEWS_HEALTH_FAILED'; exit 1; }
 ln -sfn "$release" "$root/current"
 printf 'NEWS_SERVICE_READY release=%s\n' "$release_sha"
+docker exec "$cid" python -c 'from news.dedup import RULE_VERSION; print("NEWS_DEDUP_RULE=" + RULE_VERSION)'
 docker exec "$cid" codex --version
 docker exec "$cid" python -c 'import duckdb,polars; print("DuckDB="+duckdb.__version__+" Polars="+polars.__version__)'
 docker exec n8n-personal-n8n-1 n8n import:workflow --help

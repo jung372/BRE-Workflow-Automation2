@@ -12,7 +12,7 @@ import polars as pl
 from .profiles import profile_for
 from .store import Conflict, canonical, digest, utcnow
 from .relevance import industry_relevant, editorial_order
-from .dedup import RULE_VERSION, agreement_anchor, agreement_classification, group_events
+from .dedup import RULE_VERSION, agreement_anchor, agreement_classification, event_anchor, group_events, same_event
 
 KST = timezone(timedelta(hours=9))
 SUCCESS = {"success", "success_zero"}
@@ -239,17 +239,39 @@ class Pipeline:
                     article = json.loads(row[5]) if row[5] else {**json.loads(row[1]), **json.loads(row[2]), "discovered_at": row[3], "content_hash": row[4]}
                     by_article[row[0]] = article
                 articles = list(by_article.values())
-            published_articles, published_events = set(), set()
-            for row in db.execute("SELECT payload,candidates FROM issues WHERE state IN ('COMMITTED','WEB_VERIFIED') AND issue_id<>?", [issue_id]).fetchall():
-                for item in json.loads(row[0])["items"]:
+            published_articles, published_events, recent_articles = set(), set(), []
+            seen_issues = set()
+            for row in db.execute("SELECT payload,candidates,batch_ids FROM issues WHERE state IN ('COMMITTED','WEB_VERIFIED') AND issue_id<>? ORDER BY issue_date DESC,revision DESC", [issue_id]).fetchall():
+                prior = json.loads(row[0])
+                for item in prior["items"]:
                     published_articles.add(item["representative_article_id"])
                     published_events.add(item["event_id"])
-                selected_events = {item["event_id"] for item in json.loads(row[0])["items"]}
+                selected_events = {item["event_id"] for item in prior["items"]}
+                selected_members = {item["representative_article_id"] for item in prior["items"]}
                 for candidate in json.loads(row[1]):
                     if candidate["item"]["event_id"] in selected_events:
                         published_articles.update(candidate["member_article_ids"])
-            return batches, frozen_ids, articles, published_articles, published_events
-        batches, frozen_ids, articles, prior_articles, prior_events = self.store.call(read)
+                        selected_members.update(candidate["member_article_ids"])
+                # Compare the latest published edition on each of the preceding
+                # two KST issue dates, including late arrivals and legacy IDs.
+                latest = prior["issue_id"] not in seen_issues
+                seen_issues.add(prior["issue_id"])
+                if not latest or not date.fromisoformat(day) - timedelta(days=2) <= date.fromisoformat(prior["issue_date"]) < date.fromisoformat(day):
+                    continue
+                evidence = {item["representative_article_id"]: {
+                    **item, "title": item["headline"], "url": item["source_url"],
+                    "description": item["summary"]} for item in prior["items"]}
+                prior_batches = json.loads(row[2])
+                if prior_batches and selected_members:
+                    batch_slots = ",".join("?" for _ in prior_batches)
+                    member_slots = ",".join("?" for _ in selected_members)
+                    snapshots = db.execute("SELECT a.article_id,a.article_snapshot FROM batch_articles a JOIN batches b ON a.batch_id=b.batch_id WHERE a.batch_id IN (" + batch_slots + ") AND a.article_id IN (" + member_slots + ") ORDER BY b.created_at,b.batch_id", [*prior_batches, *sorted(selected_members)]).fetchall()
+                    for article_id, snapshot in snapshots:
+                        if snapshot:
+                            evidence[article_id] = json.loads(snapshot)
+                recent_articles.extend(evidence.values())
+            return batches, frozen_ids, articles, published_articles, published_events, recent_articles
+        batches, frozen_ids, articles, prior_articles, prior_events, recent_articles = self.store.call(read)
         selected_ids = payload.get("article_ids")
         if selected_ids is not None:
             if not correction or not isinstance(selected_ids, list) or not selected_ids or len(selected_ids) > 10000 or any(not isinstance(x, str) for x in selected_ids) or len(set(selected_ids)) != len(selected_ids):
@@ -287,6 +309,14 @@ class Pipeline:
             article.update(classification, event_id=event_id, event_key=key, late_arrival=published < start.astimezone(timezone.utc))
             eligible_articles.append(article)
         groups = group_events(eligible_articles, self.profile.industry)
+        for article in recent_articles:
+            anchor = agreement_anchor(article, self.profile.industry)
+            if anchor:
+                article["agreement_anchor"] = anchor
+            article["news_anchor"] = event_anchor(article, self.profile.industry)
+        groups = {event_id: members for event_id, members in groups.items()
+                  if not any(same_event(member, prior, self.profile.industry)
+                             for member in members for prior in recent_articles)}
         summary_start = monotonic_time.monotonic()
         max_summaries = min(30, max(1, int(self.policy.get("max_summary_candidates", 20))))
         summary_deadline = min(900, max(1, int(self.policy.get("summary_deadline_seconds", 900))))
@@ -335,7 +365,7 @@ class Pipeline:
             for event_id, members in groups.items():
                 db.execute("INSERT INTO events VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, members[0]["event_key"], canonical({"rule_version": RULE_VERSION, "stage": members[0]["contract_stage"], "representative_article_id": members[0]["article_id"]})])
                 for member in members:
-                    decision = "dated_agreement_evidence" if member.get("agreement_anchor") else "exact_identity_and_stage"
+                    decision = "dated_agreement_evidence" if member.get("agreement_anchor") else "corroborated_event_evidence" if len(members) > 1 else "exact_identity_and_stage"
                     db.execute("INSERT INTO event_articles VALUES (?,?,?) ON CONFLICT DO NOTHING", [event_id, member["article_id"], decision])
         self.store.call(write, write=True)
         return self.store.issue(issue_id)
