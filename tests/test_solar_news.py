@@ -82,16 +82,32 @@ class SolarContracts(unittest.TestCase):
         self.assertEqual(a['access_status'], 'free')
         self.assertIsNone(parse_article(html, {**source, 'industry': 'wind'}, 'https://example.kr/article'))
 
-    def test_card_has_five_solar_titles_and_dated_solar_link(self):
+    def test_card_has_all_solar_titles_and_dated_solar_link(self):
         issue = solar_issue()
-        issue['items'] *= 8
-        for fmt in ('adaptive', 'messagecard'):
-            rendered = json.dumps(build_card(issue, 'https://example.kr/', fmt, industry='solar'), ensure_ascii=False)
-            self.assertIn('태양광 일간 시황', rendered)
-            self.assertIn('/#/solar/2026-09-30', rendered)
-            self.assertNotIn('/#/daily/', rendered)
-            self.assertNotIn('6.', rendered)
-            self.assertIn('5.', rendered)
+        template = issue['items'][0]
+        for count in (0, 1, 5, 8, 15):
+            issue['items'] = [dict(template, headline=f'태양광 기사 {i}', source_name=f'시험일보 {i}',
+                                   source_url=f'https://example.kr/solar/{i}') for i in range(count)]
+            for fmt in ('adaptive', 'messagecard'):
+                with self.subTest(count=count, card_format=fmt):
+                    card = build_card(issue, 'https://example.kr/', fmt, industry='solar')
+                    rendered = json.dumps(card, ensure_ascii=False)
+                    self.assertIn('태양광 일간 시황', rendered)
+                    self.assertIn('/#/solar/2026-09-30', rendered)
+                    self.assertNotIn('/#/daily/', rendered)
+                    if fmt == 'adaptive':
+                        rows = [block['text'] for block in card['attachments'][0]['content']['body'][1:]]
+                    else:
+                        rows = [fact['value'] for fact in card['sections'][0]['facts']]
+                    self.assertIn(f'주요 사건 {count}건', rows[0])
+                    if count:
+                        self.assertEqual(len(rows), count + 1)
+                        for rank, item in enumerate(issue['items'], 1):
+                            self.assertTrue(rows[rank].startswith(f'{rank}. '))
+                            self.assertIn(f"[{item['headline']}]({item['source_url']})", rows[rank])
+                            self.assertIn(item['source_name'], rows[rank])
+                    else:
+                        self.assertIn('주요 기사가 없습니다', rendered)
         with self.assertRaisesRegex(ValueError, 'mismatch'):
             build_card(issue, 'https://example.kr/')
 

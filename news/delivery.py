@@ -74,7 +74,7 @@ def build_card(issue: dict, site_url: str, card_format: str = "adaptive", *, ind
         body.append({"type": "TextBlock", "text": "정정된 보고서입니다.", "wrap": True})
     if not items:
         body.append({"type": "TextBlock", "text": "오늘 새로 선정된 주요 기사가 없습니다.", "wrap": True})
-    for rank, item in enumerate(items[:5] if industry == "solar" else items, 1):
+    for rank, item in enumerate(items, 1):
         url = item.get("source_url", "")
         if not _public_https(url) or re.search(r"[\s\x00-\x1f\x7f]", url):
             raise ValueError("invalid_article_url")

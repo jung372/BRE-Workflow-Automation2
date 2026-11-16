@@ -69,7 +69,7 @@ python scripts/solar_news/prepare_config.py --output <private-settings-directory
 3. [태양광 Teams 워크플로](https://github.com/jung372/BRE-Workflow-Automation2/actions/workflows/solar-news-report.yml)의 **Run workflow**에서 `main`과 `mode=configure`를 선택한다. 서버 설정 저장·컨테이너 적용·health와 실제 값 일치를 확인한다.
 4. `mode=preview`로 카드 생성 가능 여부와 `teams_configured=true`를 확인한 뒤, `mode=test`로 전용 채팅방의 시험 수신을 확인한다. 과거 호를 확인할 때는 `issue_date`를 지정한다.
 
-기본 카드 형식은 풍력과 같은 `messagecard`다. 수신 흐름이 Adaptive Card를 요구하면 Repository Variable `SOLAR_NEWS_TEAMS_CARD_FORMAT=adaptive`를 등록한다. 설치 환경을 변경한 경우에만 `SOLAR_NEWS_WSL_DISTRO`, `SOLAR_NEWS_WSL_USER`, `SOLAR_NEWS_RELEASE_ROOT`, `SOLAR_NEWS_SETTINGS_FILE`을 지정한다. 경로 두 개는 서버 WSL의 절대 경로이며 설정 파일은 태양광 전용이어야 한다. 웹훅을 교체할 때도 Secret 변경 후 `configure`를 다시 실행한다.
+기본 카드 형식은 풍력과 같은 `messagecard`다. 두 카드 형식 모두 해당 호에 선정된 주요 사건 전체의 제목·출처·기사 링크를 표시한다. 수신 흐름이 Adaptive Card를 요구하면 Repository Variable `SOLAR_NEWS_TEAMS_CARD_FORMAT=adaptive`를 등록한다. 설치 환경을 변경한 경우에만 `SOLAR_NEWS_WSL_DISTRO`, `SOLAR_NEWS_WSL_USER`, `SOLAR_NEWS_RELEASE_ROOT`, `SOLAR_NEWS_SETTINGS_FILE`을 지정한다. 경로 두 개는 서버 WSL의 절대 경로이며 설정 파일은 태양광 전용이어야 한다. 웹훅을 교체할 때도 Secret 변경 후 `configure`를 다시 실행한다.
 
 `.github/workflows/solar-news-report.yml`에는 다음 수동 모드를 제공한다. 정기 schedule은 없다.
 
@@ -96,6 +96,8 @@ GitHub Action 외에는 `scripts/solar_news/configure_teams.py --settings <priva
 태양광 일정은 매시 5분·07:30 수집, 07:40 준비, 07:50 게시, 08:30~09:25 5분마다 브리핑 확인, 09:30 발송 차단, 02:30 백업이다. 모든 템플릿의 시간대는 `Asia/Seoul`이다. 시범 운영에서는 수집·웹 게시를 먼저 확인하고 시험 수신 후 Deliver를 활성화한다. 서버 기동·로그인·Docker·n8n 가용성은 기존 운영 경로에서 점검한다.
 
 최초 서비스 배포는 `검증 및 서버 배포` workflow의 `news_action=solar-install`로 실행한다. `scripts/solar_news/install_server.ps1`과 `install_linux.sh`가 기존 WSL/n8n network에 독립 컨테이너를 설치하며, 새 전용 API 토큰을 서버 안에서 생성한다. 첫 설치의 수집·게시 설정과 모든 일정은 비활성이다. Codex 로그인은 `solar-share-login`으로 기존 풍력 로그인을 연결할 수 있다. 게시 clone과 Git 인증, 전용 Teams 웹훅, n8n credential은 별도로 연결한다. 이후 재설치와 Teams 설정 변경에서도 공유 로그인 경로를 보존한다. 설치 결과는 값 노출 없이 연결 여부와 모델·health를 보고한다.
+
+태양광 코드 갱신은 `main`에 push하는 커밋 메시지에 `[deploy-solar]`를 넣어 실행할 수도 있다. CI 검증이 통과하면 태양광 서비스만 `solar-install`로 갱신하며, 이 표식이 있는 커밋은 일반 공고 서버 배포를 실행하지 않는다. 기존 태양광 설정과 발송 이력은 유지한다.
 
 ### 운영 연결 순서 (2026-10-28 추가)
 

@@ -41,7 +41,10 @@ concurrency:
 jobs:
   solar-install:
     needs: test
-    if: github.event_name == 'workflow_dispatch' && startsWith(inputs.news_action, 'solar-') && github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && startsWith(inputs.news_action, 'solar-')) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-solar]')))
     runs-on: [self-hosted, windows, x64, bre-workflow-server]
     timeout-minutes: 45
     environment: production
@@ -52,7 +55,7 @@ jobs:
       - name: Install, connect or launch isolated solar service
         shell: powershell
         env:
-          NEWS_ACTION: ${{ inputs.news_action }}
+          NEWS_ACTION: ${{ inputs.news_action || 'solar-install' }}
         # solar-install|solar-share-login|solar-connect|solar-launch -> install|share-login|connect|launch
         run: .\scripts\solar_news\install_server.ps1 -Action $env:NEWS_ACTION.Substring(6)
 
@@ -162,6 +165,7 @@ jobs:
       github.repository == 'jung372/BRE-Workflow-Automation2' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
+      !contains(github.event.head_commit.message, '[deploy-solar]') &&
       (inputs.news_action == '' || inputs.news_action == 'normal') &&
       vars.SERVER_DEPLOY_ENABLED == 'true'
     runs-on:
