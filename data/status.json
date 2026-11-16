@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-16 20:00:04",
+  "checked_at": "2026-11-17 06:00:05",
   "sites": [
     {
       "id": "notice",
@@ -78,35 +78,10 @@
       "icon": "📄",
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
-      "error": null,
-      "new_count": 2,
-      "new_items": [
-        {
-          "uid": "DM202608337267",
-          "title": "울산 문무바람 부유식 해상풍력 1,3단지 발전사업 투자 의향 알림",
-          "dept": "한국남부발전(주)",
-          "dept_full": "한국남부발전(주)",
-          "instt": "한국남부발전(주)",
-          "date": "2026-11-14",
-          "prod_date": "2026-11-13",
-          "doc_no": "재생(해상풍력)-686",
-          "keyword": "문무바람",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
-        },
-        {
-          "uid": "DM202608337269",
-          "title": "울산 문무바람 부유식 해상풍력 1,3단지 발전사업 운영·유지보수 참여의향 알림",
-          "dept": "한국남부발전(주)",
-          "dept_full": "한국남부발전(주)",
-          "instt": "한국남부발전(주)",
-          "date": "2026-11-14",
-          "prod_date": "2026-11-13",
-          "doc_no": "재생(해상풍력)-687",
-          "keyword": "문무바람",
-          "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do?kwd=%EB%AC%B8%EB%AC%B4%EB%B0%94%EB%9E%8C"
-        }
-      ],
-      "total": 43,
+      "error": "모든 키워드 조회 실패: 시루풍력, 왕신풍력, 고곡풍력, 고실풍력, 삼척에코윈드, 운제풍력, 문무바람, 이스트블루파워, 한국부유식풍력, 해울이해상풍력, 한국바람, 해파랑육상풍력",
+      "new_count": 0,
+      "new_items": [],
+      "total": 0,
       "keywords": [
         "시루풍력",
         "왕신풍력",
