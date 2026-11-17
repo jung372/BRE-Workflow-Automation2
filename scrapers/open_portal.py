@@ -25,6 +25,11 @@ KST = timezone(timedelta(hours=9))
 BASE = "https://www.open.go.kr"
 SEARCH_PAGE = BASE + "/com/search/uniSrhMoreList.do"
 LIST_API = BASE + "/othicInfo/infoList/infoList.ajax"
+MAINTENANCE_URL = BASE + "/html/service_inspection.html"
+MAINTENANCE_MESSAGE = (
+    "정보공개포털의 정보목록 메뉴가 점검 중입니다. "
+    "재개 일정은 포털 공지사항에서 안내합니다."
+)
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -145,6 +150,31 @@ def _payload(keyword: str, cfg, start: str, end: str) -> dict:
     }
 
 
+def is_maintenance_page(text: str) -> bool:
+    """포털이 실제로 표시한 공식 점검 안내만 점검 상태로 판정한다."""
+    text = " ".join(text.split())
+    return (
+        "정보공개포털 메뉴 점검 안내" in text
+        and "점검 중인 메뉴의 이용을 일시 제한합니다" in text
+    )
+
+
+def _read_result(response) -> dict:
+    """HTTP 오류·차단 HTML·잘못된 응답을 정상적인 검색 0건과 구분한다."""
+    if not response.ok:
+        raise ValueError(f"정보목록 API HTTP {response.status}")
+    try:
+        payload = json.loads(response.text())
+    except (ValueError, TypeError):
+        raise ValueError("정보목록 API가 JSON 대신 오류 페이지를 반환했습니다") from None
+    result = payload.get("result") if isinstance(payload, dict) else None
+    if not isinstance(result, dict) or not isinstance(result.get("rtnList"), list):
+        raise ValueError("정보목록 API 응답에 rtnList 배열이 없습니다")
+    if any(not isinstance(row, dict) for row in result["rtnList"]):
+        raise ValueError("정보목록 API의 게시글 형식이 올바르지 않습니다")
+    return result
+
+
 def fetch_open_portal(site: dict, p_instance) -> tuple:
     """지정 키워드로 정보목록을 조회해 정규화된 항목 목록을 반환한다."""
     cfg = load_keywords()
@@ -179,6 +209,11 @@ def fetch_open_portal(site: dict, p_instance) -> tuple:
         )
         page.wait_for_timeout(2000)
 
+        # 점검 화면도 HTTP 200이다. 키워드별 API 호출 전에 안내 본문을 확인한다.
+        if is_maintenance_page(page.locator("body").inner_text()):
+            log.warning(f"[{site['name']}] {MAINTENANCE_MESSAGE}")
+            return None, MAINTENANCE_MESSAGE
+
         cookies = {c["name"]: c["value"] for c in context.cookies()}
         xsrf = cookies.get("XSRF-TOKEN", "")
         if not xsrf:
@@ -186,6 +221,7 @@ def fetch_open_portal(site: dict, p_instance) -> tuple:
 
         collected = []
         failed = []
+        failure_reasons = []
         for keyword in cfg.keywords:
             try:
                 resp = context.request.post(
@@ -198,20 +234,14 @@ def fetch_open_portal(site: dict, p_instance) -> tuple:
                     },
                     timeout=GOTO_TIMEOUT,
                 )
-                result = json.loads(resp.text()).get("result") or {}
+                result = _read_result(resp)
             except Exception as e:
                 log.error(f"[{site['name']}] '{keyword}' 조회 실패: {e}")
                 failed.append(keyword)
+                failure_reasons.append(str(e))
                 continue
 
-            rows = result.get("rtnList")
-            if rows is None:
-                log.error(
-                    f"[{site['name']}] '{keyword}' 응답에 rtnList 가 없습니다. "
-                    "세션 쿠키 정책이 바뀌었을 수 있습니다."
-                )
-                failed.append(keyword)
-                continue
+            rows = result["rtnList"]
 
             total = result.get("rtnTotal")
             # pageIndex 페이징이 동작하지 않아(1/2페이지 결과 동일) 한 번에 받는다.
@@ -242,7 +272,10 @@ def fetch_open_portal(site: dict, p_instance) -> tuple:
             collected.extend(normalize(r, keyword) for r in rows)
 
         if failed and len(failed) == len(cfg.keywords):
-            return None, f"모든 키워드 조회 실패: {', '.join(failed)}"
+            return None, (
+                f"모든 키워드 조회 실패: {', '.join(failed)} "
+                f"(원인: {failure_reasons[0]})"
+            )
 
         items = dedupe(collected)
         log.info(f"[{site['name']}] {len(items)}건 파싱 완료 (키워드 {len(cfg.keywords)}개)")

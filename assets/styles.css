@@ -192,6 +192,9 @@ h1 {
 .card-url  { font-size: 13px; color: var(--text-muted); opacity: 0.8; }
 
 /* ── 감시 키워드 칩 (정보공개 청구 카드) ── */
+.new-count.is-maintenance { color: var(--amber); font-size: 32px; }
+.maintenance-msg { color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+.maintenance-msg .visit-link { margin-top: 12px; }
 .kw-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
 .kw-wrap:empty { display: none; }
 .kw-chip {

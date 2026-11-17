@@ -8,6 +8,7 @@ from keywords          import load_keywords
 from runtime_config    import get_status_file
 from scrapers          import fetch_site
 from scrapers.metmast  import check_metmast
+from scrapers.open_portal import MAINTENANCE_MESSAGE, MAINTENANCE_URL
 
 KST      = timezone(timedelta(hours=9))
 OUTPUT   = str(get_status_file())
@@ -22,6 +23,17 @@ def _site_extras(site: dict) -> dict:
         # 감시 중인 키워드를 칩으로 보여주기 위해 현재 설정을 함께 싣는다.
         return {"keywords": list(load_keywords().keywords)}
     return {}
+
+
+def _failure_extras(site: dict, error: str, site_state: dict) -> dict:
+    if site.get("type") != "openportal" or error != MAINTENANCE_MESSAGE:
+        return {}
+    snapshots = site_state.get("hourly_snapshots", {}) if isinstance(site_state, dict) else {}
+    return {
+        "status": "maintenance",
+        "maintenance_url": MAINTENANCE_URL,
+        "last_success_at": max(snapshots, default=""),
+    }
 
 
 def run() -> dict:
@@ -55,6 +67,7 @@ def run() -> dict:
                     "url": site["url"], "error": err or "데이터 수집 실패",
                     "new_count": 0, "new_items": [], "total": 0,
                     **_site_extras(site),
+                    **_failure_extras(site, err, state.get(site["id"], {})),
                 })
                 continue
 

@@ -115,12 +115,21 @@ function render(data) {
 
     const hasNew       = site.new_count > 0;
     const isErr        = !!site.error;
+    const isMaintenance = site.status === 'maintenance';
     const countContent = document.getElementById(`count-content-${site.id}`);
     const itemsWrap    = document.getElementById(`items-wrap-${site.id}`);
     const totalText    = document.getElementById(`total-${site.id}`);
 
-    if (isErr) {
-      countContent.innerHTML = `<div class="new-count is-error">오류</div><div class="error-msg">${site.error}</div>`;
+    if (isMaintenance) {
+      countContent.innerHTML = `<div class="new-count is-maintenance">점검 중</div><div class="maintenance-msg">${escapeHtml(site.error)}</div>`;
+      itemsWrap.innerHTML = `<div class="maintenance-msg">신규 게시글 확인을 보류합니다. 포털 재개 후 자동으로 다시 조회합니다.<br><a class="visit-link" href="https://www.open.go.kr/html/service_inspection.html" target="_blank" rel="noopener">공식 점검 안내 ↗</a></div>`;
+      totalText.textContent = site.last_success_at
+        ? `마지막 정상 수집: ${site.last_success_at}시`
+        : '아직 정상 수집 이력이 없습니다';
+    } else if (isErr) {
+      countContent.innerHTML = `<div class="new-count is-error">오류</div><div class="error-msg">${escapeHtml(site.error)}</div>`;
+      itemsWrap.innerHTML = '';
+      totalText.textContent = '수집 결과 확인 불가';
     } else {
       countContent.innerHTML = `
         <a class="new-count-link" href="${site.url}" target="_blank" rel="noopener" title="바로가기">
