@@ -1,9 +1,14 @@
 import unicodedata
 import unittest
+from unittest.mock import Mock, patch
 
 from tests import context  # noqa: F401
 
 from scrapers.open_portal import (
+    _read_result,
+    MAINTENANCE_MESSAGE,
+    fetch_open_portal,
+    is_maintenance_page,
     dedupe,
     extract_dept,
     filter_rows_for_keyword,
@@ -27,6 +32,56 @@ REAL_RECORD = {
     "PRDCTN_INSTT_REGIST_NO": "DCT1B2D6C2EA3A14C62BCFE3A87A4868CBB",
     "R_DATE": "20260804",
 }
+
+
+class ApiResponseTest(unittest.TestCase):
+    def response(self, body, status=200):
+        return Mock(ok=200 <= status < 300, status=status, text=Mock(return_value=body))
+
+    def test_reports_removed_endpoint_before_parsing_html(self):
+        with self.assertRaisesRegex(ValueError, "HTTP 404"):
+            _read_result(self.response("<html>Not Found</html>", 404))
+
+    def test_does_not_treat_access_error_as_zero_results(self):
+        for body in ('<html>로그인이 필요합니다</html>', '{}', '{"result": null}',
+                     '{"result":{"rtnList":{}}}', '{"result":{"rtnList":[null]}}'):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                _read_result(self.response(body))
+
+    def test_accepts_genuine_empty_search(self):
+        self.assertEqual(
+            _read_result(self.response('{"result":{"rtnList":[],"rtnTotal":0}}')),
+            {"rtnList": [], "rtnTotal": 0},
+        )
+
+
+class MaintenanceTest(unittest.TestCase):
+    NOTICE = (
+        "정보공개포털 메뉴 점검 안내\n"
+        "점검 중인 메뉴의 이용을 일시 제한합니다\n"
+        "제한 기간 2026.11.12.부터 점검 및 정비 완료 시까지"
+    )
+
+    def test_detects_official_notice_with_whitespace(self):
+        self.assertTrue(is_maintenance_page(self.NOTICE))
+
+    def test_maintenance_link_in_navigation_is_not_an_outage(self):
+        self.assertFalse(is_maintenance_page(
+            '정보목록 검색 결과 43건 /html/service_inspection.html 점검 안내'
+        ))
+
+    def test_stops_before_keyword_requests_and_closes_browser(self):
+        playwright = Mock()
+        browser = playwright.chromium.launch.return_value
+        context = browser.new_context.return_value
+        page = context.new_page.return_value
+        page.locator.return_value.inner_text.return_value = self.NOTICE
+        with patch('scrapers.open_portal.goto_with_retry'):
+            items, error = fetch_open_portal({'name': '정보공개 청구'}, playwright)
+        self.assertIsNone(items)
+        self.assertEqual(error, MAINTENANCE_MESSAGE)
+        context.request.post.assert_not_called()
+        browser.close.assert_called_once()
 
 
 class ExtractDeptTest(unittest.TestCase):
