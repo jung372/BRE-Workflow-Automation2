@@ -1,6 +1,7 @@
 """One-off read-only portal diagnostics; never print cookies or document bodies."""
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -43,9 +44,10 @@ with sync_playwright() as p:
     try:
         context = browser.new_context(user_agent=USER_AGENT, locale="ko-KR", extra_http_headers={"Accept-Language": "ko-KR,ko;q=0.9"})
         page = context.new_page()
+        observed = []
         def observe(response):
-            if "setFingerPrint" in response.url or "infoList.ajax" in response.url:
-                print("page_response", response.url.split("?")[0], response.status, summary(response.text()), flush=True)
+            if response.request.resource_type in ("xhr", "fetch"):
+                observed.append(response)
         page.on("response", observe)
         page.on("pageerror", lambda error: print("pageerror", str(error)[:300], flush=True))
         response = page.goto(search_url(cfg.keywords[0]), wait_until="networkidle", timeout=40000)
@@ -54,6 +56,22 @@ with sync_playwright() as p:
         print("script_urls", page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src).filter(u=>/search|common|finger/i.test(u))"), flush=True)
         cookies = {cookie["name"]: cookie["value"] for cookie in context.cookies()}
         print("cookie_names", list(cookies), flush=True)
+        for captured in observed:
+            try:
+                print("page_response", captured.url.split("?")[0], captured.status, summary(captured.text()), flush=True)
+            except Exception:
+                print("page_response", captured.url.split("?")[0], captured.status, "body unavailable", flush=True)
+        for script in page.locator("script").all_text_contents():
+            if "infoList" in script:
+                lines = script.splitlines()
+                for i, line in enumerate(lines):
+                    if "infoList" in line:
+                        print("infoList_script", "\n".join(lines[max(0,i-3):i+4]), flush=True)
+        scripts = page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src).filter(u=>/search|commonData|ops-common/i.test(u))")
+        for url in scripts:
+            source = context.request.get(url).text()
+            for match in re.finditer(r"infoList|setFingerPrint", source):
+                print("external_script", url.split("?")[0], source[max(0,match.start()-250):match.end()+350], flush=True)
         headers = {"X-Requested-With": "XMLHttpRequest", "X-XSRF-TOKEN": cookies.get("XSRF-TOKEN", ""), "Referer": search_url(cfg.keywords[0])}
         for transport in ("request", "browser"):
             if transport == "request":
