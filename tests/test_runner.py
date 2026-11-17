@@ -34,7 +34,7 @@ class PortalMaintenanceStateTest(unittest.TestCase):
                 patch.object(runner, 'fetch_site', return_value=(current, error)),
             ):
                 result = runner.run()['sites'][0]
-                self.assertEqual(json.loads(output.read_text())['sites'][0], result)
+                self.assertEqual(json.loads(output.read_text(encoding='utf-8'))['sites'][0], result)
                 return result, save.call_args.args[0], original
 
     def test_maintenance_preserves_successful_snapshots(self):
