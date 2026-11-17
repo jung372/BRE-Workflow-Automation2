@@ -39,6 +39,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  portal-diagnostic:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/fix-open-portal-session'
+    runs-on: [self-hosted, windows, x64, bre-workflow-server]
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect public portal without publishing or sending alerts
+        shell: powershell
+        env:
+          BRE_ENV_FILE: 'D:\05 AI Study\BRE_Workflow_runtime\.env'
+        run: |
+          $release = (Get-Content -LiteralPath 'D:\05 AI Study\BRE Workflow Automation\current_release.txt' -Raw).Trim()
+          & (Join-Path $release '.venv\Scripts\python.exe') .\scripts\diagnose_open_portal.py $release
+
   solar-install:
     needs: test
     if: >-
