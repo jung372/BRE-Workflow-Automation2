@@ -53,7 +53,11 @@ with sync_playwright() as p:
         response = page.goto(search_url(cfg.keywords[0]), wait_until="networkidle", timeout=40000)
         page.wait_for_timeout(2000)
         print("shell", response.status, "title", page.title(), "path", page.url.split("?")[0], flush=True)
-        print("script_urls", page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src).filter(u=>/search|common|finger/i.test(u))"), flush=True)
+        print("script_urls", page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src)"), flush=True)
+        print("navigation", page.locator("a[href]").evaluate_all("nodes => nodes.filter(n=>/정보목록|검색|전체보기/.test(n.textContent)).map(n=>({text:n.textContent.trim().slice(0,80),href:n.getAttribute('href')})).slice(0,50)"), flush=True)
+        print("forms", page.locator("form").evaluate_all("nodes=>nodes.map(n=>({id:n.id,action:n.action,fields:Array.from(n.elements).map(e=>({name:e.name,type:e.type}))}))"), flush=True)
+        print("frames", [frame.url for frame in page.frames], flush=True)
+        print("shell_text", page.locator("body").inner_text()[:3500], flush=True)
         cookies = {cookie["name"]: cookie["value"] for cookie in context.cookies()}
         print("cookie_names", list(cookies), flush=True)
         for captured in observed:
@@ -62,14 +66,15 @@ with sync_playwright() as p:
             except Exception:
                 print("page_response", captured.url.split("?")[0], captured.status, "body unavailable", flush=True)
         for script in page.locator("script").all_text_contents():
-            if "infoList" in script:
-                lines = script.splitlines()
-                for i, line in enumerate(lines):
-                    if "infoList" in line:
-                        print("infoList_script", "\n".join(lines[max(0,i-3):i+4]), flush=True)
-        scripts = page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src).filter(u=>/search|commonData|ops-common/i.test(u))")
+            endpoints = re.findall(r'''['"]([^'"\r\n]*(?:\.ajax|\.do|\.js)[^'"\r\n]*)['"]''', script)
+            if endpoints:
+                print("inline_endpoints", endpoints, flush=True)
+        scripts = page.locator("script[src]").evaluate_all("nodes => nodes.map(n=>n.src).filter(u=>!/jquery|bxslider|jqcloud/i.test(u))")
         for url in scripts:
             source = context.request.get(url).text()
+            endpoints = re.findall(r'''['"]([^'"\r\n]*(?:\.ajax|\.do)[^'"\r\n]*)['"]''', source)
+            if endpoints:
+                print("external_endpoints", url.split("?")[0], endpoints, flush=True)
             for match in re.finditer(r"infoList|setFingerPrint", source):
                 print("external_script", url.split("?")[0], source[max(0,match.start()-250):match.end()+350], flush=True)
         headers = {"X-Requested-With": "XMLHttpRequest", "X-XSRF-TOKEN": cookies.get("XSRF-TOKEN", ""), "Referer": search_url(cfg.keywords[0])}
