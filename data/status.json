@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-19 09:00:06",
+  "checked_at": "2026-11-19 10:00:04",
   "sites": [
     {
       "id": "notice",
@@ -57,7 +57,7 @@
       "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 10
     },
     {
       "id": "nie_notice",
