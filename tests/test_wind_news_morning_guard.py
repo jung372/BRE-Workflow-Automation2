@@ -34,7 +34,7 @@ function wsl {
     throw 'UNEXPECTED_WSL_COMMAND'
 }
 for ($i=0; $i -lt REPEAT; $i++) {
-    try { & 'SCRIPT' -StateDirectory 'STATE_DIR' -NowUtc ([DateTime]::Parse('WHEN_TIME').ToUniversalTime()) }
+    try { & 'SCRIPT' -StateDirectory 'STATE_DIR' -NowUtc ([DateTime]::Parse('WHEN_TIME').ToUniversalTime()) 3>&1 }
     catch {
         if ($_.Exception.Message -notlike 'MORNING_SERVICE_NOT_HEALTHY*') { throw }
         Write-Output $_.Exception.Message
