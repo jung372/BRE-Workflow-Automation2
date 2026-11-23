@@ -188,7 +188,8 @@ class Store:
                 group, day, _ = schedule
                 active = db.execute("""SELECT j.* FROM jobs j JOIN job_schedule s USING (job_id)
                     WHERE operation=? AND schedule_group=? AND schedule_date=?
-                    AND request_hash=? AND status IN ('QUEUED','RUNNING') ORDER BY created_at,job_id LIMIT 1""",
+                    AND (request_hash=? OR schedule_group IN ('collect','cutoff','reconcile','backup','purge'))
+                    AND status IN ('QUEUED','RUNNING') ORDER BY created_at,job_id LIMIT 1""",
                     [operation, group, day, request_hash]).fetchone()
                 if active:
                     db.execute("INSERT INTO job_aliases VALUES (?,?,?,?)", [operation, key, request_hash, active[0]])

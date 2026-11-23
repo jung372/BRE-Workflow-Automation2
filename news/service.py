@@ -128,9 +128,12 @@ class JobRunner:
             if self.briefing_stopped(payload["issue_date"]) and not payload.get("correction_reason"):
                 return present_issue(self.store.verified_issue(self.profile.industry + "-" + payload["issue_date"]))
             now = self.clock().astimezone(KST)
+            schedule = scheduled_job(operation, job['idempotency_key'], payload, now)
+            if schedule and self.config['policy'].get('auto_recover') and 'retry_blocked' not in payload:
+                payload = {**payload, 'retry_blocked': True}
             if (self.config['policy'].get('auto_recover') and self.config['collection'].get('enabled')
                     and payload['issue_date'] == now.date().isoformat() and MORNING_START <= now.time() < FIRST_SEND
-                    and not payload.get('correction_reason') and scheduled_job(operation, job['idempotency_key'], payload, now)
+                    and not payload.get('correction_reason') and schedule
                     and not self.store.issue(self.profile.issue_id(payload['issue_date'])) and not self.cutoff_batch(payload['issue_date'])):
                 self.collect(job['job_id'] + '-cutoff')
             return present_issue(self.pipeline.prepare(payload))
@@ -238,7 +241,7 @@ class JobRunner:
                     job = self.submit_scheduled('collect', 'cutoff', {}, now)
                     enqueued.append(job['job_id'])
                 elif (now.hour, now.minute) >= (7, 40):
-                    job = self.submit_scheduled('prepare', 'prepare', {'issue_date': day, 'retry_blocked': True}, now)
+                    job = self.submit_scheduled('prepare', 'prepare', {'issue_date': day}, now)
                     enqueued.append(job['job_id'])
             elif current and current["state"] in {"READY", "COMMITTED"} and (now.hour, now.minute) >= (7, 50) and policy.get("publisher", {}).get("enabled"):
                 job = self.submit_scheduled('publish', 'publish', {'issue_id': current['issue_id'], 'revision': current['revision'],
@@ -417,8 +420,6 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
             return jsonify(error_code=error), 503
         key = key or request.headers.get('Idempotency-Key')
         schedule = scheduled_job(operation, key or '', payload, runner.clock())
-        if schedule and operation == 'prepare':
-            payload.setdefault('retry_blocked', True)
         job = store.submit(operation, key, payload, schedule=schedule, timeout=25)
         runner._wake.set()
         return jsonify(job_id=job["job_id"], status=job["status"]), 202

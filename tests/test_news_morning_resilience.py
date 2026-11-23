@@ -72,6 +72,11 @@ class MorningResilienceTests(unittest.TestCase):
             self.assertTrue(all(store.job(job['job_id'])['error_code'] == 'SCHEDULE_EXPIRED' for job in stale))
             self.assertEqual(store.job(old_briefing['job_id'])['result']['error_code'], 'BRIEFING_DATE_EXPIRED')
 
+            existing = runner.submit_scheduled('collect', 'cutoff', {}, now)
+            cron_headers = {**headers, 'Idempotency-Key': f'BRE-{industry.upper()}-01-Collect:current'}
+            cron = client.post('/v1/collect', json={'issue_date': today}, headers=cron_headers)
+            self.assertEqual(cron.json['job_id'], existing['job_id'])
+
             for hour, minute in ((7, 35), (7, 40), (7, 50)):
                 now = now.replace(hour=hour, minute=minute)
                 runner.schedule_local(now)
