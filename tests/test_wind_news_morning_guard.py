@@ -34,7 +34,7 @@ function wsl {
     throw 'UNEXPECTED_WSL_COMMAND'
 }
 for ($i=0; $i -lt REPEAT; $i++) {
-    try { & 'SCRIPT' -StateDirectory 'STATE_DIR' -NowUtc ([DateTime]::Parse('WHEN_TIME').ToUniversalTime()) 3>&1 }
+    try { & 'SCRIPT' -StateDirectory 'STATE_DIR' -NowUtc ([DateTime]::Parse('WHEN_TIME').ToUniversalTime()) }
     catch {
         if ($_.Exception.Message -notlike 'MORNING_SERVICE_NOT_HEALTHY*') { throw }
         Write-Output $_.Exception.Message
@@ -52,31 +52,32 @@ Write-Output ('RESTARTED=' + ($global:restarted -join ','))
             encoded = base64.b64encode(command.encode("utf-16-le")).decode()
             result = subprocess.run([shutil.which("powershell.exe"), "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
                                     capture_output=True, text=True, timeout=30)
+            logs = {path.name: path.read_text(encoding='ascii') for path in Path(state).glob('*.log')}
         self.assertEqual(result.returncode, 0, result.stderr)
-        return result.stdout
+        return result.stdout, logs
 
     def test_healthy_services_are_never_restarted(self):
-        output = self.run_guard("2026-10-14T07:00:00+09:00")
+        output, _ = self.run_guard("2026-10-14T07:00:00+09:00")
         self.assertIn("MORNING_SERVICES_HEALTHY", output)
         self.assertIn("STARTED=\n", output)
 
     def test_only_stopped_news_and_supervisor_are_started(self):
-        output = self.run_guard("2026-10-14T09:25:00+09:00", "bre-wind-news-news-service-1", "Ready")
+        output, _ = self.run_guard("2026-10-14T09:25:00+09:00", "bre-wind-news-news-service-1", "Ready")
         self.assertIn("STARTED=supervisor,bre-wind-news-news-service-1", output)
 
     def test_no_startup_or_docker_calls_outside_morning_window(self):
         for at in ("2026-10-14T06:59:00+09:00", "2026-10-14T09:30:00+09:00", "2026-10-14T15:30:00+09:00"):
-            output = self.run_guard(at, "bre-wind-news-news-service-1", "Ready")
+            output, _ = self.run_guard(at, "bre-wind-news-news-service-1", "Ready")
             self.assertIn("MORNING_GUARD_OUTSIDE_WINDOW", output)
             self.assertNotIn("MORNING_SERVICES_HEALTHY", output)
 
     def test_unhealthy_solar_restarts_only_solar_and_has_daily_limit(self):
         container = 'bre-solar-news-solar-news-service-1'
-        output = self.run_guard('2026-10-14T07:00:00+09:00', unhealthy=container, repeat=3)
-        self.assertIn(f'RESTARTED={container},{container}', output)
-        self.assertIn('MORNING_NEWS_RESTART_LIMIT=solar', output)
+        output, logs = self.run_guard('2026-10-14T07:00:00+09:00', unhealthy=container, repeat=3)
+        self.assertIn(f'RESTARTED={container},{container}', output.splitlines())
+        self.assertEqual(len(logs['restarts-2026-10-14-solar.log'].splitlines()), 2)
 
     def test_0820_reports_incomplete_preparation_for_both_services(self):
-        output = self.run_guard('2026-10-14T08:20:00+09:00', probe_ready=False)
-        self.assertIn('08:20 KST wind PREPARE_RUNNING', output)
-        self.assertIn('08:20 KST solar PREPARE_RUNNING', output)
+        _, logs = self.run_guard('2026-10-14T08:20:00+09:00', probe_ready=False)
+        self.assertIn('08:20 KST wind PREPARE_RUNNING', logs['alert-2026-10-14-wind.log'])
+        self.assertIn('08:20 KST solar PREPARE_RUNNING', logs['alert-2026-10-14-solar.log'])
