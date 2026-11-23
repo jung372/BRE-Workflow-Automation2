@@ -108,7 +108,8 @@ class JobRunner:
             destination = self.runtime / "backups" / (self.profile.industry + "-news-" + job["job_id"] + ".duckdb")
             if destination.exists():
                 import hashlib
-                return {"filename": destination.name, "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
+                with destination.open("rb") as stream:
+                    return {"filename": destination.name, "sha256": hashlib.file_digest(stream, "sha256").hexdigest()}
             return self.store.backup(destination)
         if operation == "reconcile":
             return self.reconcile()
@@ -351,6 +352,8 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
     @app.get("/health/ready")
     @authenticated
     def health():
+        if start_worker and (not runner._thread or not runner._thread.is_alive()):
+            return jsonify(status="unavailable", error_code="NEWS_JOB_WORKER_STOPPED"), 503
         store.call(lambda db: db.execute("SELECT 1").fetchone())
         return jsonify(status="ready", schema_version=1, industry=profile.industry)
 

@@ -113,12 +113,12 @@ class Store:
             if connection is not None:
                 connection.close()
 
-    def call(self, fn, *, write=False):
+    def call(self, fn, *, write=False, timeout=120):
         if self._closed:
             raise RuntimeError("store_closed")
         future = Future()
         self._queue.put((fn, write, future))
-        return future.result(timeout=120)
+        return future.result(timeout=timeout)
 
     def bind_industry(self, industry):
         from .profiles import profile_for
@@ -178,7 +178,7 @@ class Store:
                 return None
             db.execute("UPDATE jobs SET status='RUNNING',updated_at=? WHERE job_id=?", [utcnow(), row[0]])
             return self._job(db.execute("SELECT * FROM jobs WHERE job_id=?", [row[0]]).fetchone())
-        return self.call(work, write=True)
+        return self.call(work, write=True, timeout=None)
 
     def finish_job(self, job_id, result=None, error_code=None):
         def work(db):
@@ -186,7 +186,7 @@ class Store:
             db.execute("UPDATE jobs SET status=?,result=?,error_code=?,updated_at=? WHERE job_id=?", ["FAILED" if error_code else "SUCCEEDED", canonical(result) if result is not None else None, error_code, utcnow(), job_id])
             if operation and operation[0] == "ingest" and not error_code:
                 db.execute("UPDATE jobs SET payload=? WHERE job_id=?", [canonical({"batch_id": job_id}), job_id])
-        self.call(work, write=True)
+        self.call(work, write=True, timeout=None)
 
     def recover(self):
         def work(db):
@@ -329,5 +329,6 @@ class Store:
             finally:
                 verification.close()
             os.replace(temporary, destination)
-            return {"filename": destination.name, "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
-        return self.call(work)
+        self.call(work, timeout=None)
+        with destination.open("rb") as stream:
+            return {"filename": destination.name, "sha256": hashlib.file_digest(stream, "sha256").hexdigest()}

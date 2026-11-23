@@ -218,12 +218,25 @@ class PipelineTests(unittest.TestCase):
 
     def test_old_published_metadata_kept_when_raw_evidence_purged(self):
         record = self.approve(self.prepare())
+        self.pipeline.ingest(self.fixture, "repeat-batch")
         self.store.call(lambda db: db.execute("UPDATE articles SET updated_at='2020-01-01T00:00:00+00:00'").fetchall(), write=True)
+        # Legacy rows may already have compacted article evidence but still
+        # retain raw fields in the snapshots of the same article.
+        self.store.call(lambda db: db.execute("UPDATE articles SET evidence='{}' WHERE article_id=(SELECT min(article_id) FROM articles)"), write=True)
         self.assertEqual(self.pipeline.purge_expired_evidence(), 2)
         after = self.store.issue(record["issue_id"])
         self.assertEqual(after["payload"], record["payload"])
         for row in self.store.call(lambda db: db.execute("SELECT evidence FROM articles").fetchall()):
             self.assertNotIn("description", json.loads(row[0]))
+        snapshots = self.store.call(lambda db: db.execute("SELECT article_snapshot FROM batch_articles ORDER BY batch_id,article_id").fetchall())
+        self.assertEqual(len(snapshots), 4)
+        for (raw,) in snapshots:
+            snapshot = json.loads(raw)
+            self.assertNotIn("text", snapshot)
+            self.assertNotIn("description", snapshot)
+            self.assertTrue(snapshot["title"])
+        self.pipeline.purge_expired_evidence()
+        self.assertEqual(self.store.call(lambda db: db.execute("SELECT article_snapshot FROM batch_articles ORDER BY batch_id,article_id").fetchall()), snapshots)
 
     def test_correction_can_freeze_only_original_published_members(self):
         self.pipeline.policy["max_summary_candidates"] = 1

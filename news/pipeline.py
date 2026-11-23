@@ -467,21 +467,22 @@ class Pipeline:
         candidate["item"]["tags"] = [facts["contract_stage"]] if facts["contract_stage"] != "미확인" else []
 
     def purge_expired_evidence(self):
-        cutoff = datetime.now(timezone.utc) - timedelta(days=min(30, self.policy.get("raw_text_retention_days", 30)))
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=min(30, self.policy.get("raw_text_retention_days", 30)))).isoformat()
+        remove_fields = '{"text":null,"description":null}'
+
         def work(db):
-            expired = db.execute("SELECT article_id,evidence FROM articles WHERE updated_at<?", [cutoff.isoformat()]).fetchall()
-            for article_id, raw in expired:
-                evidence = json.loads(raw)
-                evidence.pop("text", None)
-                evidence.pop("description", None)
-                db.execute("UPDATE articles SET evidence=? WHERE article_id=?", [canonical(evidence), article_id])
-                snapshots = db.execute("SELECT batch_id,article_snapshot FROM batch_articles WHERE article_id=?", [article_id]).fetchall()
-                for batch_id, snapshot in snapshots:
-                    if snapshot:
-                        content = json.loads(snapshot)
-                        content.pop("text", None)
-                        content.pop("description", None)
-                        db.execute("UPDATE batch_articles SET article_snapshot=? WHERE batch_id=? AND article_id=?", [canonical(content), batch_id, article_id])
-            db.execute("UPDATE jobs SET payload='{}',status=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'FAILED' ELSE status END,error_code=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'RAW_EVIDENCE_EXPIRED' ELSE error_code END WHERE operation='ingest' AND created_at<?", [cutoff.isoformat()])
-            return len(expired)
-        return self.store.call(work, write=True)
+            expired = db.execute("SELECT count(*) FROM articles WHERE updated_at<?", [cutoff]).fetchone()[0]
+            if expired:
+                db.execute("""UPDATE articles SET evidence=json_merge_patch(evidence, ?)
+                    WHERE updated_at<? AND (json_exists(evidence, '$.text') OR json_exists(evidence, '$.description'))""",
+                    [remove_fields, cutoff])
+                db.execute("""UPDATE batch_articles AS b SET article_snapshot=json_merge_patch(b.article_snapshot, ?)
+                    FROM articles AS a WHERE b.article_id=a.article_id AND a.updated_at<?
+                    AND (json_exists(b.article_snapshot, '$.text') OR json_exists(b.article_snapshot, '$.description'))""",
+                    [remove_fields, cutoff])
+            db.execute("""UPDATE jobs SET payload='{}',
+                status=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'FAILED' ELSE status END,
+                error_code=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'RAW_EVIDENCE_EXPIRED' ELSE error_code END
+                WHERE operation='ingest' AND created_at<? AND (payload<>'{}' OR status IN ('QUEUED','RUNNING'))""", [cutoff])
+            return expired
+        return self.store.call(work, write=True, timeout=None)

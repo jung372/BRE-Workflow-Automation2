@@ -64,6 +64,13 @@ class ServiceTests(unittest.TestCase):
         self.assertNotIn(TOKEN, self.client.get("/review").get_data(as_text=True))
         self.assertEqual(self.client.get("/health/ready", headers=self.headers).json["status"], "ready")
 
+    def test_readiness_requires_the_configured_job_worker(self):
+        with patch("news.service.JobRunner.start"):
+            app = create_app(self.config, store=self.store, runtime=self.temp.name, token=TOKEN)
+        response = app.test_client().get("/health/ready", headers=self.headers)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json["error_code"], "NEWS_JOB_WORKER_STOPPED")
+
     def test_ingest_persisted_before202_job_idempotency_and_redacted_poll(self):
         job_id = self.enqueue("/v1/ingest", self.fixture, "ingest")
         self.assertEqual(self.store.job(job_id)["status"], "QUEUED")
