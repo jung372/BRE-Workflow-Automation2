@@ -70,6 +70,9 @@ class ServiceTests(unittest.TestCase):
         response = app.test_client().get("/health/ready", headers=self.headers)
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json["error_code"], "NEWS_JOB_WORKER_STOPPED")
+        submit = app.test_client().post('/v1/reconcile', headers=self.headers, json={})
+        self.assertEqual(submit.status_code, 503)
+        self.assertEqual(submit.json['error_code'], 'NEWS_JOB_WORKER_STOPPED')
 
     def test_ingest_persisted_before202_job_idempotency_and_redacted_poll(self):
         job_id = self.enqueue("/v1/ingest", self.fixture, "ingest")
@@ -300,6 +303,8 @@ class ServiceTests(unittest.TestCase):
         first = self.runner.reconcile()
         self.assertEqual(len(first["enqueued_jobs"]), 1)
         self.runner.run_once()
+        self.assertEqual(self.runner.reconcile()['enqueued_jobs'], first['enqueued_jobs'])
+        self.runner.clock = lambda: datetime(2026, 9, 29, 23, 10, tzinfo=timezone.utc)
         second = self.runner.reconcile()
         self.assertEqual(len(second["enqueued_jobs"]), 1)
         self.assertNotEqual(first["enqueued_jobs"], second["enqueued_jobs"])
@@ -327,7 +332,10 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.client.post("/v1/briefings/check", json={}).status_code, 401)
         first = self.morning()
         self.assertEqual(self.morning(hour=23, minute=34), first)
-        self.assertNotEqual(self.morning(hour=23, minute=35), first)
+        self.assertEqual(self.morning(hour=23, minute=35), first)
+        self.store.finish_job(first, error_code='FIXTURE_FAILURE')
+        self.assertEqual(self.morning(hour=23, minute=35), first)
+        self.assertNotEqual(self.morning(hour=23, minute=40), first)
         self.runner.clock = lambda: datetime(2026, 9, 30, 0, 30, tzinfo=timezone.utc)
         self.assertEqual(self.client.post("/v1/briefings/check", json={}, headers=self.headers).status_code, 400)
         for data in ({"issue_date": "2026-09-29"}, {"revision": 1}, {"message_type": "correction"}):

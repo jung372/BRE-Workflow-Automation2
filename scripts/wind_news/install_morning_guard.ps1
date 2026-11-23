@@ -12,6 +12,7 @@ if ($existing) {
     Export-ScheduledTask -TaskName $taskName | Set-Content -LiteralPath (Join-Path $directory 'morning-guard.previous.xml') -Encoding UTF8
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ensure_morning_server.ps1') -Destination $script -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'probe_morning.py') -Destination $directory -Force
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
 $trigger = New-ScheduledTaskTrigger -Daily -At '07:00'
 $trigger.StartBoundary = (Get-Date -Hour 7 -Minute 0 -Second 0).ToString('yyyy-MM-dd') + 'T07:00:00+09:00'
@@ -22,5 +23,5 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -Multipl
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $supervisor.Principal -Force > $null
 $actual = Get-ScheduledTask -TaskName $taskName
 if ($actual.Triggers[0].Repetition.Interval -ne 'PT5M' -or -not $actual.Settings.WakeToRun) { throw 'MORNING_GUARD_VERIFICATION_FAILED' }
-Write-Output 'MORNING_GUARD_INSTALLED window=07:00-09:25 interval=5m wake=true'
+Write-Output 'MORNING_GUARD_INSTALLED wind=true solar=true window=07:00-09:25 interval=5m wake=true'
 Write-Output ('MORNING_GUARD_LOGON_TYPE=' + [string]$actual.Principal.LogonType)

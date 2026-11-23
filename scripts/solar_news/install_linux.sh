@@ -74,5 +74,7 @@ done
 [[ "$health" == healthy ]] || { echo 'SOLAR_HEALTH_FAILED'; exit 1; }
 ln -sfn "$release" "$root/current"
 printf 'SOLAR_SERVICE_READY release=%s\n' "$release_sha"
+docker exec -i "$cid" python - solar < "$source_root/scripts/wind_news/probe_morning.py"
+python3 "$source_root/scripts/wind_news/report_schedule.py" solar "$root"
 docker exec "$cid" python -c 'from news.dedup import RULE_VERSION; print("SOLAR_DEDUP_RULE=" + RULE_VERSION)'
 docker exec "$cid" python -c 'import json,os; from pathlib import Path; c=json.loads(Path(os.environ["SOLAR_NEWS_CONFIG"]).read_text()); s=c["policy"]["summarizer"]; print(json.dumps(dict(industry=c["industry"], model=s["model"], review_model=s["review_model"], collection_enabled=c["collection"]["enabled"], publisher_enabled=c["policy"]["publisher"]["enabled"], oauth_configured=(Path(os.environ["SOLAR_NEWS_CODEX_HOME"])/"auth.json").is_file(), teams_configured=bool(os.environ.get("SOLAR_NEWS_TEAMS_WEBHOOK_URL")), publish_connected=(Path(os.environ["SOLAR_NEWS_PUBLISH_CLONE"])/".git").is_dir())))'

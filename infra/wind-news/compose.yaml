@@ -38,7 +38,7 @@ services:
     networks:
       - existing-n8n
     healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8090/health/ready', headers={'Authorization': 'Bearer ' + os.environ['WIND_NEWS_API_TOKEN']}), timeout=4)"]
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8090/health/live', headers={'Authorization': 'Bearer ' + os.environ['WIND_NEWS_API_TOKEN']}), timeout=4)"]
       interval: 30s
       timeout: 5s
       retries: 3

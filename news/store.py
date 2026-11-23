@@ -17,6 +17,8 @@ import os
 
 import duckdb
 
+from .schedule import KST, MAINTENANCE_PAUSE, MORNING_START, SEND_DEADLINE, scheduled_job
+
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
@@ -58,6 +60,12 @@ class Store:
                   UNIQUE(operation, idempotency_key));
                 CREATE TABLE IF NOT EXISTS batches (
                   batch_id VARCHAR PRIMARY KEY, created_at VARCHAR, source_results VARCHAR);
+                CREATE TABLE IF NOT EXISTS job_aliases (
+                  operation VARCHAR, idempotency_key VARCHAR, request_hash VARCHAR, job_id VARCHAR,
+                  PRIMARY KEY(operation, idempotency_key));
+                CREATE TABLE IF NOT EXISTS job_schedule (
+                  job_id VARCHAR PRIMARY KEY, schedule_group VARCHAR, schedule_date VARCHAR,
+                  expires_at VARCHAR, recovery_attempts INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS articles (
                   article_id VARCHAR PRIMARY KEY, canonical_url VARCHAR UNIQUE,
                   content_hash VARCHAR, metadata VARCHAR, evidence VARCHAR,
@@ -113,12 +121,20 @@ class Store:
             if connection is not None:
                 connection.close()
 
+    @property
+    def alive(self):
+        return not self._closed and self._thread.is_alive()
+
     def call(self, fn, *, write=False, timeout=120):
         if self._closed:
             raise RuntimeError("store_closed")
         future = Future()
         self._queue.put((fn, write, future))
-        return future.result(timeout=timeout)
+        try:
+            return future.result(timeout=timeout)
+        except TimeoutError:
+            future.cancel()
+            raise
 
     def bind_industry(self, industry):
         from .profiles import profile_for
@@ -153,7 +169,7 @@ class Store:
                 result[key] = json.loads(result[key])
         return result
 
-    def submit(self, operation, key, payload):
+    def submit(self, operation, key, payload, *, schedule=None, timeout=120):
         if not isinstance(key, str) or not key.strip() or len(key) > 200:
             raise ValueError("idempotency_key_required")
         request_hash = digest(payload)
@@ -163,17 +179,53 @@ class Store:
                 if previous["request_hash"] != request_hash:
                     raise Conflict("idempotency_payload_conflict")
                 return previous
+            alias = db.execute("SELECT request_hash,job_id FROM job_aliases WHERE operation=? AND idempotency_key=?", [operation, key]).fetchone()
+            if alias:
+                if alias[0] != request_hash:
+                    raise Conflict("idempotency_payload_conflict")
+                return self._job(db.execute("SELECT * FROM jobs WHERE job_id=?", [alias[1]]).fetchone())
+            if schedule:
+                group, day, _ = schedule
+                active = db.execute("""SELECT j.* FROM jobs j JOIN job_schedule s USING (job_id)
+                    WHERE operation=? AND schedule_group=? AND schedule_date=?
+                    AND request_hash=? AND status IN ('QUEUED','RUNNING') ORDER BY created_at,job_id LIMIT 1""",
+                    [operation, group, day, request_hash]).fetchone()
+                if active:
+                    db.execute("INSERT INTO job_aliases VALUES (?,?,?,?)", [operation, key, request_hash, active[0]])
+                    return self._job(active)
             job_id, now = str(uuid.uuid4()), utcnow()
             db.execute("INSERT INTO jobs VALUES (?,?,?,?,?,'QUEUED',NULL,NULL,?,?)", [job_id, operation, key, request_hash, canonical(payload), now, now])
+            if schedule:
+                db.execute("INSERT INTO job_schedule (job_id,schedule_group,schedule_date,expires_at) VALUES (?,?,?,?)", [job_id, *schedule])
             return self._job(db.execute("SELECT * FROM jobs WHERE job_id=?", [job_id]).fetchone())
-        return self.call(work, write=True)
+        return self.call(work, write=True, timeout=timeout)
 
     def job(self, job_id):
         return self.call(lambda db: self._job(db.execute("SELECT * FROM jobs WHERE job_id=?", [job_id]).fetchone()))
 
-    def next_job(self):
+    @staticmethod
+    def _expire_jobs(db, now):
+        local_day = datetime.fromisoformat(now).astimezone(KST).date().isoformat()
+        db.execute("""UPDATE jobs SET status=CASE WHEN schedule_group='briefing' AND schedule_date<$day THEN 'SUCCEEDED' ELSE 'FAILED' END,
+            error_code=CASE WHEN schedule_group<>'briefing' THEN 'SCHEDULE_EXPIRED'
+                WHEN schedule_date=$day THEN 'BRIEFING_DELIVERY_DEADLINE_MISSED' END,
+            result=CASE WHEN schedule_group='briefing' AND schedule_date<$day THEN $expired END,updated_at=$now
+            FROM job_schedule s WHERE jobs.job_id=s.job_id AND status='QUEUED' AND expires_at<=$now""",
+            {'day': local_day, 'expired': canonical({'status': 'SKIPPED', 'error_code': 'BRIEFING_DATE_EXPIRED'}), 'now': now})
+
+    def next_job(self, now=None, *, protect_morning=False):
         def work(db):
-            row = db.execute("SELECT * FROM jobs WHERE status='QUEUED' ORDER BY created_at,job_id LIMIT 1").fetchone()
+            local = now.astimezone(KST) if now else None
+            protected = bool(protect_morning and local and MAINTENANCE_PAUSE <= local.time() < SEND_DEADLINE)
+            morning = bool(protected and local.time() >= MORNING_START)
+            if now:
+                self._expire_jobs(db, now.astimezone(timezone.utc).isoformat())
+            row = db.execute("""SELECT j.* FROM jobs j LEFT JOIN job_schedule s USING (job_id) WHERE status='QUEUED'
+                AND (NOT ? OR operation NOT IN ('backup','purge'))
+                AND (NOT ? OR schedule_date=? AND schedule_group IN ('cutoff','prepare','publish','reconcile','briefing'))
+                ORDER BY CASE schedule_group WHEN 'briefing' THEN 0 WHEN 'cutoff' THEN 1 WHEN 'prepare' THEN 2
+                    WHEN 'publish' THEN 3 WHEN 'reconcile' THEN 4 ELSE 5 END, created_at,job_id LIMIT 1""",
+                [protected, morning, local.date().isoformat() if local else None]).fetchone()
             if not row:
                 return None
             db.execute("UPDATE jobs SET status='RUNNING',updated_at=? WHERE job_id=?", [utcnow(), row[0]])
@@ -188,10 +240,28 @@ class Store:
                 db.execute("UPDATE jobs SET payload=? WHERE job_id=?", [canonical({"batch_id": job_id}), job_id])
         self.call(work, write=True, timeout=None)
 
-    def recover(self):
+    def recover(self, now=None):
+        stamp = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
+
         def work(db):
-            jobs = [row[0] for row in db.execute("SELECT job_id FROM jobs WHERE status='RUNNING'").fetchall()]
-            db.execute("UPDATE jobs SET status='QUEUED',updated_at=? WHERE status='RUNNING'", [utcnow()])
+            for job_id, operation, key, payload, created in db.execute("""SELECT job_id,operation,idempotency_key,payload,created_at
+                FROM jobs LEFT JOIN job_schedule USING (job_id)
+                WHERE status IN ('QUEUED','RUNNING') AND schedule_group IS NULL
+                AND regexp_matches(idempotency_key, '^(BRE-(WIND|SOLAR)-|morning-briefing-|recovery-)')""").fetchall():
+                schedule = scheduled_job(operation, key, json.loads(payload), datetime.fromisoformat(created))
+                if schedule:
+                    db.execute("""INSERT INTO job_schedule (job_id,schedule_group,schedule_date,expires_at) VALUES (?,?,?,?)
+                        ON CONFLICT (job_id) DO UPDATE SET schedule_group=excluded.schedule_group,
+                        schedule_date=excluded.schedule_date,expires_at=excluded.expires_at""", [job_id, *schedule])
+            db.execute("""UPDATE jobs SET status='FAILED',error_code='WORKER_RECOVERY_LIMIT',updated_at=?
+                WHERE status='RUNNING' AND job_id IN (SELECT job_id FROM job_schedule WHERE recovery_attempts>=2)""", [stamp])
+            db.execute("""INSERT INTO job_schedule (job_id,recovery_attempts)
+                SELECT job_id,1 FROM jobs WHERE status='RUNNING'
+                ON CONFLICT (job_id) DO UPDATE SET recovery_attempts=job_schedule.recovery_attempts+1""")
+            jobs = [row[0] for row in db.execute("""UPDATE jobs SET status='QUEUED',updated_at=?
+                WHERE status='RUNNING' RETURNING job_id""", [stamp]).fetchall()]
+            self._expire_jobs(db, stamp)
+            jobs = [job_id for job_id in jobs if db.execute("SELECT status FROM jobs WHERE job_id=?", [job_id]).fetchone()[0] == 'QUEUED']
             db.execute("UPDATE issues SET state='READY',updated_at=? WHERE state='PUBLISHING'", [utcnow()])
             # Sending may have succeeded immediately before a crash. Never reclaim.
             db.execute("UPDATE deliveries SET status='UNKNOWN',updated_at=? WHERE status='CLAIMED'", [utcnow()])

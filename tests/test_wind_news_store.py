@@ -46,6 +46,15 @@ class StoreTests(unittest.TestCase):
             self.store.delivery_result(claimed["delivery_id"], "DELIVERED")
         self.assertEqual(self.store.delivery_result(claimed["delivery_id"], "DELIVERED", {"message_id": "verified-123"})["status"], "DELIVERED")
 
+    def test_interrupted_job_has_finite_recovery_attempts(self):
+        job = self.store.submit('collect', 'interrupted', {})
+        for _ in range(2):
+            self.assertEqual(self.store.next_job()['job_id'], job['job_id'])
+            self.assertIn(job['job_id'], self.store.recover()['requeued_jobs'])
+        self.assertEqual(self.store.next_job()['job_id'], job['job_id'])
+        self.assertEqual(self.store.recover()['requeued_jobs'], [])
+        self.assertEqual(self.store.job(job['job_id'])['error_code'], 'WORKER_RECOVERY_LIMIT')
+
     def test_only_web_verified_issue_can_claim_and_failures_are_bounded(self):
         with self.assertRaises(Conflict):
             self.store.claim_delivery("wind-missing", 1, "test")

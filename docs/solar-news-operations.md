@@ -97,6 +97,8 @@ GitHub Action 외에는 `scripts/solar_news/configure_teams.py --settings <priva
 
 태양광 일정은 매시 5분·07:30 수집, 07:40 준비, 07:50 게시, 08:30~09:25 5분마다 브리핑 확인, 09:30 발송 차단, 02:30 백업이다. 모든 템플릿의 시간대는 `Asia/Seoul`이다. 시범 운영에서는 수집·웹 게시를 먼저 확인하고 시험 수신 후 Deliver를 활성화한다. 서버 기동·로그인·Docker·n8n 가용성은 기존 운영 경로에서 점검한다.
 
+태양광에도 08:30 이전 웹 검증과 08:30 첫 실행의 Teams 수신을 적용한다. 풍력과 공유하는 아침 점검이 태양광의 작업 스레드와 대기열 상태를 따로 확인한다. 장애 복구, 마감 수집 재개, 작업 만료, 정리·백업 제한, 08:20 경고와 첫 발송 기록은 동일한 기준을 사용한다. [아침 발송 운영 기준](wind-news-operations.md#6-teams-결과와-재전송)
+
 최초 서비스 배포는 `검증 및 서버 배포` workflow의 `news_action=solar-install`로 실행한다. `scripts/solar_news/install_server.ps1`과 `install_linux.sh`가 기존 WSL/n8n network에 독립 컨테이너를 설치하며, 새 전용 API 토큰을 서버 안에서 생성한다. 첫 설치의 수집·게시 설정과 모든 일정은 비활성이다. Codex 로그인은 `solar-share-login`으로 기존 풍력 로그인을 연결할 수 있다. 게시 clone과 Git 인증, 전용 Teams 웹훅, n8n credential은 별도로 연결한다. 이후 재설치와 Teams 설정 변경에서도 공유 로그인 경로를 보존한다. 설치 결과는 값 노출 없이 연결 여부와 모델·health를 보고한다.
 
 태양광 코드 갱신은 `main`에 push하는 커밋 메시지에 `[deploy-solar]`를 넣어 실행할 수도 있다. CI 검증이 통과하면 태양광 서비스만 `solar-install`로 갱신하며, 이 표식이 있는 커밋은 일반 공고 서버 배포를 실행하지 않는다. 기존 태양광 설정과 발송 이력은 유지한다.

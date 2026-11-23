@@ -7,11 +7,13 @@ import os
 from pathlib import Path
 import re
 import threading
+import time
 
 from flask import Flask, jsonify, render_template, request
 
 from .profiles import profile_for, bind_config
-from .pipeline import KST, Pipeline, approval_digest, window
+from .pipeline import KST, SUCCESS, Pipeline, approval_digest, window
+from .schedule import FIRST_SEND, MAINTENANCE_PAUSE, MORNING_START, PURGE_LAST_START, SEND_DEADLINE, scheduled_job, slot
 from .store import Conflict, Store, canonical, utcnow
 
 
@@ -36,6 +38,8 @@ def present_issue(record):
 
 
 class JobRunner:
+    JOB_LIMIT_SECONDS = {'backup': 1200, 'purge': 600, 'collect': 600, 'prepare': 1200, 'publish': 360, 'briefing': 1500}
+
     def __init__(self, store, pipeline, config, runtime, collector=None, publisher=None, clock=None):
         self.store, self.pipeline, self.config = store, pipeline, config
         self.profile = profile_for(config.get("industry", "wind"))
@@ -45,6 +49,7 @@ class JobRunner:
         self._stop = threading.Event()
         self._wake = threading.Event()
         self._thread = None
+        self._phase = ('queue', time.monotonic())
         self.delivery_lock = threading.Lock()
 
     def briefing_stopped(self, day):
@@ -53,7 +58,7 @@ class JobRunner:
             or delivery["status"] == "FAILED" and (delivery.get("result") or {}).get("attempt", 1) >= 12) else None
 
     def start(self):
-        self.store.recover()
+        self.store.recover(self.clock())
         self._thread = threading.Thread(target=self._loop, name="wind-news-jobs", daemon=True)
         self._thread.start()
 
@@ -64,24 +69,53 @@ class JobRunner:
             self._thread.join(timeout=35)
 
     def _loop(self):
+        last_slot = None
         while not self._stop.is_set():
+            self._phase = ('queue', time.monotonic())
+            now = self.clock().astimezone(KST)
+            if slot(now) != last_slot:
+                self.schedule_local(now)
+                last_slot = slot(now)
             if not self.run_once():
                 self._wake.wait(1)
                 self._wake.clear()
 
+    def failure(self):
+        if not self._thread or not self._thread.is_alive():
+            return 'NEWS_JOB_WORKER_STOPPED'
+        if not self.store.alive:
+            return 'NEWS_DB_WRITER_STOPPED'
+        operation, started = self._phase
+        if time.monotonic() - started >= self.JOB_LIMIT_SECONDS.get(operation, 90):
+            return 'NEWS_JOB_PROGRESS_TIMEOUT'
+        return None
+
+    def submit_scheduled(self, operation, group, payload, now, *, stamp=None):
+        key = 'news-schedule:' + group + ':' + (stamp or slot(now))
+        return self.store.submit(operation, key, payload, schedule=scheduled_job(operation, key, payload, now), timeout=30)
+
+    def schedule_local(self, now):
+        # n8n still owns Teams delivery. This only restores the pre-send stages.
+        if self.config['policy'].get('auto_recover') and MORNING_START <= now.time() < FIRST_SEND:
+            self.submit_scheduled('reconcile', 'reconcile', {}, now)
+        if now.time() < PURGE_LAST_START or now.time() >= SEND_DEADLINE:
+            self.submit_scheduled('purge', 'purge', {}, now, stamp=now.date().isoformat())
+
     def run_once(self):
-        job = self.store.next_job()
+        job = self.store.next_job(self.clock(), protect_morning=bool(self.config['policy'].get('auto_recover')))
         if not job:
             return False
+        self._phase = (job['operation'], time.monotonic())
         try:
             result = self.execute(job)
-            self.store.finish_job(job["job_id"], result=result)
         except (Conflict, ValueError) as exc:
             code = str(exc) if re.fullmatch(r"[A-Za-z0-9_]{1,100}", str(exc)) else "VALIDATION_FAILED"
             self.store.finish_job(job["job_id"], error_code=code)
         except Exception:
             # No exception/URL/header text is copied to the API or persistent job.
             self.store.finish_job(job["job_id"], error_code="INTERNAL_JOB_ERROR")
+        else:
+            self.store.finish_job(job["job_id"], result=result)
         return True
 
     def execute(self, job):
@@ -89,31 +123,54 @@ class JobRunner:
         if operation == "ingest":
             return self.pipeline.ingest(payload, job["job_id"])
         if operation == "collect":
-            from .collector import Collector
-            collector = self.collector or Collector(self.config["collection"])
-            until = self.clock()
-            since = until - timedelta(hours=max(72, self.config["collection"].get("overlap_hours", 72)))
-            batch = collector.collect(since=since, until=until)
-            return self.pipeline.ingest(batch, job["job_id"])
+            return self.collect(job['job_id'])
         if operation == "prepare":
             if self.briefing_stopped(payload["issue_date"]) and not payload.get("correction_reason"):
                 return present_issue(self.store.verified_issue(self.profile.industry + "-" + payload["issue_date"]))
+            now = self.clock().astimezone(KST)
+            if (self.config['policy'].get('auto_recover') and self.config['collection'].get('enabled')
+                    and payload['issue_date'] == now.date().isoformat() and MORNING_START <= now.time() < FIRST_SEND
+                    and not payload.get('correction_reason') and scheduled_job(operation, job['idempotency_key'], payload, now)
+                    and not self.store.issue(self.profile.issue_id(payload['issue_date'])) and not self.cutoff_batch(payload['issue_date'])):
+                self.collect(job['job_id'] + '-cutoff')
             return present_issue(self.pipeline.prepare(payload))
         if operation == "briefing":
-            return self.check_briefing(payload)
+            return self.check_briefing(payload, job_id=job['job_id'])
         if operation == "publish":
             return self.publish(payload)
         if operation == "backup":
-            self.pipeline.purge_expired_evidence()
             destination = self.runtime / "backups" / (self.profile.industry + "-news-" + job["job_id"] + ".duckdb")
             if destination.exists():
                 import hashlib
                 with destination.open("rb") as stream:
                     return {"filename": destination.name, "sha256": hashlib.file_digest(stream, "sha256").hexdigest()}
             return self.store.backup(destination)
+        if operation == 'purge':
+            return {'expired_evidence_cleaned': self.pipeline.purge_expired_evidence(
+                continue_work=lambda: not MAINTENANCE_PAUSE <= self.clock().astimezone(KST).time() < SEND_DEADLINE)}
         if operation == "reconcile":
             return self.reconcile()
         raise ValueError("unsupported_job_operation")
+
+    def collect(self, batch_id):
+        from .collector import Collector
+        collector = self.collector or Collector(self.config['collection'])
+        until = self.clock()
+        since = until - timedelta(hours=max(72, self.config['collection'].get('overlap_hours', 72)))
+        batch = collector.collect(since=since, until=until)
+        return self.pipeline.ingest(batch, batch_id)
+
+    def cutoff_batch(self, day):
+        _, cutoff = window(day)
+        start = cutoff.astimezone(timezone.utc)
+        stop = (cutoff.replace(hour=0, minute=0) + timedelta(days=1)).astimezone(timezone.utc)
+        row = self.store.call(lambda db: db.execute("""SELECT batch_id,source_results FROM batches
+            WHERE created_at>=? AND created_at<? ORDER BY created_at DESC,batch_id DESC LIMIT 1""",
+            [start.isoformat(), stop.isoformat()]).fetchone())
+        required = {s['source_id'] for s in self.config['collection'].get('sources', []) if s.get('enabled', True) and s.get('required')}
+        if row and required and required <= {s['source_id'] for s in json.loads(row[1]) if s.get('status') in SUCCESS}:
+            return row[0]
+        return None
 
     def publish(self, payload):
         issue_id, revision = payload["issue_id"], payload["revision"]
@@ -173,22 +230,23 @@ class JobRunner:
         enqueued = []
         # After 08:30 the five-minute briefing job owns recovery and delivery.
         if (policy.get("auto_recover", False) and self.config["collection"].get("enabled", False)
-                and (now.hour, now.minute) < (8, 30) and not self.briefing_stopped(now.date().isoformat())):
+                and MORNING_START <= now.time() < FIRST_SEND and not self.briefing_stopped(now.date().isoformat())):
             day = now.date().isoformat()
             current = self.store.issue(self.profile.industry + "-" + day)
-            if (not current or current["state"] == "BLOCKED") and (now.hour, now.minute) >= (7, 40):
-                latest_batch = self.store.call(lambda db: db.execute("SELECT batch_id FROM batches ORDER BY created_at DESC,batch_id DESC LIMIT 1").fetchone())
-                batch_suffix = latest_batch[0] if latest_batch else "none"
-                job = self.store.submit("prepare", "recovery-prepare-" + day + "-" + batch_suffix, {"issue_date": day, "retry_blocked": True})
-                enqueued.append(job["job_id"])
+            if not current or current['state'] == 'BLOCKED':
+                if not self.cutoff_batch(day):
+                    job = self.submit_scheduled('collect', 'cutoff', {}, now)
+                    enqueued.append(job['job_id'])
+                elif (now.hour, now.minute) >= (7, 40):
+                    job = self.submit_scheduled('prepare', 'prepare', {'issue_date': day, 'retry_blocked': True}, now)
+                    enqueued.append(job['job_id'])
             elif current and current["state"] in {"READY", "COMMITTED"} and (now.hour, now.minute) >= (7, 50) and policy.get("publisher", {}).get("enabled"):
-                previous_attempts = self.store.call(lambda db: db.execute("SELECT status FROM jobs WHERE operation='publish' AND idempotency_key LIKE ? ORDER BY created_at", ["recovery-publish-" + day + "-" + str(current["revision"]) + "-%"]).fetchall())
-                if not any(row[0] in {"QUEUED", "RUNNING"} for row in previous_attempts) and len(previous_attempts) < 12:
-                    job = self.store.submit("publish", "recovery-publish-" + day + "-" + str(current["revision"]) + "-" + str(len(previous_attempts) + 1), {"issue_id": current["issue_id"], "revision": current["revision"], "approval_hash": current["approval_hash"]})
-                    enqueued.append(job["job_id"])
-        return {"enqueued_jobs": enqueued, "pending_deliveries": self.store.pending_deliveries(self.profile.channel, max_attempts=12), "pending_web_verifications": [{"issue_id": i["issue_id"], "revision": i["revision"]} for i in self.store.list_issues() if i["state"] == "COMMITTED"], "unknown_deliveries": self.store.call(lambda db: self.store._deliveries(db, "status='UNKNOWN'")), "expired_evidence_cleaned": self.pipeline.purge_expired_evidence()}
+                job = self.submit_scheduled('publish', 'publish', {'issue_id': current['issue_id'], 'revision': current['revision'],
+                                            'approval_hash': current['approval_hash']}, now)
+                enqueued.append(job['job_id'])
+        return {"enqueued_jobs": enqueued, "pending_deliveries": self.store.pending_deliveries(self.profile.channel, max_attempts=12), "pending_web_verifications": [{"issue_id": i["issue_id"], "revision": i["revision"]} for i in self.store.list_issues() if i["state"] == "COMMITTED"], "unknown_deliveries": self.store.call(lambda db: self.store._deliveries(db, "status='UNKNOWN'"))}
 
-    def check_briefing(self, payload):
+    def check_briefing(self, payload, *, job_id=None):
         day = payload["issue_date"]
         now = self.clock().astimezone(KST)
         if day != now.date().isoformat():
@@ -207,6 +265,8 @@ class JobRunner:
             if not record or record["state"] == "BLOCKED":
                 if not self.config["collection"].get("enabled", False):
                     return {"status": "SKIPPED", "error_code": "COLLECTION_DISABLED"}
+                if job_id and self.config['policy'].get('auto_recover') and not self.cutoff_batch(day):
+                    self.collect(job_id + '-cutoff')
                 record = self.pipeline.prepare({"issue_date": day, "retry_blocked": True})
             if self.clock().astimezone(KST).date().isoformat() != day:
                 return {"status": "SKIPPED", "error_code": "BRIEFING_DATE_EXPIRED"}
@@ -338,23 +398,46 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         code = str(exc) if re.fullmatch(r"[A-Za-z0-9_]{1,100}", str(exc)) else "INVALID_REQUEST"
         return jsonify(error_code=code), 400
 
+    @app.errorhandler(TimeoutError)
+    def db_busy(exc):
+        return jsonify(error_code='NEWS_DB_TIMEOUT'), 503
+
     def body():
         value = request.get_json(silent=True)
         if not isinstance(value, dict):
             raise ValueError("json_object_required")
         return value
 
-    def enqueue(operation, payload):
-        job = store.submit(operation, request.headers.get("Idempotency-Key"), payload)
+    def worker_failure():
+        return runner.failure() if start_worker else None
+
+    def enqueue(operation, payload, *, key=None):
+        error = worker_failure()
+        if error:
+            return jsonify(error_code=error), 503
+        key = key or request.headers.get('Idempotency-Key')
+        schedule = scheduled_job(operation, key or '', payload, runner.clock())
+        if schedule and operation == 'prepare':
+            payload.setdefault('retry_blocked', True)
+        job = store.submit(operation, key, payload, schedule=schedule, timeout=25)
         runner._wake.set()
         return jsonify(job_id=job["job_id"], status=job["status"]), 202
+
+    @app.get('/health/live')
+    @authenticated
+    def live():
+        error = worker_failure()
+        if error:
+            return jsonify(status='unavailable', error_code=error), 503
+        return jsonify(status='live', industry=profile.industry)
 
     @app.get("/health/ready")
     @authenticated
     def health():
-        if start_worker and (not runner._thread or not runner._thread.is_alive()):
-            return jsonify(status="unavailable", error_code="NEWS_JOB_WORKER_STOPPED"), 503
-        store.call(lambda db: db.execute("SELECT 1").fetchone())
+        error = worker_failure()
+        if error:
+            return jsonify(status='unavailable', error_code=error), 503
+        store.call(lambda db: db.execute('SELECT 1').fetchone(), timeout=3)
         return jsonify(status="ready", schema_version=1, industry=profile.industry)
 
     @app.get("/v1/config/collection")
@@ -481,6 +564,7 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
                        publication_state=record["state"] if record else None,
                        delivery_status=prior["status"] if prior else None,
                        delivery_id=prior["delivery_id"] if prior else None,
+                       delivery_claimed_at=prior['claimed_at'] if prior else None,
                        delivery_evidence={k: (prior.get("result") or {})[k] for k in ("error_code", "http_status", "response_class", "receiver_error_code") if k in (prior.get("result") or {})} if prior else {},
                        briefing_stopped=bool(runner.briefing_stopped(day)) if channel == profile.channel else False,
                        schedule_owner="n8n", first_check="08:30", last_check="09:25", deadline="09:30", interval_minutes=5)
@@ -515,10 +599,32 @@ def create_app(config=None, *, store=None, runtime=None, token=None, start_worke
         if (now.hour, now.minute) >= (9, 30):
             raise ValueError("BRIEFING_DELIVERY_DEADLINE_MISSED")
         # Slot identity survives n8n retries/restarts and duplicate triggers.
-        slot = now.replace(minute=now.minute // 5 * 5, second=0, microsecond=0).strftime("%Y-%m-%d-%H-%M")
-        job = store.submit("briefing", "morning-briefing-" + slot, {"issue_date": day})
-        runner._wake.set()
-        return jsonify(job_id=job["job_id"], status=job["status"]), 202
+        return enqueue('briefing', {'issue_date': day}, key='morning-briefing-' + slot(now))
+
+    @app.get('/v1/briefings/readiness')
+    @authenticated
+    def briefing_readiness():
+        day = runner.clock().astimezone(KST).date().isoformat()
+        failure = worker_failure()
+        if failure:
+            return jsonify(issue_date=day, stage=failure, web_verified=False), 503
+        def read(db):
+            issue_id = profile.issue_id(day)
+            verified = db.execute("SELECT updated_at FROM issues WHERE issue_id=? AND state='WEB_VERIFIED' ORDER BY revision DESC LIMIT 1", [issue_id]).fetchone()
+            current = db.execute("SELECT state FROM issues WHERE issue_id=? ORDER BY revision DESC LIMIT 1", [issue_id]).fetchone()
+            job = db.execute("""SELECT operation,status FROM jobs JOIN job_schedule USING (job_id)
+                WHERE schedule_date=? AND status IN ('RUNNING','QUEUED')
+                AND schedule_group IN ('cutoff','prepare','publish','briefing')
+                ORDER BY CASE status WHEN 'RUNNING' THEN 0 ELSE 1 END,created_at LIMIT 1""", [day]).fetchone()
+            first = db.execute("""SELECT status,json_extract_string(result,'$.status') FROM jobs
+                WHERE operation='briefing' AND idempotency_key=?""", ['morning-briefing-' + day + '-08-30']).fetchone()
+            stage = 'WEB_VERIFIED' if verified else '_'.join(job).upper() if job else current[0] if current else 'AWAITING_CUTOFF_OR_PREPARATION'
+            return {'issue_date': day, 'stage': stage, 'web_verified': bool(verified), 'verified_at': verified[0] if verified else None,
+                    'first_slot_job': first[0] if first else None, 'first_slot_result': first[1] if first else None,
+                    'auto_recover': bool(config['policy'].get('auto_recover')),
+                    'collection_enabled': bool(config['collection'].get('enabled')),
+                    'publisher_enabled': bool(config['policy']['publisher'].get('enabled'))}
+        return jsonify(store.call(read, timeout=3))
 
     @app.get("/review")
     def review_ui():

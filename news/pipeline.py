@@ -466,23 +466,32 @@ class Pipeline:
         candidate.update(evidence_hash=row[2], approved=False, held=True, review_required=True)
         candidate["item"]["tags"] = [facts["contract_stage"]] if facts["contract_stage"] != "미확인" else []
 
-    def purge_expired_evidence(self):
+    def purge_expired_evidence(self, *, batch_size=1000, continue_work=lambda: True):
         cutoff = (datetime.now(timezone.utc) - timedelta(days=min(30, self.policy.get("raw_text_retention_days", 30)))).isoformat()
         remove_fields = '{"text":null,"description":null}'
 
         def work(db):
-            expired = db.execute("SELECT count(*) FROM articles WHERE updated_at<?", [cutoff]).fetchone()[0]
-            if expired:
-                db.execute("""UPDATE articles SET evidence=json_merge_patch(evidence, ?)
-                    WHERE updated_at<? AND (json_exists(evidence, '$.text') OR json_exists(evidence, '$.description'))""",
-                    [remove_fields, cutoff])
-                db.execute("""UPDATE batch_articles AS b SET article_snapshot=json_merge_patch(b.article_snapshot, ?)
-                    FROM articles AS a WHERE b.article_id=a.article_id AND a.updated_at<?
-                    AND (json_exists(b.article_snapshot, '$.text') OR json_exists(b.article_snapshot, '$.description'))""",
-                    [remove_fields, cutoff])
-            db.execute("""UPDATE jobs SET payload='{}',
+            articles = db.execute("""UPDATE articles SET evidence=json_merge_patch(evidence, ?)
+                WHERE article_id IN (SELECT article_id FROM articles WHERE updated_at<?
+                    AND (json_exists(evidence, '$.text') OR json_exists(evidence, '$.description')) LIMIT ?)
+                RETURNING article_id""", [remove_fields, cutoff, batch_size]).fetchall()
+            snapshots = db.execute("""UPDATE batch_articles SET article_snapshot=json_merge_patch(article_snapshot, $remove)
+                FROM (SELECT b.batch_id,b.article_id FROM batch_articles b JOIN articles a USING (article_id)
+                    WHERE a.updated_at<$cutoff AND (json_exists(b.article_snapshot, '$.text') OR json_exists(b.article_snapshot, '$.description'))
+                    LIMIT $batch_size) AS pending
+                WHERE batch_articles.batch_id=pending.batch_id AND batch_articles.article_id=pending.article_id
+                RETURNING batch_articles.article_id""", {'remove': remove_fields, 'cutoff': cutoff, 'batch_size': batch_size}).fetchall()
+            jobs = db.execute("""UPDATE jobs SET payload='{}',
                 status=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'FAILED' ELSE status END,
                 error_code=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'RAW_EVIDENCE_EXPIRED' ELSE error_code END
-                WHERE operation='ingest' AND created_at<? AND (payload<>'{}' OR status IN ('QUEUED','RUNNING'))""", [cutoff])
-            return expired
-        return self.store.call(work, write=True, timeout=None)
+                WHERE job_id IN (SELECT job_id FROM jobs WHERE operation='ingest' AND created_at<?
+                    AND (payload<>'{}' OR status IN ('QUEUED','RUNNING')) LIMIT ?) RETURNING job_id""", [cutoff, batch_size]).fetchall()
+            return articles, snapshots, len(jobs)
+
+        updated = set()
+        while continue_work():
+            articles, snapshots, jobs = self.store.call(work, write=True, timeout=None)
+            updated.update(article_id for (article_id,) in articles + snapshots)
+            if max(len(articles), len(snapshots), jobs) < batch_size:
+                break
+        return len(updated)
