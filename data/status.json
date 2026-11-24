@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-24 20:00:04",
+  "checked_at": "2026-11-25 06:00:05",
   "sites": [
     {
       "id": "notice",
@@ -30,33 +30,8 @@
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
       "error": null,
-      "new_count": 3,
-      "new_items": [
-        {
-          "num": "ME20260133",
-          "title": "영덕 풍력(리파워링) 발전사업",
-          "date": "2026-11-20",
-          "comp_date": "",
-          "status": "변경협의(진행)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20260037",
-          "title": "AWP 영양풍력발전단지 소규모 환경영향평가 변경협의",
-          "date": "2026-11-05",
-          "comp_date": "2026-11-20",
-          "status": "",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        },
-        {
-          "num": "ME20240049",
-          "title": "곡성군 오곡면 침곡리 곡성그린 풍력발전단지 조성사업",
-          "date": "2024-05-20",
-          "comp_date": "2024-09-30",
-          "status": "본협의(완료)",
-          "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M"
-        }
-      ],
+      "new_count": 0,
+      "new_items": [],
       "total": 63
     },
     {
