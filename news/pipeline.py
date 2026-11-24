@@ -9,6 +9,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import polars as pl
 
+from .municipalities import headline_municipalities
 from .profiles import profile_for
 from .store import Conflict, canonical, digest, utcnow
 from .relevance import industry_relevant, editorial_order
@@ -40,9 +41,13 @@ def normalize_url(value, hosts):
     host = (parts.hostname or "").lower().rstrip(".")
     if parts.scheme != "https" or parts.username or parts.password or parts.port not in (None, 443) or host not in hosts or "\\" in str(value) or any(ord(c) < 32 for c in str(value)):
         raise ValueError("unsafe_source_url")
+    return article_url_key(parts)
+
+
+def article_url_key(parts):
     # Article query identifiers are preserved; only known tracking keys disappear.
-    params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if not k.lower().startswith("utm_") and k.lower() not in {"fbclid", "gclid"}]
-    return urlunsplit(("https", host, parts.path or "/", urlencode(params), ""))
+    params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if not k.lower().startswith("utm_") and k.lower() not in {"fbclid", "gclid", "ref", "wlog_tag3"}]
+    return urlunsplit((parts.scheme, (parts.hostname or "").lower().rstrip("."), parts.path or "/", urlencode(params), ""))
 
 
 def clean(value):
@@ -96,6 +101,28 @@ def automatic_allowed(policy):
         return bool(policy.get("automatic_publication"))
     gate = policy.get("quality_gate", {})
     return bool(policy.get("automatic_publication") and gate.get("approved") and gate.get("private_days", 0) >= 7 and gate.get("evaluated_article_pairs", 0) >= 200 and gate.get("evaluated_events", 0) >= 50 and gate.get("verified_representatives", 0) >= 50 and gate.get("merge_precision", 0) >= .95 and gate.get("merge_recall", 0) >= .90 and gate.get("stage_merge_errors", 1) == 0 and gate.get("fact_match_rate", 0) == 1)
+
+
+def select_public_items(candidates, max_items):
+    """Apply the municipality limit to the final headlines of one KST issue."""
+    selected, municipalities = [], {}
+    for candidate in candidates:
+        candidate.pop("publication_exclusion", None)
+        if not candidate["approved"]:
+            continue
+        item = candidate["item"]
+        names = headline_municipalities(item["headline"])
+        overlap = names & municipalities.keys()
+        if overlap:
+            candidate["publication_exclusion"] = {
+                "reason": "municipality_daily_limit",
+                "retained_events": {name: municipalities[name] for name in sorted(overlap)},
+            }
+            continue
+        if len(selected) < max_items:
+            selected.append(item)
+            municipalities.update(dict.fromkeys(names, item["event_id"]))
+    return selected
 
 
 def approval_digest(public, candidates, batch_ids):
@@ -239,13 +266,14 @@ class Pipeline:
                     article = json.loads(row[5]) if row[5] else {**json.loads(row[1]), **json.loads(row[2]), "discovered_at": row[3], "content_hash": row[4]}
                     by_article[row[0]] = article
                 articles = list(by_article.values())
-            published_articles, published_events, recent_articles = set(), set(), []
+            published_articles, published_events, published_urls, recent_articles = set(), set(), set(), []
             seen_issues = set()
             for row in db.execute("SELECT payload,candidates,batch_ids FROM issues WHERE state IN ('COMMITTED','WEB_VERIFIED') AND issue_id<>? ORDER BY issue_date DESC,revision DESC", [issue_id]).fetchall():
                 prior = json.loads(row[0])
                 for item in prior["items"]:
                     published_articles.add(item["representative_article_id"])
                     published_events.add(item["event_id"])
+                    published_urls.add(article_url_key(urlsplit(item["source_url"])))
                 selected_events = {item["event_id"] for item in prior["items"]}
                 selected_members = {item["representative_article_id"] for item in prior["items"]}
                 for candidate in json.loads(row[1]):
@@ -270,8 +298,8 @@ class Pipeline:
                         if snapshot:
                             evidence[article_id] = json.loads(snapshot)
                 recent_articles.extend(evidence.values())
-            return batches, frozen_ids, articles, published_articles, published_events, recent_articles
-        batches, frozen_ids, articles, prior_articles, prior_events, recent_articles = self.store.call(read)
+            return batches, frozen_ids, articles, published_articles, published_events, published_urls, recent_articles
+        batches, frozen_ids, articles, prior_articles, prior_events, prior_urls, recent_articles = self.store.call(read)
         selected_ids = payload.get("article_ids")
         if selected_ids is not None:
             if not correction or not isinstance(selected_ids, list) or not selected_ids or len(selected_ids) > 10000 or any(not isinstance(x, str) for x in selected_ids) or len(set(selected_ids)) != len(selected_ids):
@@ -298,7 +326,8 @@ class Pipeline:
             if self.policy.get("require_free_access", False) and not free_access(article):
                 continue
             published = instant(article["source_published_at"])
-            if not end.astimezone(timezone.utc) - timedelta(hours=72) <= published < end.astimezone(timezone.utc) or article["article_id"] in prior_articles:
+            if (not end.astimezone(timezone.utc) - timedelta(hours=72) <= published < end.astimezone(timezone.utc)
+                    or article["article_id"] in prior_articles or article_url_key(urlsplit(article["url"])) in prior_urls):
                 continue
             eligible += 1
             classification = classify(article, self.profile.industry)
@@ -320,8 +349,18 @@ class Pipeline:
         summary_start = monotonic_time.monotonic()
         max_summaries = min(30, max(1, int(self.policy.get("max_summary_candidates", 20))))
         summary_deadline = min(900, max(1, int(self.policy.get("summary_deadline_seconds", 900))))
-        for candidate_number, (event_id, members) in enumerate(editorial_order(groups, self.profile.industry)):
+        ordered = editorial_order(groups, self.profile.industry)
+        first_pass, later_pass, seen_municipalities = [], [], set()
+        for pair in ordered:
+            members = pair[1]
             members.sort(key=lambda a: (-a["trust_score"], -len(a.get("text", "")), -len(a.get("description", "")), a["source_published_at"], a["url"]))
+            names = headline_municipalities(members[0]["title"])
+            if names & seen_municipalities:
+                later_pass.append(pair)
+            else:
+                first_pass.append(pair)
+                seen_municipalities.update(names)
+        for candidate_number, (event_id, members) in enumerate(first_pass + later_pass):
             article = members[0]
             if candidate_number >= max_summaries or monotonic_time.monotonic() - summary_start >= summary_deadline:
                 summary = {"summary": "", "valid": False, "review_required": True, "validation_status": "SUMMARY_BUDGET_EXHAUSTED"}
@@ -349,7 +388,7 @@ class Pipeline:
             candidates.append({"item": item, "member_article_ids": [a["article_id"] for a in members], "evidence_hash": article["content_hash"], "review_required": sensitive, "held": held, "approved": automatic_allowed(self.policy) and not sensitive and not held, "reason": reason})
         max_items = min(15, max(0, int(self.policy.get("max_items", 15))))
         candidates.sort(key=lambda c: (c["item"]["primary_category"], c["item"]["source_published_at"], c["item"]["source_url"]))
-        selected = [c["item"] for c in candidates if c["approved"]][:max_items]
+        selected = select_public_items(candidates, max_items)
         deferred_count = sum(not c["approved"] and c["reason"] == "SUMMARY_BUDGET_EXHAUSTED" for c in candidates)
         held_count = sum(not c["approved"] and c["reason"] != "SUMMARY_BUDGET_EXHAUSTED" for c in candidates)
         public = {"schema_version": 1, "issue_id": issue_id, "issue_date": day, "revision": revision, "timezone": "Asia/Seoul", "window_start": start.isoformat(), "window_end": end.isoformat(), "published_at": None, "content_status": "partial" if coverage["partial"] or held_count else "normal" if selected else "no_news", "coverage": coverage, "counts": {"fetched": len(articles), "eligible_articles": eligible, "merged_duplicates": sum(len(m) - 1 for m in groups.values()), "published_topics": len(selected), "held": held_count}, "headline_summary": [item["headline"] for item in selected[:3]], "items": selected}
@@ -439,7 +478,7 @@ class Pipeline:
                 targets[0].update(approved=False, reason=clean(request["reason"]))
             else:
                 raise ValueError("invalid_review_action")
-            selected = [c["item"] for c in candidates if c["approved"]][:min(15, self.policy.get("max_items", 15))]
+            selected = select_public_items(candidates, min(15, max(0, int(self.policy.get("max_items", 15)))))
             public["items"] = selected
             public["counts"].update(published_topics=len(selected),
                 held=sum(not c["approved"] and c["reason"] != "SUMMARY_BUDGET_EXHAUSTED" for c in candidates),

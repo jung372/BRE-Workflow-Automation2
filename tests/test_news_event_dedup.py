@@ -11,7 +11,8 @@ if not all(importlib.util.find_spec(x) for x in ('duckdb', 'polars')):
     raise unittest.SkipTest('news isolated dependencies are not installed')
 
 from news.dedup import event_anchor, group_events, same_event
-from news.pipeline import Pipeline, classify, event_key
+from news.municipalities import headline_municipalities
+from news.pipeline import Pipeline, classify, event_key, normalize_url
 from news.store import Store, canonical
 
 
@@ -49,6 +50,26 @@ class NewsEventDedupTests(unittest.TestCase):
             self.assertEqual(len(members), 10)
             identities.add(event_id)
         self.assertEqual(len(identities), 1)
+
+    def test_november_24_wind_edition_groups_forum_and_ministry_event(self):
+        path = Path(__file__).parent / 'fixtures/wind_news/same_forum_20261124.json'
+        articles = json.loads(path.read_text(encoding='utf-8'))
+        indices = {article["url"]: i for i, article in enumerate(articles, 1)}
+        groups = group_events(classified(articles))
+        membership = {frozenset(indices[a["url"]] for a in group) for group in groups.values()}
+        self.assertEqual(membership, {frozenset(group) for group in (
+            (2, 6, 8, 9, 10, 11, 12, 13), (3, 4), (1,), (5,), (7,), (14,), (15,),
+        )})
+        later = dict(articles[1], description=articles[1]["description"].replace("23일", "24일"))
+        later.pop("news_anchor")
+        self.assertFalse(same_event(articles[1], later))
+
+    def test_municipality_mentions_and_article_url_identity(self):
+        self.assertEqual(headline_municipalities("울산광역시와 군산시, 공동 사업"), {"울산시", "군산시"})
+        self.assertEqual(headline_municipalities("울산시청, 공고"), {"울산시"})
+        self.assertEqual(headline_municipalities("울산 앞바다 — 울산매일·울산시민"), set())
+        self.assertEqual(normalize_url("https://example.kr/news?id=123&ref=naver&wlog_tag3=naver", ["example.kr"]),
+                         "https://example.kr/news?id=123")
 
     def test_solar_reports_share_the_same_event_grouping(self):
         groups = group_events(classified(solar_reports(), 'solar'), 'solar')
@@ -202,6 +223,29 @@ class PublicationHistoryDedupTests(unittest.TestCase):
             result = self.prepare(pipeline, [wind_reports()[2]], '2026-11-15', 'new')
             self.assertEqual(len(result['payload']['items']), 1)
             self.assertEqual(len(calls), 2)
+
+    def test_same_day_municipality_limit_refills_and_applies_after_editor_approval(self):
+        for industry, subject in (("wind", "해상풍력"), ("solar", "태양광")):
+            with self.subTest(industry=industry), tempfile.TemporaryDirectory() as temp:
+                pipeline, calls = self.pipeline(Path(temp) / 'news.duckdb', industry)
+                pipeline.policy.update(max_items=2, max_summary_candidates=2)
+                titles = [
+                    f"울산시, {subject} 정책 공개",
+                    f"울산광역시, {subject} 설치비 실태 조사",
+                    f"군산시, {subject} 조례 개정",
+                ]
+                reports = [dict(title=title, description=title, url=f"https://example.kr/test/{i}",
+                                source_published_at="2026-11-23T09:00:00+09:00")
+                           for i, title in enumerate(titles)]
+                issue = self.prepare(pipeline, reports, "2026-11-24", "municipalities")
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(len(issue["payload"]["items"]), 2)
+                self.assertTrue(any(x["headline"] == titles[2] for x in issue["payload"]["items"]))
+                approved = pipeline.review(issue["issue_id"], dict(
+                    action="approve", reason="편집 검토", revision=issue["revision"], approval_hash=issue["content_hash"]))
+                self.assertEqual(len(approved["payload"]["items"]), 2)
+                self.assertEqual(sum(c.get("publication_exclusion", {}).get("reason") == "municipality_daily_limit"
+                                     for c in approved["candidates"]), 1)
 
 
 if __name__ == '__main__':

@@ -1,11 +1,11 @@
 """Group corroborated reports of one event before consuming summary budget."""
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 import re
 import unicodedata
 
 
-RULE_VERSION = "news-event-evidence-v3"
+RULE_VERSION = "news-event-evidence-v4"
 _ORGANIZATION = re.compile(r"[가-힣A-Za-z0-9·]{2,30}(?:발전|개발공사|건설|에너지|공사|중공업)")
 _QUOTED = re.compile(r"[‘'“\"]([^‘'’“”\"\n]{12,180}(?:업무협약|양해각서)(?:\s*\(MOU\))?)[’'”\"]", re.I)
 _DATE = re.compile(r"(?:(\d{4})년\s*)?(?:(\d{1,2})월\s*)?(\d{1,2})일")
@@ -31,6 +31,40 @@ _KINDS = [
 
 def _normalized(value):
     return unicodedata.normalize("NFKC", str(value or "")).lower()
+
+
+# The organizer/venue and subject identify the event even when one outlet
+# calls it a forum and another calls it a discussion, or leads with a policy.
+_NAMED_MEETINGS = (
+    ("floating-wind-hydrogen-forum",
+     re.compile(r"(?:hd|에이치디)현대중공업(?:\s*영빈관|에서|서)"),
+     re.compile(r"해상\s*풍력.{0,12}(?:친환경[ (]*그린[ )]*|그린)\s*수소.{0,22}협력.{0,9}(?:포럼|토론회)")),
+    ("marine-plant-services-industry-event",
+     re.compile(r"해양수산부|해수부|선박해양플랜트연구소"),
+     re.compile(r"해양\s*플랜트\s*서비스\s*산업\s*산\s*[·ㆍ・]\s*학\s*[·ㆍ・]\s*연\s*협력\s*행사")),
+)
+
+
+def _named_meeting(article):
+    from .pipeline import KST, instant
+
+    published = instant(article["source_published_at"]).astimezone(KST).date()
+    for value in (article.get("description"), article.get("text"), article["title"]):
+        lead = _normalized(value)[:1500]
+        for name, organizer, topic in _NAMED_MEETINGS:
+            match = topic.search(lead)
+            if not match:
+                continue
+            context = lead[max(0, match.start() - 160):match.end() + 45]
+            if not organizer.search(context) or re.search(r"취소|무산|불발|열지 않|열리지 않|개최하지 않", context):
+                continue
+            prefix = lead[max(0, match.start() - 110):match.start()]
+            # A scheduled meeting can be reported one day before it takes place.
+            meeting_day = _event_date(prefix, published + timedelta(days=1))
+            if meeting_day and abs((published - date.fromisoformat(meeting_day)).days) > 3:
+                continue
+            return name, meeting_day, published.isoformat()
+    return None
 
 
 def _entity(value):
@@ -103,7 +137,7 @@ def event_anchor(article, industry="wind"):
             projects.add(name)
     types = ("부유식", "육상", "고정식") if industry == "wind" else ("영농형", "수상", "지붕", "건물일체형", "지상형")
     subtype = next((x for section in (title, lead) for x in types if x in section), "")
-    return {"actors": actors, "regions": regions, "capacities": capacities, "projects": projects,
+    return {"meeting": _named_meeting(article), "actors": actors, "regions": regions, "capacities": capacities, "projects": projects,
             "kind": kind, "status": status, "date": event_day, "subtype": subtype,
             "grams": _grams(subject), "title_grams": _grams(title)}
 
@@ -115,6 +149,13 @@ def same_event(left, right, industry="wind"):
         return same_agreement(left, right)
     a = left.get("news_anchor") or event_anchor(left, industry)
     b = right.get("news_anchor") or event_anchor(right, industry)
+    meeting_a, meeting_b = a["meeting"], b["meeting"]
+    if meeting_a and meeting_b:
+        name_a, day_a, published_a = meeting_a
+        name_b, day_b, published_b = meeting_b
+        return (name_a == name_b and "negated" not in (a["status"], b["status"])
+                and (not day_a or not day_b or day_a == day_b)
+                and abs((date.fromisoformat(published_a) - date.fromisoformat(published_b)).days) <= 2)
     if a["status"] != b["status"]:
         return False
     for field in ("kind", "date", "subtype"):
@@ -256,6 +297,9 @@ def group_events(articles, industry="wind"):
         keys = ([("agreement", tuple(anchor["actors"]), anchor["date"], anchor["wind_type"])] if anchor else
                 [("actor", x) for x in sorted(article["news_anchor"]["actors"])] +
                 [("project", x) for x in sorted(article["news_anchor"]["projects"])])
+        meeting = article["news_anchor"]["meeting"]
+        if meeting:
+            keys.append(("meeting", meeting[0]))
         possible = dict.fromkeys(event_id for key in keys for event_id in buckets.get(key, []))
         match = next((groups[event_id] for event_id in possible
                       if all(same_event(article, other, industry) for other in groups[event_id])), None)
