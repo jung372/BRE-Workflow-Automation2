@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-24 11:00:05",
+  "checked_at": "2026-11-24 12:00:04",
   "sites": [
     {
       "id": "notice",
@@ -65,10 +65,10 @@
       "icon": "⚡",
       "color": "#f97316",
       "url": "https://online.kepco.co.kr/EWM040D00",
-      "error": null,
+      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://online.kepco.co.kr/EWM040D00\nCall log:\n  - navigating to \"https://online.kepco.co.kr/EWM040D00\", waiting until \"domcontentloaded\"\n",
       "new_count": 0,
       "new_items": [],
-      "total": 10
+      "total": 0
     },
     {
       "id": "nie_notice",
