@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-25 20:00:04",
+  "checked_at": "2026-11-26 06:00:04",
   "sites": [
     {
       "id": "notice",
@@ -29,10 +29,10 @@
       "icon": "🌬️",
       "color": "#0ea5e9",
       "url": "https://www.eiass.go.kr/biz/base/info/perList.do?menu=biz&biz_gubn=M",
-      "error": "HTTPSConnectionPool(host='www.eiass.go.kr', port=443): Read timed out. (read timeout=30)",
+      "error": null,
       "new_count": 0,
       "new_items": [],
-      "total": 0
+      "total": 63
     },
     {
       "id": "kepco_notice",
@@ -62,7 +62,7 @@
       "icon": "📄",
       "color": "#a855f7",
       "url": "https://www.open.go.kr/com/search/uniSrhMoreList.do",
-      "error": "모든 키워드 조회 실패: 시루풍력, 왕신풍력, 고곡풍력, 고실풍력, 삼척에코윈드, 운제풍력, 문무바람, 이스트블루파워, 한국부유식풍력, 해울이해상풍력, 한국바람, 해파랑육상풍력 (원인: 정보목록 API가 JSON 대신 오류 페이지를 반환했습니다)",
+      "error": "정보공개포털의 정보목록 메뉴가 점검 중입니다. 재개 일정은 포털 공지사항에서 안내합니다.",
       "new_count": 0,
       "new_items": [],
       "total": 0,
@@ -79,7 +79,10 @@
         "해울이해상풍력",
         "한국바람",
         "해파랑육상풍력"
-      ]
+      ],
+      "status": "maintenance",
+      "maintenance_url": "https://www.open.go.kr/html/service_inspection.html",
+      "last_success_at": "2026-11-16 20"
     }
   ],
   "metmasts": [
