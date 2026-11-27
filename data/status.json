@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-27 13:00:04",
+  "checked_at": "2026-11-27 14:00:04",
   "sites": [
     {
       "id": "notice",
@@ -40,7 +40,7 @@
       "icon": "⚡",
       "color": "#f97316",
       "url": "https://online.kepco.co.kr/EWM040D00",
-      "error": "Page.goto: net::ERR_TOO_MANY_REDIRECTS at https://online.kepco.co.kr/EWM040D00\nCall log:\n  - navigating to \"https://online.kepco.co.kr/EWM040D00\", waiting until \"domcontentloaded\"\n",
+      "error": null,
       "new_count": 0,
       "new_items": [],
       "total": 0
