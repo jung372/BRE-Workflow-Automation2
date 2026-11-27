@@ -332,6 +332,12 @@
     const title = el('h2', detail.name); title.id = 'wmDetailTitle'; title.tabIndex = -1;
     panel.append(close, el('p', detail.name_kind === 'register_name' ? '대장 표기' : '허가 사업명', 'wm-eyebrow'), title);
     if (detail.aliases?.length) panel.append(el('p', '과거명: ' + detail.aliases.map(a => a.name + (a.until ? ' (~' + a.until + ')' : '')).join(', ')));
+    if (detail.site_location) {
+      const locationSource = { environmental_assessment: '환경영향평가', electricity_business_permit: '발전사업허가', development_permit: '개발행위허가', construction_plan_approval: '공사계획인가' };
+      panel.append(el('p', '사업지: ' + detail.site_location.addresses.join(', ')),
+        el('p', (locationSource[detail.site_location.source_type] || '인허가 문서') + ' · ' + dateLabel(detail.site_location.date), 'wm-muted'));
+    }
+    if (detail.location_warning) panel.append(el('p', detail.location_warning, 'wm-muted'));
     if (!detail.coordinate) panel.append(el('p', '확인된 좌표가 없어 지도 핀을 표시하지 않습니다.', 'wm-muted'));
     if (detail.coordinate?.approximate) panel.append(el('p', '필지 대표점 · 근사 위치', 'wm-muted'));
     const sourceMap = new Map(detail.sources.map(s => [s.id, s]));
@@ -348,6 +354,7 @@
       });
       return box;
     }
+    if (detail.site_location) panel.append(evidence([detail.site_location.evidence_id]));
     detail.permits.forEach(p => {
       const section = el('section', null, 'wm-permit');
       section.append(el('h3', p.authority + ' · ' + p.number), el('strong', mw(p.capacity_w) + ' · ' + SCOPES[p.status]));

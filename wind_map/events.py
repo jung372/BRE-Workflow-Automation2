@@ -111,7 +111,11 @@ def permit_state(permit, records, as_of, known_at):
             result.update(status="cancelled", capacity_w=0, capacity_known=True, capacity_event_id=r["id"])
             cancelled = True
         elif t == "extend":
-            result["preparation_deadline"] = validate_date(r["preparation_deadline"])
+            deadlines = [key for key in ("preparation_deadline", "construction_plan_deadline") if key in r]
+            if not deadlines:
+                raise WindError("Extension requires a preparation or construction-plan deadline")
+            for key in deadlines:
+                result[key] = validate_date(r[key])
         elif t == "rename":
             result["name"] = r["name"]
         elif t == "transfer":

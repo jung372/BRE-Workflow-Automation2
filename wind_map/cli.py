@@ -45,6 +45,10 @@ def parser():
     a.add_argument("--actor", required=True); a.add_argument("--reason", required=True)
     a = commands.add_parser("export-review")
     a.add_argument("output")
+    a = commands.add_parser("export-tracking")
+    a.add_argument("output", help="New private runtime/operator directory for tracking JSON and HTML")
+    a = commands.add_parser("review-worklist")
+    a.add_argument("output", help="Private JSON inventory; does not approve or publish records")
     a = commands.add_parser("enqueue")
     a.add_argument("source"); a.add_argument("query"); a.add_argument("--start", required=True); a.add_argument("--end", required=True)
     a.add_argument("--incremental", action="store_true"); a.add_argument("--single-window", action="store_true")
@@ -143,6 +147,12 @@ def execute(args):
             atomic_write(target, canonical({"documents": store.all("documents"), "rows": [dict(r) for r in store.db.execute("SELECT * FROM extracted_rows")],
                 "events": store.all("events"), "milestones": store.all("milestones"), "jobs": queue.report(), "gates": publication_gates(store), "review_digests": {d["id"]:review_digest(store,d["id"]) for d in store.all("documents")}}))
             return {"output": str(target)}
+        if args.command == "review-worklist":
+            from .review_worklist import export_worklist
+            return export_worklist(store, args.output)
+        if args.command == "export-tracking":
+            from .tracking_export import export_tracking
+            return export_tracking(store, args.output)
         if args.command == "enqueue-projects":
             from .sources import enqueue_project_searches
             return {"jobs": enqueue_project_searches(store, list(read_json(args.sources)), args.end, incremental=args.incremental)}

@@ -46,6 +46,7 @@ auth.json
 # run_korec_monitor.bat
 # Wind map private build/runtime artifacts
 .venv-wind-map/
+.venv-cloud/
 .wind-map-work/
 .wind-map-runtime/
 *.sqlite3-shm

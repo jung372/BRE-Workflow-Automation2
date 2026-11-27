@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, permit_id TEXT NOT NULL 
 CREATE TABLE IF NOT EXISTS allocation_sets (id TEXT PRIMARY KEY, permit_id TEXT NOT NULL REFERENCES permits(id), evidence_id TEXT NOT NULL REFERENCES evidence(id), data TEXT NOT NULL CHECK(json_valid(data)));
 CREATE TABLE IF NOT EXISTS milestones (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), evidence_id TEXT NOT NULL REFERENCES evidence(id), data TEXT NOT NULL CHECK(json_valid(data)));
 CREATE TABLE IF NOT EXISTS coordinates (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), evidence_id TEXT NOT NULL REFERENCES evidence(id), data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS site_locations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), evidence_id TEXT NOT NULL REFERENCES evidence(id), data TEXT NOT NULL CHECK(json_valid(data)));
 CREATE TABLE IF NOT EXISTS regions (id TEXT PRIMARY KEY, data TEXT NOT NULL CHECK(json_valid(data)));
 CREATE TABLE IF NOT EXISTS coverage (id TEXT PRIMARY KEY, data TEXT NOT NULL CHECK(json_valid(data)));
 CREATE TABLE IF NOT EXISTS review_log (sequence INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL, at TEXT NOT NULL, previous TEXT, current TEXT NOT NULL);

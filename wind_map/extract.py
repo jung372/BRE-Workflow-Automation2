@@ -20,6 +20,11 @@ def register_date(value):
     text = compact(value).replace("‘", "").replace("'", "").replace(chr(96), "").rstrip(".")
     if not text:
         return date_value()
+    korean = re.fullmatch(r"(\d{2}|\d{4})년(\d{1,2})월(?:(\d{1,2})일)?", text)
+    if korean:
+        text = '.'.join(part for part in korean.groups() if part is not None)
+    elif re.fullmatch(r"(?:\d{2}|\d{4})[.\-/]\d{1,2}월", text):
+        text = text[:-1]
     match = re.fullmatch(r"(\d{2}|\d{4})[.\-/](\d{1,2})(?:[.\-/](\d{1,2}))?", text)
     if not match:
         raise WindError("Ambiguous register date")
@@ -62,6 +67,9 @@ def parse_tables(tables, text="", inherited_year=None):
                 split_number = len(header) > 1 and not header[1]
                 row_year = flat[0] if split_number else str(year or "")
                 number = flat[1] if split_number else flat[0]
+                explicit_reference = re.fullmatch(r"((?:19|20)\d{2})[-–](\d+)", number)
+                if explicit_reference:
+                    row_year, number = explicit_reference.groups()
                 fuel = compact(value("원동력"))
                 candidate = {
                     "permit_year": row_year or None, "number": number,
@@ -73,21 +81,40 @@ def parse_tables(tables, text="", inherited_year=None):
                     "remarks": value("기타"),
                 }
                 row["candidate"] = candidate
+                if explicit_reference:
+                    candidate["register_section_year"] = str(year) if year else None
+                    candidate["register_reference_raw"] = flat[1] if split_number else flat[0]
                 try:
                     quantity = compact(candidate["capacity_raw"])
                     candidate["capacity_w"] = capacity_w(quantity, None if re.search(r"[kKmM]?[wW]", quantity) else "MW")
-                    candidate["permit_or_change_date"] = register_date(candidate["permit_or_change_raw"])
-                    for name in ("construction_plan_deadline", "preparation_deadline"):
-                        candidate[name] = register_date(candidate[name + "_raw"])
                 except WindError as exc:
                     row["issue"] = str(exc)
+                    row.setdefault("field_issues", {})["capacity_raw"] = str(exc)
+                # One invalid field must not discard later, independently valid dates.
+                for name, raw_name in (("permit_or_change_date", "permit_or_change_raw"),
+                                       ("construction_plan_deadline", "construction_plan_deadline_raw"),
+                                       ("preparation_deadline", "preparation_deadline_raw")):
+                    marker = compact(candidate[raw_name])
+                    if name == "construction_plan_deadline" and marker in {"해당없음", "기완료"}:
+                        candidate[name] = date_value()
+                        candidate[name + "_source_status"] = marker
+                        continue
+                    try:
+                        candidate[name] = register_date(candidate[raw_name])
+                    except WindError as exc:
+                        row.setdefault("field_issues", {})[raw_name] = str(exc)
+                        row.setdefault("issue", str(exc))
                 # Unknown/ambiguous wind subtype must be reviewed, never silently excluded.
                 if fuel == "육상풍력":
                     row["classification"] = "review" if row.get("issue") or not row_year else "candidate"
                 elif "풍력" in fuel and "해상" not in fuel:
                     row.update(classification="review", issue="wind_subtype_unconfirmed")
+                elif fuel.endswith("풍"):
+                    row.update(classification="review", issue="truncated_wind_fuel_requires_context")
                 elif fuel in {"〃", "“", "”", chr(34)}:
                     row.update(classification="review", issue="fuel_ditto_requires_context")
+                elif fuel in {"신재생", "신재생에너지", "재생에너지"}:
+                    row.update(classification="review", issue="renewable_subtype_unconfirmed")
                 elif fuel:
                     row["classification"] = "out_of_scope"
                 else:

@@ -43,25 +43,35 @@ init/status도 해당 DB를 연다. 단순 환경 점검에 임의의 운영 경
 4. 사업·허가·근거·사건·지역배분을 검토 JSON으로 입력한다. 자동 추출이나 검색 제목만으로 사건을 승인하지 않는다.
 5. 페이지 검토, 정답 표본, 원행-허가 대사를 모두 통과해야 운영본을 만들 수 있다.
 
+용량·허가/변경일·인가기간·준비기간은 독립적으로 추출한다. 한 필드가 유효하지 않아도 다른 날짜를 버리지 않으며 필드별 오류는 검토 대상으로 보존한다. 인가기간의 `해당없음`·`기완료`는 원문 상태와 날짜 미상으로 남기고 실제 인가일로 해석하지 않는다. 원본 셀과 미승인 상태는 유지되며 기존 승인 페이지를 일괄 재추출하지 않는다.
+
 ~~~powershell
 python -m wind_map --runtime $runtime register 'source.pdf' --metadata 'source-metadata.json'
 python -m wind_map --runtime $runtime extract DOCUMENT_ID
 python -m wind_map --runtime $runtime export-review "$runtime/review.json"
+python -m wind_map --runtime $runtime export-tracking "$runtime/operator/tracking-export-20261124"
 python -m wind_map --runtime $runtime import 'reviewed-bundle.json' --actor '검토자' --reason '원문 대조'
 ~~~
+
+`export-tracking`은 한 번의 DB 읽기 스냅샷에서 육상 사업과 유형 미확정 관측, 기존 허가 이력 및 검증 대기 근거를 비공개 JSON·검색용 HTML로 만든다. 명시적 해상 사업은 제외하고 미확정 유형은 별도로 표시한다. 중복 후보의 수나 용량을 확정 사업 합계로 계산하지 않으며, 신청·승인·사용전검사 상태를 공란이나 계획에서 추론하지 않는다. 출력은 runtime의 `operator` 아래 새 디렉터리만 허용한다. 기존 파일과 DB를 바꾸지 않으며 복구 시 생성 디렉터리만 제거하면 된다. 전체 이력과 근거를 포함하므로 출력량은 DB 크기에 비례한다. 이 내보내기는 공개 snapshot이나 발행 gate를 변경하지 않는다.
 
 입력 bundle은 schema_version=1과 projects, regions, evidence, permits, events, allocation_sets, milestones, coordinates, coverage, validations 중 필요한 배열로 구성한다. 구조 예시는 [합성 fixture](../tests/wind_map_helpers.py)에 있다. **시험 값을 실제 운영 자료로 가져오지 않는다.**
 
 - 허가 number는 관할에서 유일한 연도 포함 원문 번호다. 옛 반복 번호는 연도·사업자·소재지 대조 전 합치지 않는다.
 - capacity_w는 정수 W다. 60 MW는 60000000. 새 용량과 종전 용량을 보존한다.
 - 사건·배분·마일스톤·좌표는 known_at, date, review_state, evidence_id가 필요하다. 날짜는 start/end/precision/estimated를 모두 가진다. 월 단위는 그 달의 범위이며 임의 일자를 확정하지 않는다.
+- extend 사건은 preparation_deadline 또는 construction_plan_deadline 중 하나 이상을 명시한다. 명시한 기한만 갱신하고 나머지 기한·용량·최초허가일은 보존한다. 두 기한을 실제 인가·착공·준공일로 해석하지 않는다.
 - 사실 정정은 새 ID와 supersedes를 쓴다. 원문·기존 사건을 덮어쓰지 않는다. 문서 메타데이터는 document-metadata 명령으로 감사 기록과 함께 정정한다.
 - 근거는 공개 문서의 정확한 쪽·문서번호·절, 인용 구절, publication_approved=true를 갖춰야 한다. 제한 회신은 내부 검토에만 남긴다.
 - construction_plan_deadline은 인가일이 아니다. 최초·변경 인가는 별도 construction_plan 마일스톤과 disposition_kind=initial/amendment, 필요 시 round로 입력한다.
 - 환경평가는 assessment_type=main/small/strategic와 stage=draft/main/reconsultation/change, 적용 permit_ids를 명시한다.
 - 검사는 round와 equipment ID 목록을 기록한다. 사업 equipment 배열에 설비별 정격 W·근거·지역이 있어야 검사 확인 용량을 산출한다. 검사 신청·준공은 별개다.
 - 지역별 coverage는 complete/central_only/partial/not_collected다. 시군구 미확정 물량은 알려진 상위 지역의 미배분으로 보존한다.
+- 취소 후 0W의 지역은 현재 취소 사건을 참조하는 승인된 0W 배분으로 기록한다. 해당 지역의 취소허가 건수를 유지하며 용량 합계·배분 중복·현재 사건 참조를 검증한다. 그런 배분이 없으면 전국 미배분으로 보존한다.
 - 좌표는 발전소 소재지 근거만 허용한다. x/y/crs, kind, region_check를 기록한다. region_geometry가 있으면 WGS84 GeoJSON 경계도 검사한다. 예외는 boundary_exception과 사유가 필요하다. 주소 지오코딩 결과도 검토 후 parcel로 입력한다.
+- 사업지 주소는 `site_locations`에 별도 사실로 기록한다. `id`, `project_id`, `evidence_id`, `known_at`, `date`, `review_state`, `source_type`, `scope`, `addresses`가 필요하다. 출처 유형은 `environmental_assessment`, `electricity_business_permit`, `development_permit`, `construction_plan_approval` 중 하나다. 동일 사업의 전체 범위를 확인한 주소는 `scope=whole_site`, 일부만 확인한 주소는 `scope=partial`이다. 건별 근거와 원래 주소·시점을 보존하고 사업자 본점은 제외한다.
+- 적용일이 확인된 환경영향평가의 필지를 발전사업허가보다 후행하는 사업지로 반영한다. 환경평가 이후의 발전사업허가·개발행위허가·공사계획인가에 전체 사업지 주소가 있다면 그 주소를 사용한다. 날짜 순서가 명확한 후행 문서로 판단하며 수집일은 처분일이 아니다. 일부 필지의 변경, 날짜 범위가 겹치는 상충 주소 또는 시점 미상은 전체 부지를 추정하지 않고 검토로 남긴다. 환경평가가 확인되지 않은 경우 확인된 인허가 주소를 사용할 수 있다. `site_location_id`로 선택된 주소와 연결된 검토 좌표만 해당 주소의 핀으로 표시한다.
+- 주소 설계: 기존 좌표에 문서 우선순위를 암묵적으로 넣는 대신 독립 사실을 추가해 적용일·확인일·근거와 전체/일부 범위를 보존한다. 기존 DB에는 빈 테이블만 추가하며 기존 좌표는 주소 사실이 없는 동안 그대로 표시한다. 검토된 주소가 있으면 연결된 좌표만 표시한다. 시험은 합성 DB에서 시간 역전·충돌·부분 부지 및 기존 좌표 영향을 확인한다. 운영 적용 전 DB와 원본을 일관 백업하며 복원은 기존 `restore-bundle` 절차를 따른다. 주소 사실은 코드 배포 및 원문 검토 후 별도 적재하고, 테이블 추가만으로 기존 사업지 주소가 자동 생성되지는 않는다.
 
 문자층 없는 PDF는 설치된 Tesseract와 kor+eng 언어 데이터로 OCR할 수 있다. 도구를 자동 설치하거나 OCR 값을 자동 승인하지 않는다.
 
@@ -78,6 +88,18 @@ validations는 단순 승인 표시만으로 통과하지 않는다. export-revi
 
 - row_reconciliation: 모든 후보 행을 정확히 한 번 연결한 row_links(row_id/permit_id/evidence_id).
 - golden_samples: 비어 있지 않은 checks(table/record_id/field/expected). 실제 저장값과 기대값을 다시 비교한다. field는 date.start처럼 점으로 구분할 수 있다.
+
+### 검토 목록과 재개
+
+개발 checkout에서 아래 명령으로 현재 DB의 전 페이지·문제 유형·풍력 관측행·같은 대장번호의 반복·연결행 후보를 사설 JSON으로 정리한다. 출력은 해당 runtime 안에만 저장할 수 있다.
+
+~~~powershell
+python -m wind_map --runtime $runtime review-worklist "$runtime/operator/review-worklist.json"
+~~~
+
+이 명령은 검토 목록을 생성하며 페이지나 사실을 승인하지 않는다. `풍력`만 적힌 행은 육상·해상을 확정하지 않고, 같은 연도·번호의 반복도 동일 허가라고 자동 병합하지 않는다. 분기 표시보다 늦은 처분 일자를 별도로 표시한다. 연결행의 앞 행 제안은 검토 전 후보이며 명칭·용량·좌표를 자동 상속하지 않는다. 승인된 페이지와 미승인 페이지 수를 구분해 다음 검토 위치를 찾는다.
+
+부분 검토의 승인 근거는 원본·렌더링 이미지 해시와 검토자, 페이지·행 연결, 수정 사유를 사설 batch에 보존한다. 부분 검토가 끝나도 전체 원행 대사·정답 표본·coverage가 남아 있으면 운영 발행 차단을 유지한다.
 
 ## 전국 검색과 정시 수집
 

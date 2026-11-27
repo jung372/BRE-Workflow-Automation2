@@ -8,11 +8,19 @@ import re
 from .aggregates import allocations_for, build_totals, region_tree
 from .core import WindError, atomic_write, canonical, confirmed_by, day, instant, safe_url, stable_id
 from .events import permit_state, selected_facts, validate_lineage
-from .geography import coordinate_for_display
+from .geography import coordinate_for_display, select_site_location
 from .milestones import validate_milestone, inspection_summary, infer_start_window, annotate_conflicts
 
 PREFIX = "data/wind-map/"
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
+def unresolved_capacity_overlap(project):
+    # Existing private records use case-specific suffixes. Match the families
+    # without encoding individual permit references in public source code.
+    return any(value is True and (
+        key == "not_independent_capacity_for_aggregate"
+        or (key.startswith("potential_physical_overlap_") and key.endswith("_unresolved"))
+        or (key.startswith("same_parcel_") and key.endswith("_other_project_overlap_unresolved"))
+    ) for key, value in project.items())
 
 
 def public_evidence(e, documents):
@@ -37,6 +45,9 @@ def review_digest(store, document_id):
 def publication_gates(store):
     errors = []
     documents = store.all("documents")
+    for project in store.all("projects"):
+        if project.get("wind_type") == "onshore" and unresolved_capacity_overlap(project):
+            errors.append("Unresolved capacity overlap: " + project["id"])
     registers = [d for d in documents if d.get("purpose") == "permit_register"]
     if not registers:
         errors.append("No complete permit-register source")
@@ -97,14 +108,16 @@ def publication_gates(store):
 
 
 def _build(store, as_of, known_at, *, preview=False):
-    day(as_of); instant(known_at)
+    day(as_of); knowledge_cutoff = instant(known_at)
     gates = publication_gates(store)
     if gates and not preview:
         raise WindError("Publication blocked: " + "; ".join(gates))
     docs = {d["id"]: d for d in store.all("documents")}
     evidence = {e["id"]: e for e in store.all("evidence")}
     projects = {p["id"]: p for p in store.all("projects")}
-    regions = region_tree([{k: row.get(k) for k in ("id", "name", "parent_id", "code_year")} for row in store.all("regions")])
+    regions = region_tree([{k: row.get(k) for k in ("id", "name", "parent_id", "code_year")}
+                           for row in store.all("regions")
+                           if row.get("known_at") is None or instant(row["known_at"]) <= knowledge_cutoff])
     for region in regions.values():
         if not ID_RE.fullmatch(region["id"]) or not isinstance(region["name"], str) or type(region["code_year"]) is not int:
             raise WindError("Invalid public region fields")
@@ -113,6 +126,7 @@ def _build(store, as_of, known_at, *, preview=False):
     allocation_sets = store.all("allocation_sets")
     milestones = store.all("milestones")
     coordinates = store.all("coordinates")
+    site_locations = store.all("site_locations")
     for ident in [*projects, *evidence, *[p["id"] for p in permits]]:
         if not ID_RE.fullmatch(ident):
             raise WindError("Unsafe public ID")
@@ -130,11 +144,19 @@ def _build(store, as_of, known_at, *, preview=False):
         if instant(public_sources[ident]["checked_at"]) > instant(known_at):
             raise WindError("Evidence was unavailable at the requested knowledge cutoff")
     for permit in permits:
-        if projects[permit["project_id"]].get("wind_type") != "onshore":
+        project = projects[permit["project_id"]]
+        if project.get("wind_type") != "onshore":
+            continue
+        scope_known_at = project.get("wind_type_known_at")
+        if scope_known_at is not None and instant(scope_known_at) > knowledge_cutoff:
             continue
         state = permit_state(permit, events_by[permit["id"]], as_of, known_at)
         if not state["history"] and not state["conflicts"]:
             continue
+        if unresolved_capacity_overlap(project):
+            raise WindError("Unresolved capacity overlap: " + project["id"])
+        if scope_known_at is not None:
+            use_evidence(project.get("wind_type_evidence_id"))
         for ident in state["evidence_ids"]:
             use_evidence(ident)
         state["allocations"] = allocations_for(state, allocations_by[permit["id"]], regions, as_of, known_at)
@@ -166,8 +188,18 @@ def _build(store, as_of, known_at, *, preview=False):
             validate_milestone(m, applicable); use_evidence(m["evidence_id"])
             milestone_rows.append({k: m[k] for k in ("id", "type", "status", "date", "permit_ids", "evidence_id", "assessment_type", "stage", "round", "equipment", "disposition_kind") if k in m})
         annotate_conflicts(milestone_rows)
+        location_rows = selected_facts([r for r in site_locations if r["project_id"] == project_id], as_of, known_at)
+        location, location_warning = select_site_location(location_rows, as_of)
+        public_location = None
+        if location:
+            use_evidence(location["evidence_id"])
+            public_location = {k: location[k] for k in ("id", "addresses", "source_type", "date", "evidence_id")}
         point, coordinate_warning = None, None
         coords = [c for c in selected_facts([c for c in coordinates if c["project_id"] == project_id], as_of, known_at) if confirmed_by(c["date"], as_of)]
+        if location or location_warning:
+            coords = [c for c in coords if location and c.get("site_location_id") == location["id"]]
+            if not coords:
+                coordinate_warning = "선택된 사업지에 연결된 검토 좌표가 없습니다."
         if coords:
             coords.sort(key=lambda c: (c["date"]["end"], c["id"]))
             try:
@@ -177,10 +209,14 @@ def _build(store, as_of, known_at, *, preview=False):
             except WindError as exc:
                 coordinate_warning = str(exc)
         source_ids = {project["name_evidence_id"]}
+        if project.get("wind_type_known_at") is not None:
+            source_ids.add(project["wind_type_evidence_id"])
         for s in selected:
             source_ids.update(s["evidence_ids"])
             source_ids.update(a["evidence_id"] for a in s["allocations"] if a.get("evidence_id"))
         source_ids.update(m["evidence_id"] for m in milestone_rows)
+        if location:
+            source_ids.add(location["evidence_id"])
         if point:
             source_ids.add(point["evidence_id"])
         aliases = []
@@ -215,10 +251,10 @@ def _build(store, as_of, known_at, *, preview=False):
             if before:
                 start_window = infer_start_window(max(before, key=lambda m: m["date"]["end"]), positive)
                 break
-        detail = {"project_id": project_id, "inspection": inspected, "construction_start_window": start_window, "name": project["name"], "name_kind": project.get("name_kind", "permitted_project"), "aliases": aliases, "permits": selected, "milestones": milestone_rows, "coordinate": point, "coordinate_warning": coordinate_warning, "sources": [public_sources[e] for e in sorted(source_ids)]}
+        detail = {"project_id": project_id, "inspection": inspected, "construction_start_window": start_window, "name": project["name"], "name_kind": project.get("name_kind", "permitted_project"), "aliases": aliases, "permits": selected, "milestones": milestone_rows, "site_location": public_location, "location_warning": location_warning, "coordinate": point, "coordinate_warning": coordinate_warning, "sources": [public_sources[e] for e in sorted(source_ids)]}
         details[project_id] = detail
         index.append({"project_id": project_id, "name": project["name"], "aliases": [a["name"] for a in aliases], "coordinate": point, "inspection": inspected, "permits": [{k: s[k] for k in ("permit_id", "status", "capacity_w", "allocations")} for s in selected]})
-    pending = sum(r.get("review_state") == "pending" for r in events + milestones + coordinates + allocation_sets)
+    pending = sum(r.get("review_state") == "pending" for r in events + milestones + coordinates + site_locations + allocation_sets)
     inspection_totals = build_totals(inspected_states, list(regions.values()), [])["valid"]
     quarters = {d["quarter"] for d in docs.values() if d.get("quarter")}
     if any(not isinstance(q, str) or not re.fullmatch(r"20\d{2}-Q[1-4]", q) for q in quarters):

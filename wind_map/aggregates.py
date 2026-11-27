@@ -21,7 +21,7 @@ def region_tree(regions):
 
 def allocations_for(state, records, regions, as_of, known_at):
     facts = [r for r in selected_facts(records, as_of, known_at) if confirmed_by(r["date"], as_of)]
-    if state["capacity_w"] == 0:
+    if state["capacity_w"] == 0 and not any(r.get("capacity_event_id") == state["capacity_event_id"] for r in facts):
         return [{"region_id": "KR", "capacity_w": 0, "unallocated": True, "reason": "zero_capacity_region_unconfirmed"}]
     if not facts:
         return [{"region_id": "KR", "capacity_w": state["capacity_w"], "unallocated": True, "reason": "location_unconfirmed"}]

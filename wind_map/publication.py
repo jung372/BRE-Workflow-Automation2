@@ -70,6 +70,8 @@ def validate_descriptor(root, descriptor, *, allow_preview=False):
         for fact in detail["milestones"]:
             if fact["evidence_id"] not in sources:
                 raise WindError("Missing public milestone evidence")
+        if detail.get("site_location") and detail["site_location"].get("evidence_id") not in sources:
+            raise WindError("Missing public site location evidence")
     regions = values["regions.json"]
     if regions.get("preview") != manifest["preview"] or regions.get("as_of") != manifest["as_of"]:
         raise WindError("Mismatched publication metadata")

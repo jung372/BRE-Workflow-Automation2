@@ -9,6 +9,8 @@ from .core import WindError, atomic_write, canonical, instant, safe_url, stable_
 
 TABLES = {"projects", "evidence", "permits", "events", "allocation_sets", "milestones", "coordinates", "regions", "coverage", "validations"}
 COLUMNS = {"evidence": ("document_id",), "permits": ("project_id", "authority", "number"), "events": ("permit_id", "evidence_id"), "allocation_sets": ("permit_id", "evidence_id"), "milestones": ("project_id", "evidence_id"), "coordinates": ("project_id", "evidence_id"), "validations": ("document_id", "kind", "approved")}
+TABLES.add("site_locations")
+COLUMNS["site_locations"] = ("project_id", "evidence_id")
 
 class Store:
     def __init__(self, runtime):
@@ -99,7 +101,7 @@ class Store:
         value = dict(record)
         if not isinstance(value.get("id"), str) or not value["id"]:
             raise WindError("Record ID required")
-        if table in {"events", "allocation_sets", "milestones", "coordinates"}:
+        if table in {"events", "allocation_sets", "milestones", "coordinates", "site_locations"}:
             if value.get("review_state") not in {"pending", "approved", "rejected"}:
                 raise WindError("Explicit review_state required")
             instant(value["known_at"])
@@ -109,7 +111,7 @@ class Store:
         if old and json.loads(old[0]) == value:
             return False
         # Source assertions/events are append-only; corrections reference the old ID.
-        if old and table in {"events", "evidence", "milestones", "allocation_sets", "coordinates"}:
+        if old and table in {"events", "evidence", "milestones", "allocation_sets", "coordinates", "site_locations"}:
             previous = json.loads(old[0])
             if {k: v for k, v in previous.items() if k != "review_state"} != {k: v for k, v in value.items() if k != "review_state"}:
                 raise WindError("Evidence and facts are immutable; create a correction with supersedes")
@@ -121,7 +123,7 @@ class Store:
     def import_bundle(self, bundle, *, actor, reason):
         if set(bundle) - TABLES - {"schema_version"} or bundle.get("schema_version") != 1:
             raise WindError("Unknown bundle schema or section")
-        order = ("projects", "regions", "evidence", "permits", "events", "allocation_sets", "milestones", "coordinates", "coverage", "validations")
+        order = ("projects", "regions", "evidence", "permits", "events", "allocation_sets", "milestones", "site_locations", "coordinates", "coverage", "validations")
         count = 0
         with self.transaction():
             for table in order:
@@ -130,7 +132,7 @@ class Store:
         return count
 
     def review(self, table, ident, state, *, actor, reason):
-        if table not in {"events", "allocation_sets", "milestones", "coordinates"} or state not in {"approved", "rejected", "pending"}:
+        if table not in {"events", "allocation_sets", "milestones", "coordinates", "site_locations"} or state not in {"approved", "rejected", "pending"}:
             raise WindError("Invalid review target")
         row = next((v for v in self.all(table) if v["id"] == ident), None)
         if row is None:
